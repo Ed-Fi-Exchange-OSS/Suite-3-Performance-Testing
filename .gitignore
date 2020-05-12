@@ -1,0 +1,12 @@
+# IDE files
+/.idea/
+*.iml
+
+# Generated files
+*.csv
+*.pyc
+/artifacts/
+/TestResults/
+*.pdf
+change_version_tracker.json
+node_modules/

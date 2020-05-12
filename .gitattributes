@@ -1,0 +1,11 @@
+*.md text
+*.txt text
+*.py text
+*.bat text
+*.json text
+*.sql text
+*.config text
+*.exe binary
+*.bat text
+*.cmd text
+*.ps1 text
