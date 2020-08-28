@@ -93,7 +93,7 @@ Steps taken in the Azure Portal:
 
     Initial database state is that of a development environment after 'initdev'.
     Databases BAK created on developer machine, copied to VM over RDP.
-    See RestoreSqlDatabases.sql for the restore script. Note how the Data Disk is deliberately used for both backups and restored databases.
+    See RestoreSqlDatabases-v3.sql for the restore script. Note how the Data Disk is deliberately used for both backups and restored databases.
 
     Then, copy extract the Northridge 3.0 Dataset zip to the VM, extracting its BAK to F:\Database Backups\
         See https://s3.amazonaws.com/edfi_ods_samples/v3.0/EdFi_Ods_Northridge.7z
@@ -387,21 +387,25 @@ Steps taken in the Azure Portal:
 
     Create Desktop Shortcuts:
 
-        Target: C:\Windows\System32\cmd.exe /k "C:\Users\edFiAdmin\run-deployed-tests.bat volume"
+        Target: C:\Windows\System32\cmd.exe /k "C:\Users\edFiAdmin\run-deployed-tests.bat Volume"
         Start in: C:\Users\edFiAdmin
         Shortcut icon text: Run Volume Tests
 
-        Target: C:\Windows\System32\cmd.exe /k "C:\Users\edFiAdmin\run-deployed-tests.bat pipeclean"
+        Target: C:\Windows\System32\cmd.exe /k "C:\Users\edFiAdmin\run-deployed-tests.bat Pipeclean"
         Start in: C:\Users\edFiAdmin
         Shortcut icon text: Run Pipeclean Tests
 
-        Target: C:\Windows\System32\cmd.exe /k "C:\Users\edFiAdmin\run-deployed-tests.bat stress"
+        Target: C:\Windows\System32\cmd.exe /k "C:\Users\edFiAdmin\run-deployed-tests.bat Stress"
         Start in: C:\Users\edFiAdmin
         Shortcut icon text: Run Stress Tests
 
-        Target: C:\Windows\System32\cmd.exe /k "C:\Users\edFiAdmin\run-deployed-tests.bat soak"
+        Target: C:\Windows\System32\cmd.exe /k "C:\Users\edFiAdmin\run-deployed-tests.bat Soak"
         Start in: C:\Users\edFiAdmin
         Shortcut icon text: Run Soak Tests
+
+        Target: C:\Windows\System32\cmd.exe /k "C:\Users\edFiAdmin\run-deployed-tests.bat ChangeQuery"
+        Start in: C:\Users\edFiAdmin
+        Shortcut icon text: Run Change Query Tests
 
     Register Credentials for the SQL and Web VMs
         Copy AzureTestLab.ps1 to C:\Users\edFiAdmin.

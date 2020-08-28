@@ -19,22 +19,10 @@ class CourseOfferingClient(EdFiAPIClient):
 
         session_reference = self.session_client.create_with_dependencies(schoolId=school_id)
 
-        course_offering_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            session_reference,
             sessionReference__schoolId=school_id,
             sessionReference__schoolYear=2014,
             sessionReference__sessionName=session_reference['attributes']['sessionName'],
             **kwargs
         )
-        course_offering_id = self.create(**course_offering_attrs)
-
-        return {
-            'resource_id': course_offering_id,
-            'dependency_ids': {
-                'session_reference': session_reference,
-            },
-            'attributes': course_offering_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.session_client.delete_with_dependencies(reference['dependency_ids']['session_reference'])

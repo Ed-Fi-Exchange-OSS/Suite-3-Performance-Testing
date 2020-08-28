@@ -53,9 +53,9 @@ function Duplicate-OdsLogs {
     }
 }
 
-function Invoke-RemoteCommand($server, [PSCredential] $credential, [ScriptBlock] $scriptBlock) {
+function Invoke-RemoteCommand($server, [PSCredential] $credential, $argumentList, [ScriptBlock] $scriptBlock) {
     if ($server -eq 'localhost') {
-        return Invoke-Command -ScriptBlock $scriptBlock
+        return Invoke-Command -ArgumentList $argumentList -ScriptBlock $scriptBlock
     }
 
     $thisFolder = $PSScriptRoot
@@ -72,7 +72,7 @@ function Invoke-RemoteCommand($server, [PSCredential] $credential, [ScriptBlock]
             Set-GlobalsFromConfig $configJson
         }
 
-        return Invoke-Command -Session $psSession -ScriptBlock $scriptBlock
+        return Invoke-Command -Session $psSession -ArgumentList $argumentList -ScriptBlock $scriptBlock
     }
     finally {
         if ($null -ne $psSession) {
@@ -85,19 +85,24 @@ function Log($message) {
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss,fff"
     $output = "[$timestamp] $message"
     Write-Host $output
-    $output | Out-File -Encoding UTF8 TestResults\PerformanceTesterLog.txt -Append
+    $output | Out-File -Encoding UTF8 $testResultsPath\PerformanceTesterLog.txt -Append
 }
 
-function Reset-OdsDatabase {
+function Reset-OdsDatabase($backupFilename) {
     Import-Module SQLPS
+
+    $logicalName = "EdFi_Ods_Populated_Template"
+    if ($backupFilename -Match "Minimal") {
+        $logicalName = "EdFi_Ods_Minimal_Template"
+    }
 
     Invoke-SqlCmd -Database "master" `
                   -Query "ALTER DATABASE [$databaseName] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
 
                           RESTORE DATABASE [$databaseName] FROM DISK = '$sqlBackupPath\$backupFilename'
                             WITH
-                                MOVE 'EdFi_Ods_Empty' TO '$sqlDataPath\$($databaseName).mdf',
-                                MOVE 'EdFi_Ods_Empty_log' TO '$sqlDataPath\$($databaseName)_log.ldf',
+                                MOVE '$($logicalName)' TO '$sqlDataPath\$($databaseName).mdf',
+                                MOVE '$($logicalName)_log' TO '$sqlDataPath\$($databaseName)_log.ldf',
                                 REPLACE;
 
                           ALTER DATABASE [$databaseName] SET MULTI_USER;" -QueryTimeout 0
@@ -140,10 +145,12 @@ function Reset-OdsDatabase {
 }
 
 # Runs the specified test suite for the specified run time.
-function Invoke-TestRunner($testSuite, $clientCount, $hatchRate, $runTime, $testType) {
-    Get-ChildItem -Path TestResults -Recurse | Remove-Item -Recurse
-    if (!(Test-Path TestResults)) { New-Item -ItemType Directory -Force -Path TestResults | Out-Null}
-    Log "Writing to TestResults Folder"
+function Invoke-TestRunner($testSuite, $clientCount, $hatchRate, $testType, $backupFilename, $runTime) {
+    Log "Writing to $testResultsPath"
+
+    if (($testSuite -eq "volume") -and ($null -eq $runTime)) {
+        throw "The -RunTime parameter must be provided when running the 'volume' suite of tests, so that the test run can exit gracefully."
+    }
 
     $databaseCredential = Get-CredentialOrDefault $databaseServer
     $webCredential = Get-CredentialOrDefault $webServer
@@ -151,7 +158,7 @@ function Invoke-TestRunner($testSuite, $clientCount, $hatchRate, $runTime, $test
     if($restoreDatabase) {
         Log "Resetting ODS database from backup, and resetting indexes"
         Log "Restoring $databaseName from $sqlBackupPath\$backupFilename"
-        Invoke-RemoteCommand $databaseServer $databaseCredential { Reset-OdsDatabase }
+        Invoke-RemoteCommand $databaseServer $databaseCredential -ArgumentList @($backupFilename) -ScriptBlock { param($backupFilename) Reset-OdsDatabase $backupFilename }
     } else {
         Log "Skipping Database Restore"
     }
@@ -177,7 +184,7 @@ function Invoke-TestRunner($testSuite, $clientCount, $hatchRate, $runTime, $test
         $commonFunctions = (Get-Command $Using:thisFolder\TestRunner.ps1).ScriptContents
 
         try {
-            $csvPath = "$Using:thisFolder\TestResults\$Using:testType.$server.csv"
+            $csvPath = "$Using:thisFolder\$Using:testResultsPath\$Using:testType.$server.csv"
 
             if ($server -eq 'localhost') {
                 $actualPerformanceCounters = Compare-Object (typeperf -q) $expectedPerformanceCounters -PassThru -IncludeEqual -ExcludeDifferent
@@ -245,10 +252,17 @@ function Invoke-TestRunner($testSuite, $clientCount, $hatchRate, $runTime, $test
         }
     }
 
-    Log "Running $testSuite tests with $clientCount clients for $runTime..."
+    $runTimeArgument = ""
+    if ($null -eq $runTime) {
+        Log "Running $testSuite tests with $clientCount clients..."
+    } else {
+        Log "Running $testSuite tests with $clientCount clients for $runTime..."
+        $runTimeArgument = "--run-time $runTime"
+    }
+
     $locustProcess = Start-Process "locust" -PassThru -NoNewWindow -ArgumentList `
-                                   "-f $($testSuite)_tests.py -c $clientCount -r $hatchRate --no-web --csv TestResults\$testType --run-time $runTime --only-summary" `
-                                   -RedirectStandardError TestResults\Summary.txt
+                                   "-f $($testSuite)_tests.py -c $clientCount -r $hatchRate --no-web --csv $testResultsPath\$testType $runTimeArgument --only-summary" `
+                                   -RedirectStandardError $testResultsPath\Summary.txt
     Wait-Process -Id $locustProcess.Id
     Log "Test runner process complete"
 
@@ -276,15 +290,15 @@ function Invoke-TestRunner($testSuite, $clientCount, $hatchRate, $runTime, $test
     }
 
     Log "Fetching new ODS log file content from $webServer"
-    Invoke-RemoteCommand $webServer $webCredential { Duplicate-OdsLogs }
+    Invoke-RemoteCommand $webServer $webCredential -ScriptBlock { Duplicate-OdsLogs }
 
     $logFiles = (Join-Path $logFilePath "OdsLogs")
     if ($webServer -eq 'localhost') {
-        Copy-Item $logFiles -Destination TestResults -Recurse
+        Copy-Item $logFiles -Destination $testResultsPath -Recurse
     } else {
         $sessionOptions = New-PSSessionOption -SkipCACheck -SkipCNCheck
         $psSession = New-PSSession -ComputerName $webServer -Credential $webCredential -UseSSL -SessionOption $sessionOptions -ErrorAction Stop
-        Copy-Item $logFiles -Destination TestResults -FromSession $psSession -Recurse
+        Copy-Item $logFiles -Destination $testResultsPath -FromSession $psSession -Recurse
     }
 }
 
@@ -297,11 +311,23 @@ function Set-GlobalsFromConfig($configJson) {
     $global:sqlDataPath = $configValues.sql_data_path
     $global:databaseName = $configValues.database_name
     $global:backupFilename = $configValues.backup_filename
+    $global:changeQueryBackupFilenames = $configValues.change_query_backup_filenames
     $global:restoreDatabase = [Bool]::Parse($configValues.restore_database)
 }
 
 function Read-TestRunnerConfig {
     $global:configJson = Get-Content 'locust-config.json' | Out-String
+}
+
+function Set-ChangeVersionTracker {
+    $changeVersion = @{
+        newest_change_version = 0
+    }
+    $changeVersion | ConvertTo-Json | Set-Content -Path 'change_version_tracker.json'
+}
+
+function Duplicate-ChangeVersionTracker {
+    Copy-Item 'change_version_tracker.json' -Destination $testResultsPath
 }
 
 function Get-CredentialOrDefault($server) {
@@ -323,46 +349,85 @@ function Get-CredentialOrDefault($server) {
     }
 }
 
-function Invoke-VolumeTests {
+function Initialize-Folder($path) {
+    Get-ChildItem -Path $path -Recurse | Remove-Item -Recurse
+    if (!(Test-Path $path)) {
+        New-Item -ItemType Directory -Force -Path $path | Out-Null
+    }
+}
+
+function Initialize-TestRunner {
     Read-TestRunnerConfig
     Set-GlobalsFromConfig $configJson
+
+    # Default to a single TestResults folder. This may be overridden,
+    # such as for Change Query tests, which write to multiple subfolders
+    # underneath TestResults.
+    $global:testResultsPath = "TestResults"
+    Initialize-Folder TestResults
+}
+
+function Invoke-VolumeTests {
+    Initialize-TestRunner
     Invoke-TestRunner `
         -TestSuite volume `
         -ClientCount 50 `
         -HatchRate 1 `
         -RunTime 30m `
-        -TestType volume
+        -TestType volume `
+        -BackupFilename $backupFilename
 }
 
 function Invoke-PipecleanTests {
-    Read-TestRunnerConfig
-    Set-GlobalsFromConfig $configJson
+    Initialize-TestRunner
     Invoke-TestRunner `
         -TestSuite pipeclean `
         -ClientCount 1 `
         -HatchRate 1 `
-        -RunTime 30m `
-        -TestType pipeclean
+        -TestType pipeclean `
+        -BackupFilename $backupFilename
 }
 
 function Invoke-StressTests {
-    Read-TestRunnerConfig
-    Set-GlobalsFromConfig $configJson
+    Initialize-TestRunner
     Invoke-TestRunner `
         -TestSuite volume `
         -ClientCount 1000 `
         -HatchRate 25 `
         -RunTime 30m `
-        -TestType stress
+        -TestType stress `
+        -BackupFilename $backupFilename
 }
 
 function Invoke-SoakTests {
-    Read-TestRunnerConfig
-    Set-GlobalsFromConfig $configJson
+    Initialize-TestRunner
     Invoke-TestRunner `
         -TestSuite volume `
         -ClientCount 500 `
         -HatchRate 1 `
         -RunTime 48h `
-        -TestType soak
+        -TestType soak `
+        -BackupFilename $backupFilename
+}
+
+function Invoke-ChangeQueryTests {
+    Initialize-TestRunner
+
+    Set-ChangeVersionTracker
+
+    $iteration = 1
+    foreach ($changeQueryBackupFilename in $changeQueryBackupFilenames) {
+        $global:testResultsPath = "TestResults\TestResult_$iteration"
+        $iteration = $iteration + 1
+
+        Initialize-Folder $testResultsPath
+
+        Invoke-TestRunner `
+            -TestSuite change_query `
+            -ClientCount 1 `
+            -HatchRate 1 `
+            -TestType change_query `
+            -BackupFilename $changeQueryBackupFilename
+        Duplicate-ChangeVersionTracker
+    }
 }

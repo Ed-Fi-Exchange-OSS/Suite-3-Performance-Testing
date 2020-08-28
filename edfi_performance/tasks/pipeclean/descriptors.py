@@ -104,6 +104,7 @@ ALL_DESCRIPTORS = [
     'licenseStatus',
     'licenseType',
     'limitedEnglishProficiency',
+    'locale',
     'localEducationAgencyCategory',
     'magnetSpecialProgramEmphasisSchool',
     'mediumOfInstruction',

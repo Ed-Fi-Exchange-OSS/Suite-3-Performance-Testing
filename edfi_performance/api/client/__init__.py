@@ -110,18 +110,14 @@ class EdFiAPIClient(object):
         self.generate_factory_class()
 
     @staticmethod
-    def log_response(caller_name, response, ignore_error=False):
-        log_message = "[{}] {}: {} {}".format(
-            caller_name,
-            response.request.method,
-            response.status_code,
-            response.text.replace('\r\n', ''))
+    def log_response(response, ignore_error=False, log_response_text=False):
         if response.status_code >= 400 and not ignore_error:
             frame = inspect.currentframe(1)
             stack_trace = traceback.format_stack(frame)
-            logger.error('\n'.join([log_message, ''.join(stack_trace)]))
-        else:
-            logger.debug(log_message)
+            logger.error(u''.join(stack_trace))
+
+        if log_response_text:
+            logger.debug(response.text)
 
     def list_endpoint(self, query=""):
         return "{}/{}{}".format(self.API_PREFIX, self.endpoint, query)
@@ -161,7 +157,7 @@ class EdFiAPIClient(object):
             payload,
             succeed_on=succeed_on,
             name=name)
-        self.log_response('login', response, ignore_error=response.status_code in succeed_on)
+        self.log_response(response, ignore_error=response.status_code in succeed_on)
         try:
             self.token = json.loads(response.text)["access_token"]
             return self.token
@@ -187,7 +183,7 @@ class EdFiAPIClient(object):
             name=self.list_endpoint())
         if self.is_not_expected_result(response, [200]):
             return
-        self.log_response('get_list', response)
+        self.log_response(response)
         return json.loads(response.text)
 
     def get_item(self, resource_id):
@@ -198,7 +194,7 @@ class EdFiAPIClient(object):
             name=self.detail_endpoint_nickname())
         if self.is_not_expected_result(response, [200]):
             return
-        self.log_response('get_item', response)
+        self.log_response(response)
         return json.loads(response.text)
 
     def create(self, unique_id_field=None, name=None, **factory_kwargs):
@@ -228,7 +224,7 @@ class EdFiAPIClient(object):
             if unique_id is not None:
                 return None, None
             return None
-        self.log_response('create', response)
+        self.log_response(response)
         resource_id = response.headers['Location'].split('/')[-1].strip()
         if unique_id is not None:
             return resource_id, unique_id
@@ -245,7 +241,7 @@ class EdFiAPIClient(object):
             name=self.detail_endpoint_nickname())
         if self.is_not_expected_result(response, [200, 204]):
             return
-        self.log_response('update', response)
+        self.log_response(response)
         new_id = response.headers['Location'].split('/')[-1].strip()
         assert new_id == resource_id
         return resource_id
@@ -265,7 +261,7 @@ class EdFiAPIClient(object):
             name=self.detail_endpoint_nickname())
         if self.is_not_expected_result(response, [204]):
             return
-        self.log_response('delete', response)
+        self.log_response(response)
         return response.status_code == 204
 
     def create_with_dependencies(self, **kwargs):
@@ -302,6 +298,30 @@ class EdFiAPIClient(object):
             'attributes': resource_attrs,
         }
 
+    def create_using_dependencies(self, dependency_reference=None, **kwargs):
+        resource_attrs = self.factory.build_dict(**kwargs)
+        resource_id = self.create(**resource_attrs)
+
+        if isinstance(dependency_reference, list):
+            dependencies = {}
+            for obj in dependency_reference:
+                key, value = obj.items()[0]
+                dependencies[key] = value
+
+            return {
+                'resource_id': resource_id,
+                'dependency_ids': dependencies,
+                'attributes': resource_attrs,
+            }
+
+        return {
+            'resource_id': resource_id,
+            'dependency_ids': {
+                'dependency_reference': dependency_reference,
+            },
+            'attributes': resource_attrs,
+        }
+
     def delete_with_dependencies(self, reference, **kwargs):
         """
         Atomically delete an instance of this resource along with all
@@ -315,6 +335,20 @@ class EdFiAPIClient(object):
         :return: `None`
         """
         self.delete(reference['resource_id'])
+        if len(self.dependencies) == 1:
+            self._get_dependency_client().delete_with_dependencies(reference['dependency_ids']['dependency_reference'])
+        elif len(self.dependencies) > 1:
+            for dependency in reference['dependency_ids']:
+                getattr(self, dependency).delete_with_dependencies(reference['dependency_ids'][dependency])
+
+    def _get_dependency_client(self):
+        subclient_class, client_name = self.dependencies.items()[0]
+        if isinstance(subclient_class, basestring):
+            subclient_class = _import_from_dotted_path(subclient_class)
+        subclient_name = client_name.get('client_name')
+        if subclient_name is None:
+            subclient_name = _title_case_to_snake_case(subclient_class.__name__)
+        return getattr(self, subclient_name)
 
     @classmethod
     def create_shared_resource(cls, value, **kwargs):

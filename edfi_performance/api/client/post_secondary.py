@@ -23,21 +23,9 @@ class PostSecondaryEventClient(EdFiAPIClient):
         # Create new student for association
         institution_reference = self.institution_client.create_with_dependencies()
 
-        event_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            institution_reference,
             postSecondaryInstitutionReference__postSecondaryInstitutionId=
             institution_reference['attributes']['postSecondaryInstitutionId'],
             **kwargs
         )
-        event_id = self.create(**event_attrs)
-
-        return {
-            'resource_id': event_id,
-            'dependency_ids': {
-                'institution_reference': institution_reference,
-            },
-            'attributes': event_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.institution_client.delete_with_dependencies(reference['dependency_ids']['institution_reference'])

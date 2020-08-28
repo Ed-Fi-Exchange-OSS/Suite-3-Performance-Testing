@@ -19,20 +19,8 @@ class BellScheduleClient(EdFiAPIClient):
         class_period_reference = self.class_period_client.create_with_dependencies()
 
         # Create bell schedule
-        schedule_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            class_period_reference,
             classPeriods__0__classPeriodReference__classPeriodName=class_period_reference['attributes']['classPeriodName'],
             **kwargs
         )
-        schedule_id = self.create(**schedule_attrs)
-
-        return {
-            'resource_id': schedule_id,
-            'dependency_ids': {
-                'class_period_reference': class_period_reference,
-            },
-            'attributes': schedule_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.class_period_client.delete_with_dependencies(reference['dependency_ids']['class_period_reference'])

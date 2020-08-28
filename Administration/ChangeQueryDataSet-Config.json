@@ -1,0 +1,8 @@
+{
+  "apiHost": "http://localhost:54746",
+  "apiVersion": "3",
+  "clientId": "minimalSandbox",
+  "clientSecret": "minimalSandboxSecret",
+  "databaseName": "EdFi_Ods_Sandbox_minimalSandbox",
+  "schoolYear": 2018
+}

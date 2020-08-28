@@ -24,24 +24,12 @@ class DisciplineIncidentClient(EdFiAPIClient):
         staff_reference = self.staff_client.create_with_dependencies(schoolId=school_id)
 
         # Create discipline incident
-        incident_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            staff_reference,
             staffReference__staffUniqueId=staff_reference['attributes']['staffUniqueId'],
             schoolReference__schoolId=school_id,
             **kwargs
         )
-        incident_id = self.create(**incident_attrs)
-
-        return {
-            'resource_id': incident_id,
-            'dependency_ids': {
-                'staff_reference': staff_reference
-            },
-            'attributes': incident_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.staff_client.delete_with_dependencies(reference['dependency_ids']['staff_reference'])
 
 
 class DisciplineActionClient(EdFiAPIClient):
@@ -60,7 +48,8 @@ class DisciplineActionClient(EdFiAPIClient):
         assoc_reference = self.assoc_client.create_with_dependencies(schoolId=school_id)
 
         # Create discipline action
-        action_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            assoc_reference,
             studentReference__studentUniqueId=assoc_reference['attributes']['studentReference']['studentUniqueId'],
             studentDisciplineIncidentAssociations__0__studentDisciplineIncidentAssociationReference__incidentIdentifier
             =assoc_reference['attributes']['disciplineIncidentReference']['incidentIdentifier'],
@@ -69,16 +58,3 @@ class DisciplineActionClient(EdFiAPIClient):
             studentDisciplineIncidentAssociations__0__studentDisciplineIncidentAssociationReference__schoolId=school_id,
             **kwargs
         )
-        action_id = self.create(**action_attrs)
-
-        return {
-            'resource_id': action_id,
-            'dependency_ids': {
-                'assoc_reference': assoc_reference
-            },
-            'attributes': action_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.assoc_client.delete_with_dependencies(reference['dependency_ids']['assoc_reference'])

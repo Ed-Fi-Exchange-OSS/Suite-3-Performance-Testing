@@ -121,6 +121,10 @@ class EdFiTaskSet(TaskSet):
         elif 'volume' in self.__class__.__module__:
             class_name = self.__class__.__name__.replace('VolumeTest', 'Client')
             class_path = self.__class__.__module__.replace('tasks.volume', 'api.client') + '.' + class_name
+        elif 'change_query' in self.__class__.__module__:
+            class_name = self.__class__.__name__.replace('ChangeQueryTest', 'Client')
+            class_path = self.__class__.__module__.replace('tasks.change_query', 'api.client') + '.' + class_name
+
         self.client_class = _import_from_dotted_path(class_path)
 
     @staticmethod

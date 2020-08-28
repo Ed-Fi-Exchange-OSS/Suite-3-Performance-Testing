@@ -26,23 +26,11 @@ class CourseTranscriptClient(EdFiAPIClient):
         record_reference = self.record_client.create_with_dependencies(schoolId=school_id)
 
         # Create course transcript
-        transcript_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            record_reference,
             courseReference__educationOrganizationId=school_id,
             studentAcademicRecordReference__educationOrganizationId=school_id,
             studentAcademicRecordReference__studentUniqueId=record_reference['attributes']['studentReference']
             ['studentUniqueId'],
             **kwargs
         )
-        transcript_id = self.create(**transcript_attrs)
-
-        return {
-            'resource_id': transcript_id,
-            'attributes': transcript_attrs,
-            'dependency_ids': {
-                'record_reference': record_reference
-            }
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.record_client.delete_with_dependencies(reference['dependency_ids']['record_reference'])

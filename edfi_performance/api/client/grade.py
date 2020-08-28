@@ -23,10 +23,11 @@ class GradeClient(EdFiAPIClient):
 
         assoc_reference = self.section_assoc_client.create_with_dependencies(schoolId=school_id, courseCode=course_code)
         grade_period = \
-            assoc_reference['dependency_ids']['section_reference']['gradingPeriods'][0]['gradingPeriodReference']
+            assoc_reference['dependency_ids']['section_client']['gradingPeriods'][0]['gradingPeriodReference']
         section_reference = assoc_reference['attributes']['sectionReference']
 
-        grade_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            assoc_reference,
             gradingPeriodReference__schoolId=school_id,
             gradingPeriodReference__periodSequence=grade_period['periodSequence'],
             gradingPeriodReference__gradingPeriodDescriptor=grade_period['gradingPeriodDescriptor'],
@@ -41,15 +42,3 @@ class GradeClient(EdFiAPIClient):
             studentSectionAssociationReference__sessionName=section_reference['sessionName'],
             **kwargs
         )
-        grade_id = self.create(**grade_attrs)
-        return {
-            'resource_id': grade_id,
-            'dependency_ids': {
-                'assoc_reference': assoc_reference
-            },
-            'attributes': grade_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.section_assoc_client.delete_with_dependencies(reference['dependency_ids']['assoc_reference'])

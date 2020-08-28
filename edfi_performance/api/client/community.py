@@ -22,23 +22,11 @@ class CommunityProviderClient(EdFiAPIClient):
     def create_with_dependencies(self, **kwargs):
         org_reference = self.org_client.create_with_dependencies()
 
-        provider_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            org_reference,
             communityOrganizationReference__communityOrganizationId=org_reference['attributes']['communityOrganizationId'],
             **kwargs
         )
-        provider_id = self.create(**provider_attrs)
-
-        return {
-            'resource_id': provider_id,
-            'dependency_ids': {
-                'org_reference': org_reference,
-            },
-            'attributes': provider_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.org_client.delete_with_dependencies(reference['dependency_ids']['org_reference'])
 
 
 class CommunityProviderLicenseClient(EdFiAPIClient):
@@ -53,20 +41,8 @@ class CommunityProviderLicenseClient(EdFiAPIClient):
     def create_with_dependencies(self, **kwargs):
         provider_reference = self.provider_client.create_with_dependencies()
 
-        license_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            provider_reference,
             communityProviderReference__communityProviderId=provider_reference['attributes']['communityProviderId'],
             **kwargs
         )
-        license_id = self.create(**license_attrs)
-
-        return {
-            'resource_id': license_id,
-            'dependency_ids': {
-                'provider_reference': provider_reference,
-            },
-            'attributes': license_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.provider_client.delete_with_dependencies(reference['dependency_ids']['provider_reference'])

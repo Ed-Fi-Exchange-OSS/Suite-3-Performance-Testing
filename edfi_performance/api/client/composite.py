@@ -21,7 +21,7 @@ class EdFiCompositeClient(EdFiAPIClient):
             name=self._composite_list_endpoint(resource_name, '{id}'))
         if self.is_not_expected_result(response, [200]):
             return
-        self.log_response('get_composite_list', response)
+        self.log_response(response)
         return json.loads(response.text)
 
     @classmethod
@@ -42,5 +42,5 @@ class EdFiCompositeClient(EdFiAPIClient):
             list_endpoint,
             headers=self.get_headers(),
             name=list_endpoint)
-        self.log_response('_get_all', response)
+        self.log_response(response)
         return json.loads(response.text)

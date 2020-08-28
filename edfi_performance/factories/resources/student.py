@@ -345,9 +345,8 @@ class StudentLearningObjectiveFactory(APIFactory):
         schoolYear=2014
     ))
     learningObjectiveReference = factory.Dict(dict(
-        academicSubjectDescriptor=build_descriptor('AcademicSubject', 'Mathematics'),
-        objective=None,  # Must be entered by user
-        objectiveGradeLevelDescriptor=build_descriptor('GradeLevel', 'Sixth grade')
+        learningObjectiveId=None,
+        namespace='uri://ed-fi.org'
     ))
     competencyLevelDescriptor = build_descriptor('CompetencyLevel', 'Proficient')
 

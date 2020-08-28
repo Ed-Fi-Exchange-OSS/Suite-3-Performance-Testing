@@ -12,13 +12,25 @@ from edfi_performance.factories.utils import RandomDateAttribute, RandomSuffixAt
 
 
 class AssessmentFactory(APIFactory):
-    academicSubjectDescriptor = build_descriptor('AcademicSubject', 'English')
-    assessedGradeLevelDescriptor = build_descriptor('GradeLevel', 'Twelfth grade')
+    assessmentIdentifier = UniqueIdAttribute()
+    academicSubjects = factory.List([
+        factory.Dict(
+            dict(
+                academicSubjectDescriptor=build_descriptor('AcademicSubject', 'English')
+            )
+        )
+    ])
+    assessedGradeLevels = factory.List([
+        factory.Dict(
+            dict(
+                gradeLevelDescriptor=build_descriptor('GradeLevel', 'Twelfth grade')
+            )
+        )
+    ])
     assessmentTitle = RandomSuffixAttribute("AP - English")
     assessmentVersion = 2017
-    categoryDescriptor = build_descriptor('Category', 'Advanced Placement')
     maxRawScore = 25
-    namespace = 'uri://ed-fi.org/'
+    namespace = 'uri://ed-fi.org/Assessment/Assessment.xml'
     identificationCodes = factory.List([
         factory.Dict(
             dict(
@@ -61,10 +73,8 @@ class AssessmentFactory(APIFactory):
 class AssessmentItemFactory(APIFactory):
     assessmentReference = factory.Dict(
         dict(
-            academicSubjectDescriptor=build_descriptor('AcademicSubject', 'English'),
-            assessedGradeLevelDescriptor=build_descriptor('GradeLevel', 'Twelfth grade'),
-            assessmentTitle=None,  # Must be entered by user
-            assessmentVersion=2017
+            assessmentIdentifier=None,
+            namespace='uri://ed-fi.org/Assessment/Assessment.xml'
         )
     )
     identificationCode = UniqueIdAttribute()
@@ -74,9 +84,22 @@ class AssessmentItemFactory(APIFactory):
 
 
 class LearningObjectiveFactory(APIFactory):
-    academicSubjectDescriptor = build_descriptor('AcademicSubject', 'Mathematics')
+    academicSubjects = factory.List([
+        factory.Dict(
+            dict(
+                academicSubjectDescriptor=build_descriptor('AcademicSubject', 'Mathematics'),
+                namespace='uri://ed-fi.org/'
+            )
+        )
+    ])
     objective = RandomSuffixAttribute("Number Operations and Concepts")
-    objectiveGradeLevelDescriptor = build_descriptor('GradeLevel', 'Sixth grade')
+    gradeLevels = factory.List([
+        factory.Dict(
+            dict(
+                gradeLevelDescriptor=build_descriptor('GradeLevel', 'Sixth grade')
+            )
+        )
+    ])
     description = (
         "The student will demonstrate the ability to utilize numbers to perform"
         " operations with complex concepts."
@@ -87,10 +110,14 @@ class LearningObjectiveFactory(APIFactory):
 
 class LearningStandardFactory(APIFactory):
     learningStandardId = UniqueIdAttribute()
-    academicSubjectDescriptor = build_descriptor('AcademicSubject', 'Mathematics')
+    academicSubjects = factory.List([
+        factory.Dict(
+            dict(academicSubjectDescriptor=build_descriptor('AcademicSubject', 'Mathematics'))
+        )
+    ])
     courseTitle = "Advanced Math for students v4.4"
     description = "Unit 1 Advanced Math for students v4.4"
-    namespace = 'uri://ed-fi.org'
+    namespace = 'uri://ed-fi.org/LearningStandard/LearningStandard.xml'
     gradeLevels = factory.List([
         factory.Dict(
             dict(gradeLevelDescriptor=build_descriptor('GradeLevel', 'Tenth grade'))
@@ -101,10 +128,8 @@ class LearningStandardFactory(APIFactory):
 class ObjectiveAssessmentFactory(APIFactory):
     assessmentReference = factory.Dict(
         dict(
-            academicSubjectDescriptor=build_descriptor('AcademicSubject', 'English'),
-            assessedGradeLevelDescriptor=build_descriptor('GradeLevel', 'Twelfth grade'),
-            assessmentTitle=None,  # Must be entered by user
-            assessmentVersion=2017
+            assessmentIdentifier=None,
+            namespace='uri://ed-fi.org/Assessment/Assessment.xml'
         )
     )
     identificationCode = UniqueIdAttribute()
@@ -112,13 +137,12 @@ class ObjectiveAssessmentFactory(APIFactory):
 
 
 class StudentAssessmentFactory(APIFactory):
+    studentAssessmentIdentifier = UniqueIdAttribute()
     studentReference = factory.Dict(dict(studentUniqueId=StudentClient.shared_student_id()))  # Prepopulated student
     assessmentReference = factory.Dict(
         dict(
-            academicSubjectDescriptor=build_descriptor('AcademicSubject', 'English'),
-            assessedGradeLevelDescriptor=build_descriptor('GradeLevel', 'Twelfth grade'),
-            assessmentTitle=None,  # Must be entered by user
-            assessmentVersion=2017
+            assessmentIdentifier=None,
+            namespace='uri://ed-fi.org/Assessment/Assessment.xml'
         )
     )
     administrationDate = RandomDateAttribute()  # Along with studentReference and assessmentReference, this is the PK

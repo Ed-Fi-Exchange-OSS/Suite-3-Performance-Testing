@@ -73,16 +73,7 @@ class StaffEducationOrganizationAssignmentAssociationClient(EdFiAPIClient):
             educationOrganizationReference__educationOrganizationId=edorg_id,
         )
         assoc_overrides.update(kwargs)
-        assoc_attrs = self.factory.build_dict(**assoc_overrides)
-        assoc_id = self.create(**assoc_attrs)
-
-        return {
-            'resource_id': assoc_id,
-            'attributes': assoc_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
+        return self.create_using_dependencies(**assoc_overrides)
 
 
 class StaffAbsenceEventClient(EdFiAPIClient):
@@ -109,27 +100,13 @@ class StaffCohortAssociationClient(EdFiAPIClient):
         staff_reference = self.staff_client.create_with_dependencies(schoolId=school_id)
 
         # Create association between new staff and new cohort
-        assoc_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            [{'cohort_client': cohort_reference}, {'staff_client': staff_reference}],
             staffReference__staffUniqueId=staff_reference['attributes']['staffUniqueId'],
             cohortReference__cohortIdentifier=cohort_reference['attributes']['cohortIdentifier'],
             cohortReference__educationOrganizationId=school_id,
             **kwargs
         )
-        assoc_id = self.create(**assoc_attrs)
-
-        return {
-            'resource_id': assoc_id,
-            'dependency_ids': {
-                'cohort_reference': cohort_reference,
-                'staff_reference': staff_reference
-            },
-            'attributes': assoc_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.cohort_client.delete_with_dependencies(reference['dependency_ids']['cohort_reference'])
-        self.staff_client.delete_with_dependencies(reference['dependency_ids']['staff_reference'])
 
 
 class StaffEducationOrganizationContactAssociationClient(EdFiAPIClient):
@@ -161,24 +138,12 @@ class StaffSchoolAssociationClient(EdFiAPIClient):
         # Create staff record
         staff_reference = self.staff_client.create_with_dependencies(schoolId=school_id)
 
-        assoc_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            staff_reference,
             staffReference__staffUniqueId=staff_reference['attributes']['staffUniqueId'],
             schoolReference__schoolId=school_id,
             **kwargs
         )
-        assoc_id = self.create(**assoc_attrs)
-
-        return {
-            'resource_id': assoc_id,
-            'dependency_ids': {
-                'staff_reference': staff_reference,
-            },
-            'attributes': assoc_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.staff_client.delete_with_dependencies(reference['dependency_ids']['staff_reference'])
 
 
 class StaffSectionAssociationClient(EdFiAPIClient):
@@ -202,7 +167,8 @@ class StaffSectionAssociationClient(EdFiAPIClient):
 
         # Create association between staff and section
         sec_attrs = section_reference['attributes']
-        assoc_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            [{'section_client': section_reference}, {'staff_client': staff_reference}],
             staffReference__staffUniqueId=staff_reference['attributes']['staffUniqueId'],
             sectionReference__sectionIdentifier=sec_attrs['sectionIdentifier'],
             sectionReference__localCourseCode=sec_attrs['courseOfferingReference']['localCourseCode'],
@@ -210,18 +176,3 @@ class StaffSectionAssociationClient(EdFiAPIClient):
             sectionReference__schoolYear=sec_attrs['courseOfferingReference']['schoolYear'],
             sectionReference__sessionName=sec_attrs['courseOfferingReference']['sessionName'],
         )
-        assoc_id = self.create(**assoc_attrs)
-
-        return {
-            'resource_id': assoc_id,
-            'dependency_ids': {
-                'section_reference': section_reference,
-                'staff_reference': staff_reference
-            },
-            'attributes': assoc_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.staff_client.delete_with_dependencies(reference['dependency_ids']['staff_reference'])
-        self.section_client.delete_with_dependencies(reference['dependency_ids']['section_reference'])

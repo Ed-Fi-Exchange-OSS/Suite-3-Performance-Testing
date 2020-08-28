@@ -18,20 +18,8 @@ class GraduationPlanClient(EdFiAPIClient):
     def create_with_dependencies(self, **kwargs):
         school_reference = self.school_client.create_with_dependencies()
 
-        graduation_plan_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            school_reference,
             educationOrganizationReference__educationOrganizationId=school_reference['attributes']['schoolId'],
             **kwargs
         )
-        graduation_plan_id = self.create(**graduation_plan_attrs)
-
-        return {
-            'resource_id': graduation_plan_id,
-            'dependency_ids': {
-                'school_reference': school_reference,
-            },
-            'attributes': graduation_plan_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.school_client.delete_with_dependencies(reference['dependency_ids']['school_reference'])

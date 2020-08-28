@@ -17,19 +17,7 @@ class ReportCardClient(EdFiAPIClient):
     def create_with_dependencies(self, **kwargs):
         period_reference = self.grading_period_client.create_with_dependencies()
 
-        card_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            period_reference,
             gradingPeriodReference__periodSequence=period_reference['attributes']['periodSequence'],
         )
-        card_id = self.create(**card_attrs)
-
-        return {
-            'resource_id': card_id,
-            'dependency_ids': {
-                'period_reference': period_reference,
-            },
-            'attributes': card_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.grading_period_client.delete_with_dependencies(reference['dependency_ids']['period_reference'])

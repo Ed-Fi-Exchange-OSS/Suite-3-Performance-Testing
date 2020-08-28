@@ -8,13 +8,13 @@ This module dynamically imports pipeclean-testing locusts for all scenarios
 registered in the `tasks.pipeclean` package and combines them into a single
 locust which runs each scenario in order.
 
-In order to restrict which scnearios are run, you can name *PipecleanTest
+In order to restrict which scenarios are run, you can name *PipecleanTest
 classes on the command line in the locust invocation, and only those classes
 will be added to the run.
 
 E.g.
 
-`locust -f pipeclean_tests.py -c 10 --no-web SchoolPipecleanTest StudentPipecleanTest`
+`locust -f pipeclean_tests.py -c 1 --no-web SchoolPipecleanTest StudentPipecleanTest`
 """
 import importlib
 import os

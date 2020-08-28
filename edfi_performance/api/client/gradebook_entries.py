@@ -18,24 +18,11 @@ class GradebookEntryClient(EdFiAPIClient):
         section_reference = self.section_client.create_with_dependencies()
         section_attrs = section_reference['attributes']
 
-        entry_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            section_reference,
             sectionReference__sectionIdentifier=section_attrs['sectionIdentifier'],
             sectionReference__localCourseCode=section_attrs['courseOfferingReference']['localCourseCode'],
             sectionReference__schoolId=section_attrs['courseOfferingReference']['schoolId'],
             sectionReference__schoolYear=section_attrs['courseOfferingReference']['schoolYear'],
             sectionReference__sessionName=section_attrs['courseOfferingReference']['sessionName'],
         )
-        entry_id = self.create(**entry_attrs)
-
-        return {
-            'resource_id': entry_id,
-            'dependency_ids': {
-                'section_reference': section_reference,
-            },
-            'attributes': entry_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.section_client.delete_with_dependencies(reference['dependency_ids']['section_reference'])
-

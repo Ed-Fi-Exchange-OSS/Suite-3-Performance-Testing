@@ -24,23 +24,11 @@ class InterventionClient(EdFiAPIClient):
         rx_reference = self.prescription_client.create_with_dependencies()
 
         # Create intervention
-        intervention_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            rx_reference,
             interventionPrescriptions__0__interventionPrescriptionReference__interventionPrescriptionIdentificationCode=
             rx_reference['attributes']['interventionPrescriptionIdentificationCode'],
         )
-        intervention_id = self.create(**intervention_attrs)
-
-        return {
-            'resource_id': intervention_id,
-            'dependency_ids': {
-                'rx_reference': rx_reference,
-            },
-            'attributes': intervention_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.prescription_client.delete_with_dependencies(reference['dependency_ids']['rx_reference'])
 
 
 class InterventionStudyClient(EdFiAPIClient):
@@ -57,20 +45,8 @@ class InterventionStudyClient(EdFiAPIClient):
         rx_reference = self.prescription_client.create_with_dependencies()
 
         # Create intervention
-        study_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            rx_reference,
             interventionPrescriptionReference__interventionPrescriptionIdentificationCode=
             rx_reference['attributes']['interventionPrescriptionIdentificationCode'],
         )
-        study_id = self.create(**study_attrs)
-
-        return {
-            'resource_id': study_id,
-            'dependency_ids': {
-                'rx_reference': rx_reference,
-            },
-            'attributes': study_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.prescription_client.delete_with_dependencies(reference['dependency_ids']['rx_reference'])

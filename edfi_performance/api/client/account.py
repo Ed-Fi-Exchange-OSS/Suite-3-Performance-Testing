@@ -22,7 +22,8 @@ class AccountClient(EdFiAPIClient):
         account_code_attrs = account_code_reference['attributes']
 
         edorg_id = account_code_attrs['educationOrganizationReference']['educationOrganizationId']
-        account_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            account_code_reference,
             accountCodes=[{
                 'accountCodeReference': dict(
                     accountCodeNumber=account_code_attrs['accountCodeNumber'],
@@ -32,21 +33,7 @@ class AccountClient(EdFiAPIClient):
                 ),
             }],
             educationOrganizationReference__educationOrganizationId=edorg_id,
-            fiscalYear=account_code_attrs['fiscalYear'],
-        )
-        account_id = self.create(**account_attrs)
-
-        return {
-            'resource_id': account_id,
-            'dependency_ids': {
-                'account_code_id': account_code_reference['resource_id'],
-            },
-            'attributes': account_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.account_code_client.delete(reference['dependency_ids']['account_code_id'])
+            fiscalYear=account_code_attrs['fiscalYear'])
 
 
 class _AccountDependentMixin(object):
@@ -61,23 +48,10 @@ class _AccountDependentMixin(object):
         account_reference = self.account_client.create_with_dependencies()
         account_identifier = account_reference['attributes']['accountIdentifier']
 
-        resource_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            account_reference,
             accountReference__accountIdentifier=account_identifier,
-            **kwargs
-        )
-        resource_id = self.create(**resource_attrs)
-
-        return {
-            'resource_id': resource_id,
-            'dependency_ids': {
-                'account_reference': account_reference,
-            },
-            'attributes': resource_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.account_client.delete_with_dependencies(reference['dependency_ids']['account_reference'])
+            **kwargs)
 
 
 class ActualClient(_AccountDependentMixin, EdFiAPIClient):

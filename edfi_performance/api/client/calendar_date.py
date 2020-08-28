@@ -24,22 +24,9 @@ class CalendarDateClient(EdFiAPIClient):
             calendarCode=custom_calendar_code)
 
         # Create first calendar date
-        calendar_date_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            calendar_reference,
             calendarReference__calendarCode=calendar_reference['attributes']['calendarCode'],
             calendarReference__schoolId=school_id,
             calendarReference__schoolYear=2014,
-            **kwargs
-        )
-        calendar_date_id = self.create(**calendar_date_attrs)
-
-        return {
-            'resource_id': calendar_date_id,
-            'dependency_ids': {
-                'calendar_reference': calendar_reference,
-            },
-            'attributes': calendar_date_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.calendar_client.delete_with_dependencies(reference['dependency_ids']['calendar_reference'])
+            **kwargs)

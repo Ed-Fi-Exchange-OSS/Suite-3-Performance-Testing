@@ -32,21 +32,12 @@ class SessionClient(EdFiAPIClient):
         )
 
         # Create session referencing grading periods
-        session_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            [{'period_1_reference': period_1_reference}, {'period_2_reference': period_2_reference}],
             schoolReference__schoolId=school_id,
             gradingPeriods__0__gradingPeriodReference__periodSequence=period_1_reference['attributes']['periodSequence'],
             gradingPeriods__1__gradingPeriodReference__periodSequence=period_2_reference['attributes']['periodSequence'],
             **kwargs)
-        session_id = self.create(**session_attrs)
-
-        return {
-            'resource_id': session_id,
-            'dependency_ids': {
-                'period_1_reference': period_1_reference,
-                'period_2_reference': period_2_reference,
-            },
-            'attributes': session_attrs,
-        }
 
     def delete_with_dependencies(self, reference, **kwargs):
         self.delete(reference['resource_id'])

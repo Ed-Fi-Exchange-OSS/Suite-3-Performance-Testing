@@ -55,6 +55,7 @@ main {
             --include=deploy.ps1 `
             --include=volume_tests.py `
             --include=pipeclean_tests.py `
+            --include=change_query_tests.py `
             --include=requirements.txt `
             --include=edfi_performance/** `
             --include=TestRunner.ps1 `

@@ -11,5 +11,6 @@
   "sql_data_path": "C:\\Program Files\\Microsoft SQL Server\\MSSQL14.MSSQLSERVER\\MSSQL\\DATA",
   "database_name": "EdFi_Ods_Sandbox_populatedSandbox",
   "backup_filename": "EdFi_Ods_Northridge.bak",
+  "change_query_backup_filenames": [ "EdFi_Ods_Northridge.bak" ],
   "restore_database": "false"
 }

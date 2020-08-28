@@ -66,7 +66,7 @@ class SectionClient(EdFiAPIClient):
             'sectionIdentifier': section_attrs['sectionIdentifier'],
             'sessionName': course_offering_attrs['sessionReference']['sessionName'],
             'gradingPeriods':
-                course_offering_reference['dependency_ids']['session_reference']['attributes']['gradingPeriods'],
+                course_offering_reference['dependency_ids']['dependency_reference']['attributes']['gradingPeriods'],
         }
 
     def delete_with_dependencies(self, reference, **kwargs):
@@ -97,7 +97,8 @@ class SectionAttendanceTakenEventClient(EdFiAPIClient):
         )
         section_attrs = section_reference['attributes']
 
-        event_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            [{'calendar_date_client': calendar_date_reference}, {'section_client': section_reference}],
             calendarDateReference__schoolId=school_id,
             calendarDateReference__calendarCode=calendar_date_attrs['calendarReference']['calendarCode'],
             sectionReference__sectionIdentifier=section_attrs['sectionIdentifier'],
@@ -106,18 +107,3 @@ class SectionAttendanceTakenEventClient(EdFiAPIClient):
             sectionReference__schoolYear=section_attrs['courseOfferingReference']['schoolYear'],
             sectionReference__sessionName=section_attrs['courseOfferingReference']['sessionName'],
         )
-        event_id = self.create(**event_attrs)
-
-        return {
-            'resource_id': event_id,
-            'dependency_ids': {
-                'calendar_date_reference': calendar_date_reference,
-                'section_reference': section_reference,
-            },
-            'attributes': event_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.calendar_date_client.delete_with_dependencies(reference['dependency_ids']['calendar_date_reference'])
-        self.section_client.delete_with_dependencies(reference['dependency_ids']['section_reference'])

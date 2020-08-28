@@ -26,24 +26,12 @@ class StudentParentAssociationClient(EdFiAPIClient):
         parent_unique_id = kwargs.pop('parentUniqueId', ParentClient.shared_parent_id())
 
         # Create parent - student association
-        assoc_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            student_reference,
             studentReference__studentUniqueId=student_reference['attributes']['studentUniqueId'],
             parentReference__parentUniqueId=parent_unique_id,
             **kwargs
         )
-        assoc_id = self.create(**assoc_attrs)
-
-        return {
-            'resource_id': assoc_id,
-            'dependency_ids': {
-                'student_reference': student_reference,
-            },
-            'attributes': assoc_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.student_client.delete_with_dependencies(reference['dependency_ids']['student_reference'])
 
 
 class StudentClient(EdFiAPIClient):
@@ -103,19 +91,10 @@ class StudentSchoolAssociationClient(EdFiAPIClient):
         school_id = kwargs.pop('schoolId', SchoolClient.shared_elementary_school_id())
         assoc_overrides = dict(
             studentReference__studentUniqueId=student_unique_id,
-            schoolReference__schoolId=school_id,
+            schoolReference__schoolId=school_id
         )
         assoc_overrides.update(kwargs)
-        assoc_attrs = self.factory.build_dict(**assoc_overrides)
-        assoc_id = self.create(**assoc_attrs)
-
-        return {
-            'resource_id': assoc_id,
-            'attributes': assoc_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
+        return self.create_using_dependencies(**assoc_overrides)
 
 
 class StudentEducationOrganizationAssociationClient(EdFiAPIClient):
@@ -132,23 +111,11 @@ class StudentEducationOrganizationAssociationClient(EdFiAPIClient):
         student_reference = self.student_client.create_with_dependencies(schoolId=school_id)
 
         # Create ed org - student association
-        assoc_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            student_reference,
             studentReference__studentUniqueId=student_reference['attributes']['studentUniqueId'],
             **kwargs
         )
-        assoc_id = self.create(**assoc_attrs)
-
-        return {
-            'resource_id': assoc_id,
-            'dependency_ids': {
-                'student_reference': student_reference
-            },
-            'attributes': assoc_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.student_client.delete_with_dependencies(reference['dependency_ids']['student_reference'])
 
 
 class StudentCohortAssociationClient(EdFiAPIClient):
@@ -171,27 +138,13 @@ class StudentCohortAssociationClient(EdFiAPIClient):
         )
 
         # Create the cohort - student association
-        assoc_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            [{'cohort_client': cohort_reference}, {'student_client': student_reference}],
             studentReference__studentUniqueId=student_reference['attributes']['studentUniqueId'],
             cohortReference__cohortIdentifier=cohort_reference['attributes']['cohortIdentifier'],
             cohortReference__educationOrganizationId=school_id,
             **kwargs
         )
-        assoc_id = self.create(**assoc_attrs)
-
-        return {
-            'resource_id': assoc_id,
-            'dependency_ids': {
-                'student_reference': student_reference,
-                'cohort_reference': cohort_reference
-            },
-            'attributes': assoc_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.cohort_client.delete_with_dependencies(reference['dependency_ids']['cohort_reference'])
-        self.student_client.delete_with_dependencies(reference['dependency_ids']['student_reference'])
 
 
 class StudentTitleIPartAProgramAssociationClient(EdFiAPIClient):
@@ -208,23 +161,11 @@ class StudentTitleIPartAProgramAssociationClient(EdFiAPIClient):
         student_reference = self.student_client.create_with_dependencies(schoolId=school_id)
 
         # Create student program association
-        assoc_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            student_reference,
             studentReference__studentUniqueId=student_reference['attributes']['studentUniqueId'],
             **kwargs
         )
-        assoc_id = self.create(**assoc_attrs)
-
-        return {
-            'resource_id': assoc_id,
-            'dependency_ids': {
-                'student_reference': student_reference
-            },
-            'attributes': assoc_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.student_client.delete_with_dependencies(reference['dependency_ids']['student_reference'])
 
 
 class StudentSpecialEducationProgramAssociationClient(EdFiAPIClient):
@@ -241,23 +182,11 @@ class StudentSpecialEducationProgramAssociationClient(EdFiAPIClient):
         student_reference = self.student_client.create_with_dependencies(schoolId=school_id)
 
         # Create student program association
-        assoc_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            student_reference,
             studentReference__studentUniqueId=student_reference['attributes']['studentUniqueId'],
             **kwargs
         )
-        assoc_id = self.create(**assoc_attrs)
-
-        return {
-            'resource_id': assoc_id,
-            'dependency_ids': {
-                'student_reference': student_reference
-            },
-            'attributes': assoc_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.student_client.delete_with_dependencies(reference['dependency_ids']['student_reference'])
 
 
 class StudentProgramAssociationClient(EdFiAPIClient):
@@ -274,23 +203,11 @@ class StudentProgramAssociationClient(EdFiAPIClient):
         student_reference = self.student_client.create_with_dependencies(schoolId=school_id)
 
         # Create student program association
-        assoc_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            student_reference,
             studentReference__studentUniqueId=student_reference['attributes']['studentUniqueId'],
             **kwargs
         )
-        assoc_id = self.create(**assoc_attrs)
-
-        return {
-            'resource_id': assoc_id,
-            'dependency_ids': {
-                'student_reference': student_reference
-            },
-            'attributes': assoc_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.student_client.delete_with_dependencies(reference['dependency_ids']['student_reference'])
 
 
 class StudentDisciplineIncidentAssociationClient(EdFiAPIClient):
@@ -313,27 +230,13 @@ class StudentDisciplineIncidentAssociationClient(EdFiAPIClient):
         incident_reference = self.incident_client.create_with_dependencies(schoolId=school_id)
 
         # Create student incident association
-        assoc_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            [{'incident_client': incident_reference}, {'student_client': student_reference}],
             studentReference__studentUniqueId=student_reference['attributes']['studentUniqueId'],
             disciplineIncidentReference__schoolId=school_id,
             disciplineIncidentReference__incidentIdentifier=incident_reference['attributes']['incidentIdentifier'],
             **kwargs
         )
-        assoc_id = self.create(**assoc_attrs)
-
-        return {
-            'resource_id': assoc_id,
-            'dependency_ids': {
-                'student_reference': student_reference,
-                'incident_reference': incident_reference
-            },
-            'attributes': assoc_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.incident_client.delete_with_dependencies(reference['dependency_ids']['incident_reference'])
-        self.student_client.delete_with_dependencies(reference['dependency_ids']['student_reference'])
 
 
 class StudentSectionAssociationClient(EdFiAPIClient):
@@ -358,30 +261,16 @@ class StudentSectionAssociationClient(EdFiAPIClient):
 
         # Create association between newly created section and student
         section_attrs = section_reference['attributes']
-        assoc_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            [{'section_client': section_reference}, {'student_client': student_reference}],
             studentReference__studentUniqueId=student_unique_id,
             sectionReference__sectionIdentifier=section_attrs['sectionIdentifier'],
             sectionReference__localCourseCode=section_attrs['courseOfferingReference']['localCourseCode'],
             sectionReference__schoolId=section_attrs['courseOfferingReference']['schoolId'],
             sectionReference__schoolYear=section_attrs['courseOfferingReference']['schoolYear'],
             sectionReference__sessionName=section_attrs['courseOfferingReference']['sessionName'],
+            **kwargs
         )
-        assoc_id = self.create(**assoc_attrs)
-
-        return {
-            'resource_id': assoc_id,
-            'attributes': assoc_attrs,
-            'dependency_ids': {
-                'student_reference': student_reference,
-                'section_reference': section_reference,
-            }
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        dependencies = reference['dependency_ids']
-        self.student_client.delete_with_dependencies(dependencies['student_reference'])
-        self.section_client.delete_with_dependencies(dependencies['section_reference'])
 
 
 class StudentSchoolAttendanceEventClient(EdFiAPIClient):
@@ -402,28 +291,14 @@ class StudentSchoolAttendanceEventClient(EdFiAPIClient):
         session_reference = self.session_client.create_with_dependencies(schoolId=school_id)
 
         # Create student school attendance event
-        event_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            [{'session_client': session_reference}, {'student_client': student_reference}],
             studentReference__studentUniqueId=student_reference['attributes']['studentUniqueId'],
             sessionReference__sessionName=session_reference['attributes']['sessionName'],
             schoolReference__schoolId=school_id,
             sessionReference__schoolId=school_id,
             **kwargs
         )
-        event_id = self.create(**event_attrs)
-
-        return {
-            'resource_id': event_id,
-            'dependency_ids': {
-                'student_reference': student_reference,
-                'session_reference': session_reference
-            },
-            'attributes': event_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.session_client.delete_with_dependencies(reference['dependency_ids']['session_reference'])
-        self.student_client.delete_with_dependencies(reference['dependency_ids']['student_reference'])
 
 
 class StudentSectionAttendanceEventClient(EdFiAPIClient):
@@ -449,7 +324,8 @@ class StudentSectionAttendanceEventClient(EdFiAPIClient):
 
         # Create student section attendance event
         section_attrs = section_reference['attributes']
-        event_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            [{'section_client': section_reference}, {'student_client': student_reference}],
             studentReference__studentUniqueId=student_reference['attributes']['studentUniqueId'],
             sectionReference__sectionIdentifier=section_attrs['sectionIdentifier'],
             sectionReference__localCourseCode=section_attrs['courseOfferingReference']['localCourseCode'],
@@ -458,21 +334,6 @@ class StudentSectionAttendanceEventClient(EdFiAPIClient):
             sectionReference__sessionName=section_attrs['courseOfferingReference']['sessionName'],
             **kwargs
         )
-        event_id = self.create(**event_attrs)
-
-        return {
-            'resource_id': event_id,
-            'dependency_ids': {
-                'student_reference': student_reference,
-                'section_reference': section_reference,
-            },
-            'attributes': event_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.section_client.delete_with_dependencies(reference['dependency_ids']['section_reference'])
-        self.student_client.delete_with_dependencies(reference['dependency_ids']['student_reference'])
 
 
 class StudentAcademicRecordClient(EdFiAPIClient):
@@ -489,24 +350,12 @@ class StudentAcademicRecordClient(EdFiAPIClient):
         student_reference = self.student_client.create_with_dependencies(schoolId=school_id)
 
         # Create student academic record
-        assoc_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            student_reference,
             studentReference__studentUniqueId=student_reference['attributes']['studentUniqueId'],
             educationOrganizationReference__educationOrganizationId=school_id,
             **kwargs
         )
-        assoc_id = self.create(**assoc_attrs)
-
-        return {
-            'resource_id': assoc_id,
-            'dependency_ids': {
-                'student_reference': student_reference
-            },
-            'attributes': assoc_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.student_client.delete_with_dependencies(reference['dependency_ids']['student_reference'])
 
 
 class StudentCompetencyObjectiveClient(EdFiAPIClient):
@@ -525,25 +374,11 @@ class StudentCompetencyObjectiveClient(EdFiAPIClient):
         objective_reference = self.competency_objective_client.create_with_dependencies()
 
         # Create student competency objective
-        student_objective_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            [{'grading_period_client': period_reference}, {'competency_objective_client': objective_reference}],
             gradingPeriodReference__periodSequence=period_reference['attributes']['periodSequence'],
             objectiveCompetencyObjectiveReference__objective=objective_reference['attributes']['objective']
         )
-        student_objective_id = self.create(**student_objective_attrs)
-
-        return {
-            'resource_id': student_objective_id,
-            'dependency_ids': {
-                'objective_reference': objective_reference,
-                'period_reference': period_reference
-            },
-            'attributes': student_objective_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.competency_objective_client.delete_with_dependencies(reference['dependency_ids']['objective_reference'])
-        self.grading_period_client.delete_with_dependencies(reference['dependency_ids']['period_reference'])
 
 
 class StudentCTEProgramAssociationClient(EdFiAPIClient):
@@ -596,26 +431,17 @@ class StudentGradebookEntryClient(EdFiAPIClient):
             **section_kwargs
         )
 
-        student_entry_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            [{'assoc_client': student_section_reference}, {'entry_client': entry_id}],
             gradebookEntryReference=entry_attrs,
             studentSectionAssociationReference=assoc_attrs
         )
-        student_entry_id = self.create(**student_entry_attrs)
-
-        return {
-            'resource_id': student_entry_id,
-            'attributes': student_entry_attrs,
-            'dependency_ids': {
-                'entry_id': entry_id,
-                'student_section_reference': student_section_reference
-            }
-        }
 
     def delete_with_dependencies(self, reference, **kwargs):
         self.delete(reference['resource_id'])
         dependencies = reference['dependency_ids']
-        self.entry_client.delete(dependencies['entry_id'])
-        self.assoc_client.delete_with_dependencies(dependencies['student_section_reference'])
+        self.entry_client.delete(dependencies['entry_client'])
+        self.assoc_client.delete_with_dependencies(dependencies['assoc_client'])
 
 
 class StudentHomelessProgramAssociationClient(EdFiAPIClient):
@@ -632,23 +458,11 @@ class StudentInterventionAssociationClient(EdFiAPIClient):
     def create_with_dependencies(self, **kwargs):
         intervention_reference = self.intervention_client.create_with_dependencies()
 
-        assoc_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            intervention_reference,
             interventionReference__interventionIdentificationCode=intervention_reference['attributes']['interventionIdentificationCode'],
             **kwargs
         )
-        assoc_id = self.create(**assoc_attrs)
-
-        return {
-            'resource_id': assoc_id,
-            'dependency_ids': {
-                'intervention_reference': intervention_reference,
-            },
-            'attributes': assoc_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.intervention_client.delete_with_dependencies(reference['dependency_ids']['intervention_reference'])
 
 
 class StudentInterventionAttendanceEventClient(EdFiAPIClient):
@@ -661,23 +475,11 @@ class StudentInterventionAttendanceEventClient(EdFiAPIClient):
     def create_with_dependencies(self, **kwargs):
         intervention_reference = self.intervention_client.create_with_dependencies()
 
-        event_attrs = self.factory.build_dict(
+        return self.create_using_dependencies(
+            intervention_reference,
             interventionReference__interventionIdentificationCode=intervention_reference['attributes']['interventionIdentificationCode'],
             **kwargs
         )
-        event_id = self.create(**event_attrs)
-
-        return {
-            'resource_id': event_id,
-            'dependency_ids': {
-                'intervention_reference': intervention_reference,
-            },
-            'attributes': event_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.intervention_client.delete_with_dependencies(reference['dependency_ids']['intervention_reference'])
 
 
 class StudentLanguageInstructionProgramAssociationClient(EdFiAPIClient):
@@ -699,26 +501,12 @@ class StudentLearningObjectiveClient(EdFiAPIClient):
 
         period_reference = self.grading_period_client.create_with_dependencies()
 
-        student_objective_attrs = self.factory.build_dict(
-            learningObjectiveReference__objective=objective_reference['attributes']['objective'],
+        return self.create_using_dependencies(
+            [{'grading_period_client': period_reference}, {'objective_client': objective_reference}],
+            learningObjectiveReference__learningObjectiveId=objective_reference['attributes']['learningObjectiveId'],
             gradingPeriodReference__periodSequence=period_reference['attributes']['periodSequence'],
             **kwargs
         )
-        student_objective_id = self.create(**student_objective_attrs)
-
-        return {
-            'resource_id': student_objective_id,
-            'dependency_ids': {
-                'objective_reference': objective_reference,
-                'period_reference': period_reference
-            },
-            'attributes': student_objective_attrs,
-        }
-
-    def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
-        self.objective_client.delete_with_dependencies(reference['dependency_ids']['objective_reference'])
-        self.grading_period_client.delete_with_dependencies(reference['dependency_ids']['period_reference'])
 
 
 class StudentMigrantEducationProgramAssociationClient(EdFiAPIClient):

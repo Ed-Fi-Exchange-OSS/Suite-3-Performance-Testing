@@ -8,5 +8,5 @@
 /artifacts/
 /TestResults/
 *.pdf
-
+change_version_tracker.json
 node_modules/
