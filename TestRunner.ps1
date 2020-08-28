@@ -92,15 +92,15 @@ function Reset-OdsDatabase {
     Import-Module SQLPS
 
     Invoke-SqlCmd -Database "master" `
-                  -Query "ALTER DATABASE $databaseName SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+                  -Query "ALTER DATABASE [$databaseName] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
 
-                          RESTORE DATABASE $databaseName FROM DISK = '$sqlBackupPath\$backupFilename'
+                          RESTORE DATABASE [$databaseName] FROM DISK = '$sqlBackupPath\$backupFilename'
                             WITH
                                 MOVE 'EdFi_Ods_Empty' TO '$sqlDataPath\$($databaseName).mdf',
                                 MOVE 'EdFi_Ods_Empty_log' TO '$sqlDataPath\$($databaseName)_log.ldf',
                                 REPLACE;
 
-                          ALTER DATABASE $databaseName SET MULTI_USER;" -QueryTimeout 0
+                          ALTER DATABASE [$databaseName] SET MULTI_USER;" -QueryTimeout 0
 
     Invoke-SqlCmd -Database $databaseName -Query "
         DECLARE @ReorganizeOrRebuildCommand NVARCHAR(MAX);
