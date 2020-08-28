@@ -17,10 +17,10 @@ def current_year():
 
 def formatted_date(month, day, year=None):
     """
-    Returns date formatted in MM/DD/YYYY format.  If year isn't passed in, it
+    Returns date formatted in YYYY-mm-dd format.  If year isn't passed in, it
     will default to the current year.
     """
-    return date(year or current_year(), month, day).strftime('%m/%d/%Y')
+    return date(year or current_year(), month, day).strftime('%Y-%m-%d')
 
 
 def random_chars(n=4, chars=None):

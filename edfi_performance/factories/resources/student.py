@@ -17,7 +17,7 @@ from ..utils import UniqueIdAttribute, formatted_date, current_year, RandomDateA
 
 class StudentFactory(APIFactory):
     studentUniqueId = UniqueIdAttribute()
-    birthDate = "1/1/2009"
+    birthDate = formatted_date(1, 1, 2009)
     firstName = "Austin"
     middleName = "Samuel"
     lastSurname = "Jones"

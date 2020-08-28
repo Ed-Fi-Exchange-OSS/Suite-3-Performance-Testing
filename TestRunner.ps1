@@ -91,21 +91,21 @@ function Log($message) {
 function Reset-OdsDatabase($backupFilename) {
     Import-Module SQLPS
 
-    $logicalName = "EdFi_Ods_Populated_Template"
-    if ($backupFilename -Match "Minimal") {
-        $logicalName = "EdFi_Ods_Minimal_Template"
-    }
-
     Invoke-SqlCmd -Database "master" `
-                  -Query "ALTER DATABASE [$databaseName] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+                  -Query "DECLARE @mdf as VARCHAR(255), @ldf as VARCHAR(255)
 
-                          RESTORE DATABASE [$databaseName] FROM DISK = '$sqlBackupPath\$backupFilename'
-                            WITH
-                                MOVE '$($logicalName)' TO '$sqlDataPath\$($databaseName).mdf',
-                                MOVE '$($logicalName)_log' TO '$sqlDataPath\$($databaseName)_log.ldf',
-                                REPLACE;
-
-                          ALTER DATABASE [$databaseName] SET MULTI_USER;" -QueryTimeout 0
+                  SELECT @mdf = [name] from [$databaseName].sys.database_files where physical_name like '%.mdf'
+                  SELECT @ldf = [name] from [$databaseName].sys.database_files where physical_name like '%.ldf'
+                  
+                  ALTER DATABASE [$databaseName] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+                  
+                  RESTORE DATABASE [$databaseName] FROM DISK = '$sqlBackupPath\$backupFilename'
+                  WITH
+                      MOVE @mdf TO '$sqlDataPath\$($databaseName).mdf',
+                      MOVE @ldf TO '$sqlDataPath\$($databaseName)_log.ldf',
+                      REPLACE;
+                  
+                  ALTER DATABASE [$databaseName] SET MULTI_USER;" -QueryTimeout 0
 
     Invoke-SqlCmd -Database $databaseName -Query "
         DECLARE @ReorganizeOrRebuildCommand NVARCHAR(MAX);
@@ -156,7 +156,6 @@ function Invoke-TestRunner($testSuite, $clientCount, $hatchRate, $testType, $bac
     $webCredential = Get-CredentialOrDefault $webServer
 
     if($restoreDatabase) {
-        Log "Resetting ODS database from backup, and resetting indexes"
         Log "Restoring $databaseName from $sqlBackupPath\$backupFilename"
         Invoke-RemoteCommand $databaseServer $databaseCredential -ArgumentList @($backupFilename) -ScriptBlock { param($backupFilename) Reset-OdsDatabase $backupFilename }
     } else {
@@ -183,8 +182,10 @@ function Invoke-TestRunner($testSuite, $clientCount, $hatchRate, $testType, $bac
 
         $commonFunctions = (Get-Command $Using:thisFolder\TestRunner.ps1).ScriptContents
 
+        $currentTestResultsFolder = $Using:testResultsPath
+
         try {
-            $csvPath = "$Using:thisFolder\$Using:testResultsPath\$Using:testType.$server.csv"
+            $csvPath = "$Using:thisFolder\$currentTestResultsFolder\$Using:testType.$server.csv"
 
             if ($server -eq 'localhost') {
                 $actualPerformanceCounters = Compare-Object (typeperf -q) $expectedPerformanceCounters -PassThru -IncludeEqual -ExcludeDifferent
@@ -365,6 +366,7 @@ function Initialize-TestRunner {
     # underneath TestResults.
     $global:testResultsPath = "TestResults"
     Initialize-Folder TestResults
+    Log "Writing to TestResults Folder"
 }
 
 function Invoke-VolumeTests {
@@ -416,7 +418,7 @@ function Invoke-ChangeQueryTests {
     Set-ChangeVersionTracker
 
     $iteration = 1
-    foreach ($changeQueryBackupFilename in $changeQueryBackupFilenames) {
+    foreach ($changeQueryBackupFilename in $changeQueryBackupFilenames){
         $global:testResultsPath = "TestResults\TestResult_$iteration"
         $iteration = $iteration + 1
 
@@ -428,6 +430,7 @@ function Invoke-ChangeQueryTests {
             -HatchRate 1 `
             -TestType change_query `
             -BackupFilename $changeQueryBackupFilename
+
         Duplicate-ChangeVersionTracker
     }
 }

@@ -34,7 +34,7 @@ determine the most appropriate hardware configuration for their needs.
        up, waiting for their turn to be handled.
     1. Since the bottleneck came in the form of web requests queueing up, system
        resources were never taxed.
-    1. There was no clear “breaking point” for the ODS, though there was a sharp
+    1. There was no clear "breaking point" for the ODS, though there was a sharp
        change in requests handled / second at a load of 1000 concurrent users,
        likely at the point where requests would become queued by the web server.
 1. When sizing a SQL Server machine in a deployment environment, we recommend
@@ -81,8 +81,8 @@ which contains 21,628 students.
 ### Azure Test Lab Virtual Machines
 
 The test lab uses a three-server setup: one each for the database, web
-applications, and the Locust performance testing. VM “Sizes” listed here, such
-as “DS11_v2”, are Microsoft-defined names for the specs of an Azure VM. Key
+applications, and the Locust performance testing. VM "Sizes" listed here, such
+as "DS11_v2", are Microsoft-defined names for the specs of an Azure VM. Key
 specs are listed beside these size names. These sizes were chosen as their specs
 are comparable to those of the Vendor Certification VMs but have SSD disks to
 more closely match a production environment.
@@ -111,11 +111,11 @@ though it can be useful to identify endpoints that are either failing or
 particularly slow to respond.
 
 The test run took 4m50s to hit each endpoint, confirming that running the
-pipeclean test suite as a useful way to get quick feedback on the ODS API’s
+pipeclean test suite as a useful way to get quick feedback on the ODS API's
 overall stability. During this run, 3 endpoints failed due to SQL timeouts and 1
 was at risk for timing out. The SQL timeouts present to the client as HTTP
-response “500 Internal Server Error”. Not surprisingly, all involve GET requests
-against the ODS’s larger tables:
+response "500 Internal Server Error". Not surprisingly, all involve GET requests
+against the ODS's larger tables:
 
 * `GET /EdFi.Ods.WebApi/data/v3/ed-fi/studentGradebookEntries`
 * `GET /EdFi.Ods.WebApi/data/v3/ed-fi/studentSectionAttendanceEvents`
@@ -123,16 +123,16 @@ against the ODS’s larger tables:
 * `GET /EdFi.Ods.WebApi/data/v3/ed-fi/studentSectionAssociations`
 
 For a pipeclean test run, the primary thing to focus on other than failure
-responses is the “Max response time” collected by the test runner. Most
+responses is the "Max response time" collected by the test runner. Most
 endpoints respond quickly, a few took longer than 1 second, and one endpoint
 (studentSectionAssociations) took 18s, putting it at risk for timeouts like the
 others listed in above:
 
 | Max Response Time | Number of Endpoints |
 | ----------------- | ------------------- |
-| 0ms – 499ms | 1205 |
-| 500ms – 999ms | 48 |
-| 1000ms – 9999ms | 6 |
+| 0ms - 499ms | 1205 |
+| 500ms - 999ms | 48 |
+| 1000ms - 9999ms | 6 |
 | 18000ms | 1 |
 
 Due to the small sample size and brief duration of a pipeclean test run, CPU and
@@ -151,7 +151,7 @@ pressure on the Database VM:
 ![Pipeclean 3.0.0 memory used on web server
 chart](images/pipeclean-3.0.0-memory-web.png)
 
-Since the system was not particularly taxed during this run, we wouldn’t
+Since the system was not particularly taxed during this run, we wouldn't
 anticipate a larger Azure VM Size selection to have prevented the timeouts.
 Mitigation: Review the SQL Server execution plan and index definitions for the
 `SELECT` statements hit when fetching `studentGradebookEntries`,
@@ -163,7 +163,7 @@ chart](images/pipeclean-3.0.0-cpu-load-database.png)
 ![Pipeclean 3.0.0 memory used on database server
 chart](images/pipeclean-3.0.0-memory-database.png)
 
-Since the system was not particularly taxed during this run, we wouldn’t
+Since the system was not particularly taxed during this run, we wouldn't
 anticipate a larger Azure VM Size selection to have prevented the timeouts.
 
 _Potential Mitigation_: Review the SQL Server execution plan and index
@@ -174,7 +174,7 @@ definitions for the SELECT statements hit when fetching
 ## Volume Test Results
 
 Volume testing repeatedly exercises the subset of endpoints as described by the
-“Ed-Fi Student Information Systems API V3 Certification” documentation, using
+"Ed-Fi Student Information Systems API V3 Certification" documentation, using
 many concurrent clients, for a fixed duration. It is meant to simulate
 real-world workloads.
 
@@ -205,12 +205,12 @@ chart](images/volume-3.0.0-memory-database.png)
 
 However, SQL Server quite deliberately consumes as much memory as you allow it,
 to maximize the performance benefits of cached data. In a SQL-dedicated VM such
-as this one, you wouldn’t want SQL Server to leave memory unused. Because the
+as this one, you wouldn't want SQL Server to leave memory unused. Because the
 CPU pressure was so minimal, the VM is likely sized appropriately and could
 handle even more concurrent clients during Stress testing.
 
 If Stress testing reveals a tipping point at the current VM size, naturally the
-VM size could be increased to see how well that improves the ODS API’s behavior
+VM size could be increased to see how well that improves the ODS API's behavior
 under stress. For instance, there may be a missed opportunity here to cache even
 more data. If stress testing at this VM size reveals a point where the system
 begins to fail, and if increasing the VM size restores stability, then the test
@@ -224,7 +224,7 @@ Because the previous Volume test run revealed no failed requests under a light
 load, we originally set out to simply run the Volume test suite multiple times
 while increasing the number of concurrent users until the ODS began to fail.
 Then, we would decrease the number of concurrent users until the system could
-perform again with no failed requests, thus narrowing in on the ODS’s breaking
+perform again with no failed requests, thus narrowing in on the ODS's breaking
 point.
 
 However, we encountered a small number of failed requests due to deadlocks even
@@ -279,7 +279,7 @@ argument in function `Invoke-StressTests`, found in file `TestRunner.ps1`.
 
 ### Load Generation Results
 
-In addition to revealing information about the ODS’s behavior under load, the
+In addition to revealing information about the ODS's behavior under load, the
 stress tests provided concrete information about the load generation itself. We
 have found the practical upper limit for load generation from a single client
 machine.
@@ -287,7 +287,7 @@ machine.
 For each 30m stress test run, the system reports a total number of requests
 issued. Given these totals, we estimate the number of requests which would be
 generated during a 24 hours period, to compare the load generation against that
-of Wisconsin’s reported 8.24M requests: `[Total Requests During 30m Test] * 2 *
+of Wisconsin's reported 8.24M requests: `[Total Requests During 30m Test] * 2 *
 24`.
 
 ![Stress testing estimate requests per 24 hours
@@ -301,11 +301,11 @@ not surprising that we see an apparent limit here.
 
 A natural question then, is whether this is the true limit of load generation
 for a single machine, or whether the load could be easily increased merely by
-changing this client VM’s “Size” in Azure.  To answer this question, it’s
+changing this client VM's "Size" in Azure.  To answer this question, it's
 important to know about a limited operating system resource: outgoing port
 numbers. If a client machine makes many outgoing requests in a short amount of
-time, it can eventually exhaust the operating system’s limited number of
-outgoing ports. If a client ever caused that “port exhaustion”, subsequent
+time, it can eventually exhaust the operating system's limited number of
+outgoing ports. If a client ever caused that "port exhaustion", subsequent
 requests would fail on the client side having never reached the server side. The
 operating system does free up this finite resource as requests complete, but
 only after a deliberate noticeable delay during which the ports remain in a
@@ -322,7 +322,7 @@ likely to cause port exhaustion. A test run that experiences port exhaustion on
 the client side would be an invalid test; the failures would appear to the ODS
 as a sudden lack of traffic.
 
-The risk of port exhaustion combined with the 12M requests/day “wall” at the
+The risk of port exhaustion combined with the 12M requests/day "wall" at the
 current VM size suggests that this rate is our realistic limit for a single
 client VM of any size. The VM is right-sized and fully leveraged.
 
@@ -342,23 +342,23 @@ chart](images/stress-total-failed-requests.png)
 Although the vast majority of requests succeed across all of these loads, a few
 patterns appeared for the requests that did fail, all around deadlocks.
 
-When SQL Server discovers a deadlock, it chooses a “deadlock victim” to resolve
+When SQL Server discovers a deadlock, it chooses a "deadlock victim" to resolve
 the issue. The deadlock victim query is the one logged by the ODS. SQL Server
 tries to choose the least-costly transaction as the victim, to allow a
 more-costly transaction to complete. In other words, the deadlock victim queries
 are not the culprits themselves, but indicate which tables and records were
 under high contention at the time of deadlock.
 
-* Most failures surface in the ODS logs with the error message “Failed to
+* Most failures surface in the ODS logs with the error message "Failed to
   execute multi query: …SQL STATEMENT… was deadlocked on lock resources with
-  another process and has been chosen as the deadlock victim.”
+  another process and has been chosen as the deadlock victim."
 * Most of those deadlock failures occur for the same NHibernate query batch, one
   which is executed when interacting with `/data/v3/ed-fi/schools/{id}`
   endpoints (POST, PUT, DELETE).
 * Although far less frequent, the next repeated deadlocked query batch is
   encountered when issuing a PUT against
   `/data/v3/ed-fi/studentSpecialEducationProgramAssociations/{id}`
-* See “Attachment A - Most Frequently-Deadlocked Query Batches.txt” for the
+* See "Attachment A - Most Frequently-Deadlocked Query Batches.txt" for the
   NHibernate-generated SQL for the above 2 deadlocking hot spots.
 
 #### Stress Test Web Server Resources
@@ -367,7 +367,7 @@ Even under these heavy loads, the ODS web server experienced no serious strain
 on CPU / Memory. To keep the analysis of CPU / Memory usage focused, we include
 here the metrics collected during the 1000-, 3000-, and 5000-user test runs.
 
-The web server’s memory usage was minimal and virtually identical across these
+The web server's memory usage was minimal and virtually identical across these
 loads, holding at 25-30%:
 
 ![Stress test web server memory used for 1000 users
@@ -376,7 +376,7 @@ used for 3000 users chart](images/stress-web-3000-users-memory.png) ![Stress
 test web server memory used for 5000 users
 chart](images/stress-web-5000-users-memory.png)
 
-The web server’s CPU usage fell mainly in the 30%-60% range regardless of the
+The web server's CPU usage fell mainly in the 30%-60% range regardless of the
 load. Under the highest load, there were occasional spikes in the 60-70% range:
 
 ![Stress test web server CPU load for 1000 users
@@ -386,12 +386,12 @@ server CPU load for 5000 users chart](images/stress-web-5000-users-cpu.png)
 
 #### Stress Test SQL Server Resources
 
-Even under these heavy loads, the ODS’s SQL Server experienced no serious strain
-on CPU / Memory, while fully taking advantage of SQL Server’s caching. To keep
+Even under these heavy loads, the ODS's SQL Server experienced no serious strain
+on CPU / Memory, while fully taking advantage of SQL Server's caching. To keep
 the analysis of CPU / Memory usage focused, we include here the metrics
 collected during the 1000-, 3000-, and 5000-user test runs.
 
-The SQL VM’s memory usage was virtually identical across these loads, holding at
+The SQL VM's memory usage was virtually identical across these loads, holding at
 60%:
 
 ![Stress test SQL server memory used for 1000
@@ -408,10 +408,10 @@ these Stress tests, we increased the SQL VM Size in Azure to more realistically
 match a production system and to determine whether that 90% represented a missed
 opportunity to cache more. Here, we see that the system can effectively cache
 everything it needs for the Northridge data set with healthy room to spare for a
-larger data set. Here, we also see that there is no effect on SQL Server’s
+larger data set. Here, we also see that there is no effect on SQL Server's
 memory usage as the web request/day rate grows by millions.
 
-The SQL VM’s CPU usage was similarly stable as the web request/day rate grows by
+The SQL VM's CPU usage was similarly stable as the web request/day rate grows by
 millions:
 
 ![Stress test SQL server cpu load for 1000
@@ -443,7 +443,7 @@ time chart](images/stress-maximum-response-time.png)
 To make sense of that response time trend, we take a closer look at requests
 handled per second. We see two important things. First, the ODS is handling
 requests at a rate consistent with the rate of requests being initiated. Over
-the course of a day at this rate, we’d expect all 12M requests initiated by the
+the course of a day at this rate, we'd expect all 12M requests initiated by the
 performance tests to be handled. Second, **we see our first noteworthy inflection
 point in the data**: as we approach 500 concurrent users, the requests/sec appears
 to scale linearly with the user count. From 500 to 1000 users, though, the slope
@@ -458,7 +458,7 @@ issued by the client, delaying response times across all endpoints.
 Recommendations:
 
 * Update the performance testing metrics collection to include the
-  “ASP.NET\Requests Queued” performance counter during all future test runs, as
+  "ASP.NET\Requests Queued" performance counter during all future test runs, as
   further confirmation of the observed behavior. This counter will be added in
   O3PERF-172 prior to Soak testing.
 * Since requests queue up under heavy load while not taxing either the web
@@ -505,9 +505,9 @@ tests.
 ### Soak Test Execution
 
 In the Azure environment, these tests were performed by remoting into the
-ods-3-perf-test VM and running the “Run Stress Tests” desktop shortcut to invoke
+ods-3-perf-test VM and running the "Run Stress Tests" desktop shortcut to invoke
 the performance testing tools with Soak testing parameters. This shortcut
-performs the following command from the context of the test runner’s deployment
+performs the following command from the context of the test runner's deployment
 folder:
 
 ```powershell
@@ -529,12 +529,12 @@ Failed requests during Soak testing mirror the results previously reported for
 Stress testing. Running the tests for a longer duration did not have an impact
 on the character or frequency of failures. As with Stress testing at short
 durations, less than 0.01% of requests fail, due to SQL deadlocks. The queries
-chosen by SQL Server as the “deadlock victim” are also consistent with those
+chosen by SQL Server as the "deadlock victim" are also consistent with those
 previously reported for Stress testing.
 
 #### Soak Test SQL Server Resources
 
-The SQL Server’s CPU load remained consistent across the Soak test, remaining
+The SQL Server's CPU load remained consistent across the Soak test, remaining
 low with occasional spikes around 40%. This is consistent with the previous
 Stress test:
 
@@ -542,7 +542,7 @@ Stress test:
 chart](images/soak-sql-cpu-30.png) ![Soak test database server cpu load for 500
 users chart](images/soak-sql-cpu-500.png)
 
-The SQL Server’s memory usage remained consistent across the Soak test,
+The SQL Server's memory usage remained consistent across the Soak test,
 remaining at approximately 60% for the entire duration. This is consistent with
 the previous Stress test:
 
@@ -557,7 +557,7 @@ over time.
 
 #### Web Server Resources
 
-Overall, the Web Server’s CPU usage remained consistent across the Soak test,
+Overall, the Web Server's CPU usage remained consistent across the Soak test,
 spending most of its time below 20%, with only occasional brief spikes. Later,
 in the Limited Throughput section, we take a closer look at the CPU trend in the
 first few hours:
@@ -566,7 +566,7 @@ first few hours:
 ![Soak test web server cpu load for 500 users
 chart](images/soak-web-cpu-500.png)
 
-The Web Server’s memory usage remained consistent across the Soak test,
+The Web Server's memory usage remained consistent across the Soak test,
 remaining at approximately 30% for the entire duration:
 
 ![Soak test web server memory used for 30 users
@@ -584,7 +584,7 @@ response times would degrade as many requests waited in the ASP.NET request
 queue. Under high load, IIS does its job well by keeping the system stable at
 the cost of queueing up incoming requests.
 
-In reaction to that evidence, we added the “ASP.NET\Requests Queued” performance
+In reaction to that evidence, we added the "ASP.NET\Requests Queued" performance
 counter to the performance tools, to monitor that queue size moving forward. As
 expected the queue did experience some strain, especially early on. Periodic
 measurement of the performance counter maxed out at 255 queued requests.
