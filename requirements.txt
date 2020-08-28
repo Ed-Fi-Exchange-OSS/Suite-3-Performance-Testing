@@ -39,7 +39,7 @@ pytest==3.9.1
 pytest-pylint==0.13.0
 python-dateutil==2.7.3
 pyzmq==17.1.0
-requests==2.19.1
+requests==2.20.0
 scandir==1.9.0
 singledispatch==3.4.0.3
 six==1.11.0
