@@ -87,7 +87,7 @@ class StudentEducationOrganizationAssociationVolumeTest(EdFiVolumeTestBase):
     @task
     def run_association_scenarios(self):
         self.run_scenario()
-        self.run_scenario(studentCharacteristics__studentCharacteristicDescriptor=
+        self.run_scenario(studentCharacteristics__0__studentCharacteristicDescriptor=
                           build_descriptor('StudentCharacteristic', 'Economic Disadvantaged'))
 
 
