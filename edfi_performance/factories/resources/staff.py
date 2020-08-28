@@ -44,23 +44,23 @@ class StaffFactory(APIFactory):
     highlyQualifiedTeacher = True
     personalTitlePrefix = "Mr"
     sexDescriptor = build_descriptor('Sex', 'Male')
-    electronicMails = factory.List(
+    electronicMails = factory.List([
         dict(
             electronicMailAddress="johnloyo@edficert.org",
             electronicMailTypeDescriptor=build_descriptor('ElectronicMailType', 'Work'),
         ),
-    )
+    ])
     identificationCodes = factory.LazyAttribute(
         lambda o: build_descriptor_dicts(
             'staffIdentificationSystem',
             [('State', {'identificationCode': o.staffUniqueId})]
         )
     )
-    races = factory.List(
+    races = factory.List([
         dict(
             raceDescriptor=build_descriptor('Race', 'White'),
         ),
-    )
+    ])
 
 
 class StaffAbsenceEventFactory(APIFactory):
@@ -119,9 +119,9 @@ class StaffProgramAssociationFactory(APIFactory):
 class StaffSchoolAssociationFactory(APIFactory):
     staffReference = factory.Dict(dict(staffUniqueId=StaffClient.shared_staff_id()))  # Prepopulated staff record
     schoolReference = factory.Dict(dict(schoolId=SchoolClient.shared_elementary_school_id()))  # Prepopulated school record
-    academicSubjects = factory.List(
+    academicSubjects = factory.List([
         dict(academicSubjectDescriptor=build_descriptor('AcademicSubject', 'English Language Arts')),
-    )
+    ])
     gradeLevels = factory.List([])  # Default grade levels are blank for scenario
     programAssignmentDescriptor = build_descriptor('ProgramAssignment', 'Other')  # Required despite "optional" in docs
 
