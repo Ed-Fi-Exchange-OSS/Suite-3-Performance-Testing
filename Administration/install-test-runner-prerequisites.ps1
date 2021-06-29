@@ -19,11 +19,11 @@ if (! (Get-Command choco.exe -ErrorAction SilentlyContinue )) {
     refreshenv
 }
 
-# Install Python 2.7.15
-# Note: This places both c:\Python27 and c:\Python27\Scripts into the system PATH variable.
+# Install Python 3.6.7
+# Note: This places both c:\Python36 and c:\Python36\Scripts into the system PATH variable.
 $pyversion = cmd /c python --version '2>&1'
-if ($pyversion -ne "Python 2.7.15") {
-    choco install python2 -y --version 2.7.15 --params '"/InstallDir:C:\Python27"'
+if ($pyversion -ne "Python 3.6.7") {
+    choco install python3 -y --version 3.6.7 --params '"/InstallDir:C:\Python36"'
     refreshenv
 }
 
