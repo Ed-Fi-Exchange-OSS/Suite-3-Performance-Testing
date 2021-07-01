@@ -9,7 +9,7 @@ from edfi_performance.api.client import EdFiAPIClient, get_config_value
 
 
 class EdFiCompositeClient(EdFiAPIClient):
-    API_PREFIX = None  # Must be entered by the user. Should look like '/composites/v3/ed-fi/{compositeName}'
+    API_PREFIX = None  # Must be entered by the user. Should look like '/composites/v1/ed-fi/{compositeName}'
     factory = 'None'
     constants = None
 

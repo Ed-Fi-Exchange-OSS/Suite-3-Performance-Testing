@@ -155,7 +155,7 @@ The following commands will run both tests _only_, without executing any of the
 other pipeclean or volume test scenarios. However, if you run the full test
 suite, it will include the new `Applicants` tests. Open a PowerShell prompt. The
 second command assumes that you cloned the code repository into
-`c:\src\Ed-Fi-X-Performance`; adjust as needed. The pipeclean test will naturally
+`c:\src\Suite-3-Performance-Testing`; adjust as needed. The pipeclean test will naturally
 finish running more quickly than the volume tests. In this example we [limit the
 volume
 tests](https://docs.locust.io/en/stable/running-locust-without-web-ui.html#setting-a-time-limit-for-the-test)
@@ -163,7 +163,7 @@ to run only for 3 minutes.
 
 ```powershell
 C:\virtualenv\EDFI_PERFORMANCE\Scripts\activate.bat
-cd c:\src\Ed-Fi-X-Performance
+cd c:\src\Suite-3-Performance-Testing
 locust -f .\pipeclean_tests.py -c 1 --no-web ApplicantsPipecleanTest --csv=ApplicantsPipeclean
 locust -f .\volume_tests.py -c 20 --no-web ApplicantsVolumeTest --csv=ApplicantsVolume --run-time 3m
 ```

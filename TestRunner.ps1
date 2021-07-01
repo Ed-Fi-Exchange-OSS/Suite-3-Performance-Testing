@@ -338,7 +338,7 @@ function Get-CredentialOrDefault($server) {
         # First, attempt to load credentials previously registered with Register-Credentials.
         # If there is no such registered credential, asks the user for credentials interactively.
 
-        $folderPath = (Join-Path $env:LOCALAPPDATA "Ed-Fi-X-Performance")
+        $folderPath = (Join-Path $env:LOCALAPPDATA "Suite-3-Performance-Testing")
         $path = Join-Path $folderPath "credentials-$server.xml"
 
         if (Test-Path $path) {

@@ -176,7 +176,7 @@ function Enable-PowerShellRemotingOverHttps() {
 function Register-Credentials {
     $registerCredential = {
         param($server)
-        $folderPath = (Join-Path $env:LOCALAPPDATA "Ed-Fi-X-Performance")
+        $folderPath = (Join-Path $env:LOCALAPPDATA "Suite-3-Performance-Testing")
 
         if (!(Test-Path -PathType Container $folderPath)) {
             New-Item -ItemType Directory -Force -Path $folderPath | Out-Null

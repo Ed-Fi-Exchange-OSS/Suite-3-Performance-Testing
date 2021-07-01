@@ -7,7 +7,7 @@ from edfi_performance.api.client.composite import EdFiCompositeClient
 
 
 class EnrollmentCompositeClient(EdFiCompositeClient):
-    API_PREFIX = '/composites/v3/ed-fi/enrollment'
+    API_PREFIX = '/composites/v1/ed-fi/enrollment'
     constants = {
         'schools': None,
         'sections': None,
