@@ -22,7 +22,7 @@ and sets up all prerequisites. **Run this script in an Administrator PowerShell
 prompt.** The script installs and sets up the following:
 
 * Chocolately, the Windows package installer
-* Python 2.7.15
+* Python 3.6.7
 * Python's 'virtualenv' sandboxing tool
 * Creates an EDFI_PERFORMANCE virtual environment (which will contain all of the
   installed python dependencies for this project; located at `C:\virtualenv`)

@@ -38,7 +38,7 @@ def _build_descriptor_dicts(descriptor_type, values):
     descriptor_type = _normalize_descriptor_type(descriptor_type)
     key = _descriptor_type_to_dict_key(descriptor_type)
     for str_or_iterable in values:
-        if isinstance(str_or_iterable, basestring):
+        if isinstance(str_or_iterable, str):
             value = str_or_iterable
             defaults = {}
         else:

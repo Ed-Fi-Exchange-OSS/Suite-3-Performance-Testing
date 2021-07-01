@@ -95,7 +95,7 @@ class EdFiBasicAPIClient(object):
                 message = json.loads(response.text)['message']
             except Exception:
                 pass
-            print response.request.method + " " + str(response.status_code) + ' : ' + message
+            print (response.request.method + " " + str(response.status_code) + ' : ' + message)
             return True
         return False
 
