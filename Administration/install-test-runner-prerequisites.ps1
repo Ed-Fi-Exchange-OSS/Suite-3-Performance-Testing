@@ -31,7 +31,7 @@ if ($pyversion -ne "Python 3.6.7") {
 python -m pip install --upgrade pip
 
 # Install virtualenv
-pip install virtualenv
+pip3 install virtualenv
 
 # "Prepare a Virtual Environment for Python Test Execution"
 $virtualdir="c:\virtualenv"
