@@ -458,8 +458,8 @@ Steps taken in the Azure Portal:
 
         VCS Root (this is shared across build configurations in the project):
             Type of VCS: Git
-            VCS root name: Ed-Fi-X-Performance
-            Fetch URL: git@github.com:Ed-Fi-Alliance/Ed-Fi-X-Performance.git
+            VCS root name: Suite-3-Performance-Testing
+            Fetch URL: git@github.com:Ed-Fi-Exchange-OSS/Suite-3-Performance-Testing.git
             Default branch: %vcsroot.branch%
             Username style: Author Name and Email
             Submodules: Ignore
@@ -513,7 +513,7 @@ Steps taken in the Azure Portal:
             Artifact paths: artifacts/**
 
         Version Control Settings:
-            VCS Root: Ed-Fi-X-Performance
+            VCS Root: Suite-3-Performance-Testing
             Clean build: checked
 
         Build Steps:
@@ -548,7 +548,7 @@ Steps taken in the Azure Portal:
             Artifact paths: artifacts/**
 
         Version Control Settings:
-            VCS Root: Ed-Fi-X-Performance
+            VCS Root: Suite-3-Performance-Testing
             Clean build: checked
 
         Build Steps:
@@ -582,7 +582,7 @@ Steps taken in the Azure Portal:
             Artifact paths: artifacts/**
 
         Version Control Settings:
-            VCS Root: Ed-Fi-X-Performance
+            VCS Root: Suite-3-Performance-Testing
             Clean build: checked
 
         Build Steps:
@@ -639,7 +639,7 @@ Steps taken in the Azure Portal:
             Artifact paths: artifacts/**
 
         Version Control Settings:
-            VCS Root: Ed-Fi-X-Performance
+            VCS Root: Suite-3-Performance-Testing
             Clean build: checked
 
         Build Steps:
@@ -766,7 +766,7 @@ Steps taken in the Azure Portal:
                 Files on Tentacles: Keep 3 releases
 
     Create the OctopusDeploy Project
-        Name: Performance Testing - Ed-Fi-X-Performance
+        Name: Performance Testing - Suite-3-Performance-Testing
         Project group: All Projects
         Lifecycle: Performance Testing - ODS & API v3
 
@@ -776,7 +776,7 @@ Steps taken in the Azure Portal:
                 Step Name: Deploy Performance Tests
                 Runs on targets in roles: PerformanceTestingClient
                 Package feed: Team City
-                Package ID: Ed-Fi-X-Performance
+                Package ID: Suite-3-Performance-Testing
                     (This is the prefix of artifacts on the TeamCity builds.)
                 Download options: Octopus Server will download the package, then securely upload it to the Tentacles
                 Environments: "Performance testing - ODS & API v3"

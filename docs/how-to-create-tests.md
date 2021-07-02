@@ -17,7 +17,7 @@ The factory class contains all of the attributes and their corresponding values 
 Perform the following steps to create a factory (let's call our example resource 'Course'):
 
 1. Create the file for the resource factory:
-    * ~Ed-Fi-X-Performance\edfi_performance\factories\resources\course.py
+    * ~Suite-3-Performance-Testing\edfi_performance\factories\resources\course.py
     * Replace 'course' with the name of your new resource
 2. Add the following import statements to the top of the file:
 
@@ -81,7 +81,7 @@ The client class contains an endpoint for the URL of the resource. This class cr
 Perform the following steps to create a simple (zero dependents) client:
 
 1. Create the file for the resource client:
-    * ~Ed-Fi-X-Performance\edfi_performance\api\client\course.py
+    * ~Suite-3-Performance-Testing\edfi_performance\api\client\course.py
     * Replace 'course' with the name of your new resource
 2. Add the following import statements to the top of the file (Your import for the factory may look different):
 
@@ -172,7 +172,7 @@ The Pipeclean Test class methodically exercises all 5 endpoints for a given reso
 Perform the following steps to create a simple pipeclean test:
 
 1. Create the file for the resource pipeclean test:
-    * ~Ed-Fi-X-Performance\edfi_performance\tasks\pipeclean\course.py
+    * ~Suite-3-Performance-Testing\edfi_performance\tasks\pipeclean\course.py
     * Replace 'course' with the name of your new resource
 2. Add the following import statements to the top of the file (Your import for the client may look different):
 
@@ -197,7 +197,7 @@ The Volume Test class exercises 3 endpoints for a given resource: POST, PUT and 
 Perform the following steps to create a simple volume test:
 
 1. Create the file for the resource volume test:
-    * ~Ed-Fi-X-Performance\edfi_performance\tasks\volume\course.py
+    * ~Suite-3-Performance-Testing\edfi_performance\tasks\volume\course.py
     * Replace 'course' with the name of your new resource
 2. Add the following import statements to the top of the file (Your import for the client may look different):
 
@@ -288,7 +288,7 @@ Naturally, only a limited set of resources may be applicable for such a nightly 
 Perform the following steps to create a change query test:
 
 1. Create the file for the resource change query test:
-    * ~Ed-Fi-X-Performance\edfi_performance\tasks\change_query\course.py
+    * ~Suite-3-Performance-Testing\edfi_performance\tasks\change_query\course.py
     * Replace 'course' with the name of your new resource
 
 2. Add the following import statements to the top of the file:
@@ -322,10 +322,10 @@ The client classes for a composite include one specific client class for each di
 Perform the following steps to create clients for a composite:
 
 1. Create the file for the composite clients:
-    * ~Ed-Fi-X-Performance\edfi_performance\api\client\enrollment.py
+    * ~Suite-3-Performance-Testing\edfi_performance\api\client\enrollment.py
     * Replace 'enrollment' with the name of your new composite
 
-2. Refer to `~Ed-Fi-X-Performance\edfi_performance\api\client\enrollment.py` to see how these clients are implemented. Notice a few things:
+2. Refer to `~Suite-3-Performance-Testing\edfi_performance\api\client\enrollment.py` to see how these clients are implemented. Notice a few things:
     * The general client, `EnrollmentCompositeClient`, contains the URL prefix and the json object of constants, as expected. Your attributes will differ since it's for a different composite with different resources
     * The specific clients contain an endpoint and they inherit from `EnrollmentCompositeClient`, as expected. There are 5 specific clients here since the enrollment composite is composed of 5 resources.
 
@@ -345,10 +345,10 @@ In this case, these are all special GET requests for the school resource in the 
 Perform the following steps to create a pipeclean test for a composite:
 
 1. Create the file for the composite pipeclean test:
-    * ~Ed-Fi-X-Performance\edfi_performance\tasks\pipeclean\enrollment.py
+    * ~Suite-3-Performance-Testing\edfi_performance\tasks\pipeclean\enrollment.py
     * Replace 'enrollment' with the name of your new composite
 
-2. Refer to `~Ed-Fi-X-Performance\edfi_performance\tasks\pipeclean\enrollment.py` to see how these pipeclean tests are implemented. Notice a few things:
+2. Refer to `~Suite-3-Performance-Testing\edfi_performance\tasks\pipeclean\enrollment.py` to see how these pipeclean tests are implemented. Notice a few things:
     * The `LocalEducationAgencyEnrollmentCompositePipecleanTest` class overrides the `_run_pipeclean_scenario(...)` method since it only needs to perform the 2 basic GET requests: GET all and GET by id
     * The remaining pipeclean tests contain the list of the enrollment composite resources and inherit from `EdFiCompositePipecleanTestBase`, as expected.
     * The list of composite resources is located near the top since it is shared by most of the pipeclean tests

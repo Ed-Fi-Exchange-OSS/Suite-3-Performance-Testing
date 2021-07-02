@@ -88,7 +88,7 @@ class RandomSuffixAttribute(factory.LazyAttribute):
     docstring for `UniqueIdAttribute` above.)
     """
     def __init__(self, func, *args, **kwargs):
-        if isinstance(func, basestring):
+        if isinstance(func, str):
             unformatted_string = str(func)
             func = lambda o: unformatted_string
         self._suffix_length = kwargs.pop('suffix_length', 4)

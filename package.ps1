@@ -49,7 +49,7 @@ main {
 
     execute {
         octo pack `
-            --id=Ed-Fi-X-Performance `
+            --id=Suite-3-Performance-Testing `
             --version=$version `
             --outFolder=$artifacts `
             --include=deploy.ps1 `

@@ -3,7 +3,7 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-# Run this script as an administrator to install Chocolatey, Python 2.7.15,
+# Run this script as an administrator to install Chocolatey, Python 3.6.7,
 # and to set up the performance test runner's Python "virtual environment".
 # This script should be run should be run once for environments that do not
 # already have these prerequisites set up.

@@ -8,9 +8,9 @@ Performance testing framework for the Ed-Fi ODS technical suite 3
    your system, install it.
 1. Choose a parent directory (e.g., `C:\dev`) to house this repository and
    either clone this repository there (`cd` to that directory and run `git clone
-   https://github.com/Ed-Fi-Alliance/Ed-Fi-X-Performance.git`), or use the "Clone
+   https://github.com/Ed-Fi-Exchange-OSS/Suite-3-Performance-Testing.git`), or use the "Clone
    or Download" link above to download a ZIP file and unzip it into that
-   directory.  Either method will create an `Ed-Fi-X-Performance` directory
+   directory.  Either method will create an `Suite-3-Performance-Testing` directory
    containing the repository.
 1. Checkout the right tag for the version you wish to test against, e.g.
    `git checkout 3.0.0` or `git checkout 3.1.0`.
@@ -22,7 +22,7 @@ and sets up all prerequisites. **Run this script in an Administrator PowerShell
 prompt.** The script installs and sets up the following:
 
 * Chocolately, the Windows package installer
-* Python 2.7.15
+* Python 3.6.7
 * Python's 'virtualenv' sandboxing tool
 * Creates an EDFI_PERFORMANCE virtual environment (which will contain all of the
   installed python dependencies for this project; located at `C:\virtualenv`)
@@ -32,12 +32,12 @@ prompt.** The script installs and sets up the following:
 ### Running a locust test with performance metrics and logs (Recommended)
 
 1. Start the local Ed-Fi ODS API.  (See
-   [here](https://techdocs.ed-fi.org/display/ODSAPI3/Getting+Started+-+Installation+Steps)
+   [here](https://techdocs.ed-fi.org/display/ODSAPIS3V520/Getting+Started+-+Source+Code+Installation)
    for installation and invocation instructions.)
 1. Inspect `locust-config.json` to verify the configuration values are correct
    for your local environment.
 1. Open a command prompt window and cd to the root to the repository. (`cd
-   C:\dev\Ed-Fi-X-Performance`)
+   C:\dev\Suite-3-Performance-Testing`)
 1. Run the following command to run the standard volume test: `run-tests Volume`
 1. To run a pipeclean, soak, stress, or change query test, you can replace
    `Volume` with either `Pipeclean`, `Soak`, `Stress`, or `ChangeQuery`, respectively.
@@ -48,10 +48,10 @@ prompt.** The script installs and sets up the following:
 ### Running a specific locust test
 
 1. Start the local Ed-Fi ODS API.  (See
-   [here](https://techdocs.ed-fi.org/display/ODSAPI3/Getting+Started+-+Installation+Steps)
+   [here](https://techdocs.ed-fi.org/display/ODSAPIS3V520/Getting+Started+-+Source+Code+Installation)
    for installation and invocation instructions.)
 1. Open a command prompt window and cd to the root of the repo. (`cd
-   C:\dev\Ed-Fi-X-Performance`)
+   C:\dev\Suite-3-Performance-Testing`)
 1. Run `C:\virtualenv\EDFI_PERFORMANCE\Scripts\activate.bat` to enter the
    virtual environment. (If this command cannot be found, refer to 'Installing
    Test Runner Prerequisites' above)
