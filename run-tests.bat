@@ -8,7 +8,7 @@ call C:\virtualenv\EDFI_PERFORMANCE\Scripts\activate.bat
 REM Install test suite dependencies.
 SET PYTHONWARNINGS=ignore:DEPRECATION
 python -m pip install --upgrade pip
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 
 REM Launch the test run.
 powershell -NoProfile -ExecutionPolicy Bypass -Command ". .\TestRunner.ps1; Invoke-%1Tests"

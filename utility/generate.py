@@ -37,12 +37,12 @@ def main(argv):
     fileName = Generator.build_file_name(['tasks', 'volume'], resource)
     Generator.write_file(volume, fileName)
 
-    print 'Boilerplate files have been written. Don\'t forget to review them carefully:'
-    print Generator.files_created(resource)
+    print ('Boilerplate files have been written. Don\'t forget to review them carefully:')
+    print (Generator.files_created(resource))
 
 
 def _display_help():
-    print """
+    """
 Code generator for creating boilerplate files to execute performance tests on a
 new resource - including extensions. Version {version}.
 

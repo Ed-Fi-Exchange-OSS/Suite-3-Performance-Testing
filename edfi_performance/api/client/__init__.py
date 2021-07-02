@@ -95,7 +95,7 @@ class EdFiAPIClient(object):
         EdFiAPIClient.token = token
 
         for subclient_class, options in self.dependencies.items():
-            if isinstance(subclient_class, basestring):
+            if isinstance(subclient_class, str):
                 subclient_class = _import_from_dotted_path(subclient_class)
             subclient_name = options.get('client_name')
             if subclient_name is None:
@@ -343,7 +343,7 @@ class EdFiAPIClient(object):
 
     def _get_dependency_client(self):
         subclient_class, client_name = self.dependencies.items()[0]
-        if isinstance(subclient_class, basestring):
+        if isinstance(subclient_class, str):
             subclient_class = _import_from_dotted_path(subclient_class)
         subclient_name = client_name.get('client_name')
         if subclient_name is None:
@@ -371,7 +371,7 @@ class EdFiAPIClient(object):
                 message = json.loads(response.text)['message']
             except Exception:
                 pass
-            print response.request.method + " " + str(response.status_code) + ' : ' + message
+            print (response.request.method + " " + str(response.status_code) + ' : ' + message)
             return True
         return False
 

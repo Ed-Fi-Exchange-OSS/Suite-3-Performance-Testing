@@ -58,7 +58,7 @@ class EdFiChangeQueryTestBase(TaskSet):
 
         while True:
             if offset > 0 and offset % 10000 == 0:
-                print 'Offset has reached: {}'.format(offset)
+                print ('Offset has reached: {}'.format(offset))
             query = "?offset={}&limit={}&minChangeVersion={}".format(offset, limit, min_change_version)
             start = timeit.default_timer()
             endpoint = self.endpoint
@@ -72,8 +72,8 @@ class EdFiChangeQueryTestBase(TaskSet):
                 break
             offset += limit
 
-        print '{} Sync: {} seconds'.format(endpoint, time)
-        print '{} results returned for {}'.format(num_of_results, endpoint)
+        print ('{} Sync: {} seconds'.format(endpoint, time))
+        print ('{} results returned for {}'.format(num_of_results, endpoint))
 
     def _touch_get_list_endpoint(self, endpoint, query):
         return self._client.get_list(endpoint, query)
@@ -120,7 +120,7 @@ class EdFiChangeQueryTestTerminator(TaskSet):
         if available_change_versions is not None:
             newest_change_version = available_change_versions['NewestChangeVersion']
             set_change_version_value(newest_change_version)
-            print 'Current value of NewestChangeVersion: {}'.format(newest_change_version)
+            print ('Current value of NewestChangeVersion: {}'.format(newest_change_version))
 
     @task
     def finish_change_query_test_run(self):
