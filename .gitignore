@@ -31,3 +31,10 @@ mypy.xml
 # Unit test / coverage reports
 .coverage
 .coverage.*
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/

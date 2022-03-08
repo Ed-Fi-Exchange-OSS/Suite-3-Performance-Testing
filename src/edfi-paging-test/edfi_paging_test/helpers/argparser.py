@@ -79,8 +79,8 @@ def parse_main_arguments(args_in: List[str]) -> MainArguments:
         "-t",
         "--contentType",
         help="CSV or JSON",
-        type=str,
-        default="csv",
+        choices=["JSON", "CSV"],
+        default="CSV",
     )
     parser.add(  # type: ignore
         "-r",
@@ -93,7 +93,7 @@ def parse_main_arguments(args_in: List[str]) -> MainArguments:
         "-l",
         "--resourceList",
         help="(Optional) List of resources to test  - if not provided, all resources will be retrieved",
-        nargs='+'
+        nargs="+",
     )
     parser.add(  # type: ignore
         "-p",
@@ -114,7 +114,7 @@ def parse_main_arguments(args_in: List[str]) -> MainArguments:
         args_parsed.contentType,
         args_parsed.retries,
         args_parsed.resourceList,
-        args_parsed.pageSize
+        args_parsed.pageSize,
     )
 
     return arguments

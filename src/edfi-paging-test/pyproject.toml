@@ -8,6 +8,7 @@ license = "Apache-2.0"
 [tool.poetry.dependencies]
 python = "^3.9"
 ConfigArgParse = "^1.5.3"
+python-dotenv = "^0.19.2"
 
 [tool.poetry.dev-dependencies]
 flake8 = "^4.0.1"
@@ -15,6 +16,7 @@ pytest = "^7.0.1"
 mypy = "^0.931"
 pytest-describe = "^2.0.1"
 coverage = "^6.3.2"
+black = "^22.1.0"
 
 
 

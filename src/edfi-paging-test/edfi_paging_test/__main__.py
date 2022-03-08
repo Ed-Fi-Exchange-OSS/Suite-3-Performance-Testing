@@ -5,10 +5,13 @@
 
 import sys
 
+from dotenv import load_dotenv
 from helpers.argparser import parse_main_arguments  # type: ignore
 
 
 def main() -> None:
+
+    load_dotenv()
     arguments = parse_main_arguments(sys.argv[1:])
     print(arguments.baseUrl)
     print(arguments.key)
