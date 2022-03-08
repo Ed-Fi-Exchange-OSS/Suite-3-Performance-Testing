@@ -11,6 +11,10 @@
 change_version_tracker.json
 node_modules/
 
+# Distribution / packaging
+dist/
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -21,3 +25,9 @@ __pycache__/
 
 # mypy
 .mypy_cache/
+mypy.xml
+
+
+# Unit test / coverage reports
+.coverage
+.coverage.*
