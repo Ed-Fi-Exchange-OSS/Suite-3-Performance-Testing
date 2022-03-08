@@ -10,7 +10,10 @@ from helpers.argparser import parse_main_arguments  # type: ignore
 
 def main() -> None:
     arguments = parse_main_arguments(sys.argv[1:])
-
+    print(arguments.baseUrl)
+    print(arguments.key)
+    print(arguments.resourceList)
+    print(arguments.pageSize)
 
 if __name__ == "__main__":
     main()

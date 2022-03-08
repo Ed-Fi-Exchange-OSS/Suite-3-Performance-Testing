@@ -9,7 +9,7 @@ from typing import List
 import pytest
 
 
-from edfi_paging_test.helpers.argparser import parse_main_arguments, MainArguments
+from edfi_paging_test.helpers.argparser import parse_main_arguments
 
 
 BASEURL = "http://localhost:54746"
@@ -43,7 +43,7 @@ def _assert_error_message(capsys) -> None:
     assert out == "", "There should not be an output message"
 
 
-def test_describe_given_arguments_do_not_include_baseUrl() -> None:
+def describe_given_arguments_do_not_include_baseUrl() -> None:
     def it_should_show_help(capsys) -> None:
         with pytest.raises(SystemExit):
             args = [
@@ -76,4 +76,4 @@ def describe_given_arguments_do_not_include_secret() -> None:
                 ]
 
             parse_main_arguments(args)
-            _assert_error_message(capsys) 
+            _assert_error_message(capsys)

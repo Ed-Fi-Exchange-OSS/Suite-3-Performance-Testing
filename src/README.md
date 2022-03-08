@@ -4,7 +4,7 @@ Provides data out performance metrics for the ODS / AP aimed at analysis of bott
 
 ## Getting Started
 
-1. Requires Python 3.6+ and Poetry.
+1. Requires Python 3.9+ and Poetry.
 1. Install required Python packages:
 
    ```bash
@@ -18,7 +18,7 @@ Sample call using full integrated security, loading from the sample files
 directory:
 
 ```bash
-poetry run python edfi_paging_test --server localhost --dbname lms_toolkit --useintegratedsecurity
+poetry run python edfi_paging_test -b "http://localhost:54746" -k "testkey" -s "testsecret" -l "resource1" "resource2"  
 ```
 
 ## Developer Notes

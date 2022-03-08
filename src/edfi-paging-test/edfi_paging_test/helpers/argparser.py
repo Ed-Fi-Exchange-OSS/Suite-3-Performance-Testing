@@ -93,7 +93,7 @@ def parse_main_arguments(args_in: List[str]) -> MainArguments:
         "-l",
         "--resourceList",
         help="(Optional) List of resources to test  - if not provided, all resources will be retrieved",
-        type=List[str],
+        nargs='+'
     )
     parser.add(  # type: ignore
         "-p",

@@ -10,3 +10,14 @@
 *.pdf
 change_version_tracker.json
 node_modules/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Unit test / coverage reports
+.pytest_cache/
+
+# mypy
+.mypy_cache/
