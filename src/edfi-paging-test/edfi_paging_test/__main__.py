@@ -15,5 +15,6 @@ def main() -> None:
     print(arguments.resourceList)
     print(arguments.pageSize)
 
+
 if __name__ == "__main__":
     main()
