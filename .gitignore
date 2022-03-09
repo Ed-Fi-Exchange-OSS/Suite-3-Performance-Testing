@@ -10,3 +10,33 @@
 *.pdf
 change_version_tracker.json
 node_modules/
+
+# Distribution / packaging
+dist/
+
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Unit test / coverage reports
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+mypy.xml
+
+
+# Unit test / coverage reports
+.coverage
+.coverage.*
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+.python-version
