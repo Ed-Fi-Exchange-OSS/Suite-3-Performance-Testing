@@ -38,3 +38,5 @@ mypy.xml
 env/
 venv/
 ENV/
+
+.python-version

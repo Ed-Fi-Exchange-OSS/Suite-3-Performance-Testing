@@ -1,6 +1,8 @@
 # Paging Volume Test
 
-Provides data out performance metrics for the ODS / AP aimed at analysis of bottlenecks, and providing recommendations for server sizing for representative agency simulation sizes.
+Provides data out performance metrics for the ODS / AP aimed at analysis of
+bottlenecks, and providing recommendations for server sizing for representative
+agency simulation sizes.
 
 ## Getting Started
 
@@ -12,31 +14,35 @@ Provides data out performance metrics for the ODS / AP aimed at analysis of bott
    ```
 
 ## Running the Tool
+
 For detailed help, execute `poetry run python edfi_paging_test -h`.
 
 Sample call using full integrated security, loading from the sample files
 directory:
 
 ```bash
-poetry run python edfi_paging_test -b "http://localhost:54746" -k "testkey" -s "testsecret" -l "resource1" "resource2"  
+poetry run python edfi_paging_test -b "http://localhost:54746" -k "testkey" -s "testsecret" -l "resource1" "resource2"
 ```
 
 ## Developer Notes
-Supported parameters:
 
-|Command Line Argument        | Required            | Description                                                                                  |
-| --------------------------- | ------------------- | ---------------------------------------------------------------------------------------------| 
-| `-b` or `--baseUrl`         | yes (no default)    | ​The base url used to derived api, metadata, oauth, and dependency urls (e.g., http://server).|	       
-| `-k` or `--key`             | yes (no default)    | The web API OAuth key                                                                        |
-| `-s` or `--secret`          | yes (no default)    | The web API OAuth secret                                                                     | 
-| `-c` or `--connectionLimit` | no (default: 4)     | Maximum concurrent connections to api                                                        |
-| `-o` or `--output`          | no default: out)    | Directory for writing results                                                                | 
-| `-t` or `--contentType`     | no (default: csv)   | CSV or JSON                                                                                  | 
-| `-r` or `--retries`         | no (default: 5)     | Number of time to retry in case of error                                                     | 
-| `-l` or `--resourceList`    | no (no default)     | (Optional) List of resources to test  - if not provided, all resources will be retrieved     |
-| `-p` or `--pageSize`        | no (default: 100)   | The page size to request. Max: 500.                                                          | 
+Supported arguments:
 
+| Command Line Argument       | Required          | Description                                                                                    |
+| --------------------------- | ----------------- | ---------------------------------------------------------------------------------------------- |
+| `-b` or `--baseUrl`         | yes (no default)  | ​The base url used to derived api, metadata, oauth, and dependency urls (e.g., http://server).  |
+| `-k` or `--key`             | yes (no default)  | The web API OAuth key                                                                          |
+| `-s` or `--secret`          | yes (no default)  | The web API OAuth secret                                                                       |
+| `-c` or `--connectionLimit` | no (default: 4)   | Maximum concurrent connections to api                                                          |
+| `-o` or `--output`          | no default: out)  | Directory for writing results                                                                  |
+| `-t` or `--contentType`     | no (default: csv) | CSV or JSON                                                                                    |
+| `-r` or `--retries`         | no (default: 5)   | Number of time to retry in case of error                                                       |
+| `-l` or `--resourceList`    | no (no default)   | (Optional) List of resources to test  - if not provided, all resources will be retrieved       |
+| `-p` or `--pageSize`        | no (default: 100) | The page size to request. Max: 500.                                                            |
 
+Each argument can also be set by environment variable, or by using as `.env`
+file. See [.env.example](edfi_paging_test/.env.example). Arguments provided at
+the command line override any arguments provided by environment variable.
 
 ### Dev Operations
 
