@@ -93,7 +93,7 @@ class PaginatedResult():
             self.current_page_items = self._api_response
         return self
 
-    def get_all_pages(self) -> List[Dict[str, Any]]:
+    def get_all_pages(self) -> List[Any]:
         """
         Returns all items from the PaginatedResult object within all available pages
         Returns
@@ -102,9 +102,9 @@ class PaginatedResult():
             A list of all parsed results
         """
 
-        items: List[Dict[str, Any]] = []
+        items: List[Any] = []
         while True:
-            items.append(self.current_page_items)
+            items = items + list(self.current_page_items)
             if self.get_next_page() is None:
                 break
 
