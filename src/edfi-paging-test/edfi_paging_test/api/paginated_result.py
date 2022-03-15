@@ -20,39 +20,33 @@ class PaginatedResult():
         The request client.
     page_size : int
         The number of items per page.
+    total_count : int
+        Total number of items.
     api_response : dict
         The original response as a dictionary.
     resource_name : str
         The name used by the API for the current resource.
-    requested_url : str
-        The URL where you got the response from.
     current_page : Optional[str]
         The page that you have requested.
     Attributes
     ----------
-    request_client : RequestClient
-        The request client.
-    page_size : int
-        The number of items per page.
-    requested_url : str
-        The URL where you got the response from.
-    current_page_items : list
+    current_page_items : Dict[str, Any]
         The list of items for the current page.
     """
 
     def __init__(
         self,
         request_client: "RequestClient",
-        page_size: int,
-        api_response: Dict[str, Any],
         resource_name: str,
-        requested_url: str,
+        page_size: int,
+        total_count: int,
+        api_response: Dict[str, Any],
         current_page: int = 1,
     ):
         self.request_client = request_client
         self.page_size = page_size
-        self.requested_url = requested_url
         self.current_page = current_page
+        self.total_count = total_count
 
         if api_response is None:
             self.current_page_items: Dict[str, Any] = []
@@ -61,15 +55,6 @@ class PaginatedResult():
 
         self._api_response = api_response
         self._resource_name = resource_name
-
-    @property
-    def total_pages(self) -> int:
-        """int: Number of pages for the current resource with the current page size.
-        The value is obtained from the original request dictionary.
-        """
-        if "total" not in self._api_response:
-            return 0
-        return int(self._api_response["total"])
 
     def get_next_page(self) -> Optional['PaginatedResult']:
         """Send an HTTP GET request for the next page.
@@ -83,8 +68,6 @@ class PaginatedResult():
         self.current_page = self.current_page + 1
         next_url = f"{self.request_client.build_url_for_resource(self._resource_name)}?{self.request_client.build_query_params_for_page(self.current_page, self.page_size)}"
         response = self.request_client.get(next_url)
-
-        self.requested_url = next_url
 
         self._api_response = response
         if len(self._api_response) == 0:

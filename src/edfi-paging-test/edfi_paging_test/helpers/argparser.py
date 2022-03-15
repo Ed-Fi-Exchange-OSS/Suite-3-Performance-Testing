@@ -20,7 +20,7 @@ class MainArguments:
     secret: str
     output: str
     contentType: str
-    retries: str
+    retries: int
     resourceList: List[str]
     pageSize: int = 100
 

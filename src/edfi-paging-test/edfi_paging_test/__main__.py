@@ -13,7 +13,7 @@ def main() -> None:
     load_dotenv()
     arguments = parse_main_arguments()
     request_client: RequestClient = RequestClient(
-        api_base_url=arguments.baseUrl, api_key=arguments.key, api_secret=arguments.secret
+        api_base_url=arguments.baseUrl, api_key=arguments.key, api_secret=arguments.secret, retry_count=arguments.retries, page_size=arguments.pageSize
     )
     resources = request_client.get_all()
 

@@ -20,13 +20,9 @@ from requests_oauthlib import OAuth2Session  # type: ignore
 from edfi_paging_test.api.paginated_result import PaginatedResult
 
 
-API_BASE_URL = str(os.environ.get("PERF_API_BASEURL"))
-DEFAULT_PAGE_SIZE = int(os.environ.get("PERF_API_PAGE_SIZE") or 100)
 REQUEST_RETRY_TIMEOUT_SECONDS = 60
-REQUEST_RETRY_COUNT = int(os.environ.get("PERF_RETRY_COUNT") or 4)
-API_KEY = str(os.environ.get("PERF_API_KEY"))
-API_SECRET = str(os.environ.get("PERF_API_SECRET"))
-PERF_RESOURCE_LIST = list(os.environ.get("PERF_RESOURCE_LIST") or ["StudentSectionAttendanceEvents"])
+PERF_RESOURCE_LIST = list(
+    os.environ.get("PERF_RESOURCE_LIST") or ["StudentSectionAttendanceEvents"])
 OAUTH_TOKEN_URL = "/oauth/token/"
 
 
@@ -48,39 +44,19 @@ class RequestClient:
     oauth : OAuth2Session
         The two-legged authenticated OAuth2 session.
     """
-    api_key: str = API_KEY
-    api_secret: str = API_SECRET
-    api_base_url: str = API_BASE_URL
+    api_key: str = str(os.environ.get("PERF_API_KEY"))
+    api_secret: str = str(os.environ.get("PERF_API_SECRET"))
+    api_base_url: str = str(os.environ.get("PERF_API_BASEURL"))
+    retry_count: int = int(os.environ.get("PERF_RETRY_COUNT") or 4)
+    page_size: int = int(os.environ.get("PERF_API_PAGE_SIZE") or 100)
 
     def __post_init__(self) -> None:
-        self._authorize()
-
-    """ @property """
-    def _authorize(self) -> None:
-        auth = HTTPBasicAuth(self.api_key, self.api_secret)
+        self.auth = HTTPBasicAuth(self.api_key, self.api_secret)
         client = BackendApplicationClient(client_id=self.api_key)
         self.oauth = OAuth2Session(client=client)
-        self.oauth.fetch_token(self.api_base_url + OAUTH_TOKEN_URL, auth=auth)
 
-    def _check_for_success(self, response: Response, success_status: HTTPStatus) -> None:
-        """
-        Check a response for success. If unsuccessful, log and
-        raise an exception.
-        Parameters
-        ----------
-        response: Response
-            The HTTP response to check
-        success_status: HTTPStatus
-            The HTTP status that indicates success
-        Raises
-        -------
-        RuntimeError
-            If the response indicates failure
-        """
-        if response.status_code != success_status:
-            raise RuntimeError(
-                f"{response.reason} ({response.status_code}): {response.text}"
-            )
+    def _authorize(self) -> None:
+        self.oauth.fetch_token(self.api_base_url + OAUTH_TOKEN_URL, auth=self.auth)
 
     def _check_response(
         self, response: Response, success_status: HTTPStatus, http_method: str, url: str
@@ -102,24 +78,11 @@ class RequestClient:
         RuntimeError
             If the response indicates failure
         """
-        self._check_for_success(response, success_status)
+        if response.status_code != success_status:
+            raise RuntimeError(
+                f"{response.reason} ({response.status_code}): {response.text}"
+            )
 
-    @retry(
-        retry_on_exceptions=(
-            IOError,
-            TokenExpiredError,
-            ConnectionError,
-            RequestException,
-            HTTPError,
-            ProtocolError,
-            Timeout,
-            RuntimeError,
-            socket.timeout,
-            socket.error
-        ),
-        max_calls_total=REQUEST_RETRY_COUNT,
-        retry_window_after_first_call_in_seconds=REQUEST_RETRY_TIMEOUT_SECONDS,
-    )
     def get(self, resource: str) -> Dict[str, Any]:
         """
         Send an HTTP GET request.
@@ -139,6 +102,9 @@ class RequestClient:
         assert isinstance(
             self.api_base_url, str
         ), "Property `api_base_url` should be of type `str`."
+
+        if(not self.oauth.authorized):
+            self._authorize()
 
         url = self.api_base_url + resource
         try:
@@ -168,7 +134,62 @@ class RequestClient:
             socket.timeout,
             socket.error
         ),
-        max_calls_total=REQUEST_RETRY_COUNT,
+        max_calls_total=retry_count,
+        retry_window_after_first_call_in_seconds=REQUEST_RETRY_TIMEOUT_SECONDS,
+    )
+    def get_total(self, resource: str) -> int:
+        """
+        Send an HTTP GET request.
+        Parameters
+        ----------
+        resource : str
+            The resource endpoint that you want to request.
+        Returns
+        -------
+        int
+            Total resource count
+        Raises
+        -------
+        RuntimeError
+            If the GET operation is unsuccessful
+        """
+        assert isinstance(
+            self.api_base_url, str
+        ), "Property `api_base_url` should be of type `str`."
+
+        if(not self.oauth.authorized):
+            self._authorize()
+
+        url = self.api_base_url + resource
+        try:
+            response = self.oauth.get(
+                url=url,
+                auth=self.oauth.auth,
+                )
+        except TokenExpiredError:
+            self._authorize()
+            raise
+
+        self._check_response(
+            response=response, success_status=response.status_code, http_method="GET", url=url
+        )
+        total = response.headers["total-count"]  # type: ignore
+        return int(total)
+
+    @retry(
+        retry_on_exceptions=(
+            IOError,
+            TokenExpiredError,
+            ConnectionError,
+            RequestException,
+            HTTPError,
+            ProtocolError,
+            Timeout,
+            RuntimeError,
+            socket.timeout,
+            socket.error
+        ),
+        max_calls_total=retry_count,
         retry_window_after_first_call_in_seconds=REQUEST_RETRY_TIMEOUT_SECONDS,
     )
     def build_url_for_resource(self, resource) -> str:
@@ -178,7 +199,10 @@ class RequestClient:
         page_offset = (page_index - 1) * page_size
         return f"offset={page_offset}&limit={page_size}"
 
-    def get_all(self, resource: str = PERF_RESOURCE_LIST[0], page_size: int = DEFAULT_PAGE_SIZE) -> List[Dict[str, Any]]:
+    def build_query_params_for_total_count(self) -> str:
+        return f"offset={0}&limit={0}&totalCount=true"
+
+    def get_all(self, resource: str = PERF_RESOURCE_LIST[0], page_size: int = page_size) -> List[Dict[str, Any]]:
         """
         Parameters
         ----------
@@ -190,11 +214,15 @@ class RequestClient:
             A paged response from the API
         """
         url = f"{self.build_url_for_resource(resource)}?{self.build_query_params_for_page(1, page_size)}"
-
-        return PaginatedResult(
+        total_count_url = f"{self.build_url_for_resource(resource)}?{self.build_query_params_for_total_count()}"
+        pagination_result = PaginatedResult(
             self,
-            page_size,
-            self.get(url),
-            PERF_RESOURCE_LIST[0],
-            self.api_base_url + url,
-        ).get_all_pages()
+            page_size=page_size,
+            total_count=self.get_total(total_count_url),
+            api_response=self.get(url),
+            resource_name=PERF_RESOURCE_LIST[0],
+        )
+
+        result = pagination_result.get_all_pages()
+        assert pagination_result.total_count == len(result), f"Expected {pagination_result.total_count} results, got: {len(result)}"
+        return result
