@@ -90,7 +90,7 @@ def _run_coverage_without_report():
             "-m",
             "pytest",
             "tests",
-            "--junitxml=junit.xml"
+            "--junitxml=pytest-junit.xml"
         ],
         exit_immediately=False,
     )
@@ -111,7 +111,7 @@ def _run_coverage():
 
 
 def _run_coverage_html(exit_immediately: bool = True):
-    _run_coverage_without_report()
+    _run_coverage()
 
     _run_command(
         [
@@ -125,7 +125,7 @@ def _run_coverage_html(exit_immediately: bool = True):
 
 
 def _run_coverage_xml():
-    _run_command(
+    _run_coverage_without_report(
         [
             "poetry",
             "run",
@@ -150,7 +150,7 @@ def _run_typecheck():
 
 
 def _run_typecheck_xml(exit_immediately: bool = True):
-    _run_command(["poetry", "run", "mypy", "--junit-xml", "mypy.xml"], exit_immediately)
+    _run_command(["poetry", "run", "mypy", "--junit-xml", "mypy-junit.xml"], exit_immediately)
 
 
 def _run_build(exit_immediately: bool = True):
