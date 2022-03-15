@@ -387,6 +387,14 @@ optional = false
 python-versions = ">=3.7"
 
 [[package]]
+name = "types-oauthlib"
+version = "3.1.6"
+description = "Typing stubs for oauthlib"
+category = "dev"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "types-requests"
 version = "2.27.11"
 description = "Typing stubs for requests"
@@ -429,7 +437,7 @@ socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "2e033fcda8218a3acf374e038da2d405a2e02234f18d33006bc4db94c998aca8"
+content-hash = "48dd6119a39894cf1665850392db79735db55acdb05ec28569d63d1eea632329"
 
 [metadata.files]
 atomicwrites = [
@@ -645,6 +653,10 @@ six = [
 tomli = [
     {file = "tomli-2.0.1-py3-none-any.whl", hash = "sha256:939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc"},
     {file = "tomli-2.0.1.tar.gz", hash = "sha256:de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f"},
+]
+types-oauthlib = [
+    {file = "types-oauthlib-3.1.6.tar.gz", hash = "sha256:010c980847cf9b2e3ed3afd74dcdfb70b4e86117abad84b4125f57f935a764eb"},
+    {file = "types_oauthlib-3.1.6-py3-none-any.whl", hash = "sha256:a3582161089dc217068aab2567d72a5120f70eef56b222c63d767dc426bb1734"},
 ]
 types-requests = [
     {file = "types-requests-2.27.11.tar.gz", hash = "sha256:6a7ed24b21780af4a5b5e24c310b2cd885fb612df5fd95584d03d87e5f2a195a"},
