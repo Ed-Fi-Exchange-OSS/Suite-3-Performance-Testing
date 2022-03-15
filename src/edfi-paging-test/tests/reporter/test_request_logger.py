@@ -33,7 +33,7 @@ def describe_when_logging_a_request() -> None:
         def logs(mocker) -> List[Measurement]:
             request_log = [MEASUREMENT_1]
             mocker.patch(
-                "edfi_paging_test.helpers.request_logger._request_log", request_log
+                "edfi_paging_test.reporter.request_logger._request_log", request_log
             )
 
             log_request(MEASUREMENT_2)
@@ -61,7 +61,7 @@ def describe_when_converting_to_a_DataFrame() -> None:
             # Arrange
             request_log = [MEASUREMENT_1, MEASUREMENT_2]
             mocker.patch(
-                "edfi_paging_test.helpers.request_logger._request_log", request_log
+                "edfi_paging_test.reporter.request_logger._request_log", request_log
             )
 
             # Act
