@@ -14,15 +14,16 @@ from requests import Response
 from requests.exceptions import ConnectionError, HTTPError, RequestException, Timeout
 from requests.auth import HTTPBasicAuth
 from urllib3.exceptions import ProtocolError
-from oauthlib.oauth2 import BackendApplicationClient  # type: ignore
-from oauthlib.oauth2 import TokenExpiredError  # type: ignore
+from oauthlib.oauth2 import BackendApplicationClient
+from oauthlib.oauth2 import TokenExpiredError
 from requests_oauthlib import OAuth2Session  # type: ignore
 from edfi_paging_test.api.paginated_result import PaginatedResult
 
 
 REQUEST_RETRY_TIMEOUT_SECONDS = 60
 PERF_RESOURCE_LIST = list(
-    os.environ.get("PERF_RESOURCE_LIST") or ["StudentSectionAttendanceEvents"])
+    os.environ.get("PERF_RESOURCE_LIST") or ["StudentSectionAttendanceEvents"]
+)
 OAUTH_TOKEN_URL = "/oauth/token/"
 
 
@@ -44,6 +45,7 @@ class RequestClient:
     oauth : OAuth2Session
         The two-legged authenticated OAuth2 session.
     """
+
     api_key: str = str(os.environ.get("PERF_API_KEY"))
     api_secret: str = str(os.environ.get("PERF_API_SECRET"))
     api_base_url: str = str(os.environ.get("PERF_API_BASEURL"))
@@ -103,7 +105,7 @@ class RequestClient:
             self.api_base_url, str
         ), "Property `api_base_url` should be of type `str`."
 
-        if(not self.oauth.authorized):
+        if not self.oauth.authorized:
             self._authorize()
 
         url = self.api_base_url + resource
@@ -111,13 +113,13 @@ class RequestClient:
             response = self.oauth.get(
                 url=url,
                 auth=self.oauth.auth,
-                )
+            )
         except TokenExpiredError:
             self._authorize()
             raise
 
         self._check_response(
-            response=response, success_status=response.status_code, http_method="GET", url=url
+            response=response, success_status=HTTPStatus.OK, http_method="GET", url=url
         )
         return response.json()  # type: ignore
 
@@ -132,7 +134,7 @@ class RequestClient:
             Timeout,
             RuntimeError,
             socket.timeout,
-            socket.error
+            socket.error,
         ),
         max_calls_total=retry_count,
         retry_window_after_first_call_in_seconds=REQUEST_RETRY_TIMEOUT_SECONDS,
@@ -157,7 +159,7 @@ class RequestClient:
             self.api_base_url, str
         ), "Property `api_base_url` should be of type `str`."
 
-        if(not self.oauth.authorized):
+        if not self.oauth.authorized:
             self._authorize()
 
         url = self.api_base_url + resource
@@ -165,13 +167,16 @@ class RequestClient:
             response = self.oauth.get(
                 url=url,
                 auth=self.oauth.auth,
-                )
+            )
         except TokenExpiredError:
             self._authorize()
             raise
 
         self._check_response(
-            response=response, success_status=response.status_code, http_method="GET", url=url
+            response=response,
+            success_status=response.status_code,
+            http_method="GET",
+            url=url,
         )
         total = response.headers["total-count"]  # type: ignore
         return int(total)
@@ -187,7 +192,7 @@ class RequestClient:
             Timeout,
             RuntimeError,
             socket.timeout,
-            socket.error
+            socket.error,
         ),
         max_calls_total=retry_count,
         retry_window_after_first_call_in_seconds=REQUEST_RETRY_TIMEOUT_SECONDS,
@@ -202,7 +207,9 @@ class RequestClient:
     def build_query_params_for_total_count(self) -> str:
         return f"offset={0}&limit={0}&totalCount=true"
 
-    def get_all(self, resource: str = PERF_RESOURCE_LIST[0], page_size: int = page_size) -> List[Dict[str, Any]]:
+    def get_all(
+        self, resource: str = PERF_RESOURCE_LIST[0], page_size: int = page_size
+    ) -> List[Dict[str, Any]]:
         """
         Parameters
         ----------
@@ -224,5 +231,7 @@ class RequestClient:
         )
 
         result = pagination_result.get_all_pages()
-        assert pagination_result.total_count == len(result), f"Expected {pagination_result.total_count} results, got: {len(result)}"
+        assert pagination_result.total_count == len(
+            result
+        ), f"Expected {pagination_result.total_count} results, got: {len(result)}"
         return result
