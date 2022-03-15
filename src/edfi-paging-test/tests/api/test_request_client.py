@@ -3,30 +3,33 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
+import json
 import pytest
-import os
+
+import requests_mock
 
 # from edfi_paging_test.api.paginated_result import PaginatedResult
 from edfi_paging_test.api.request_client import RequestClient
-# from unittest.mock import MagicMock
-from unittest.mock import patch
+
 
 FAKE_KEY = "TEST_KEY"
 FAKE_SECRET = "TEST_SECRET"
-FAKE_ENDPOINT_URL = "FAKE_URL"
-API_BASE_URL = "http://localhost:54746"
+FAKE_ENDPOINT = "/ENDPOINT"
+API_BASE_URL = "https://localhost:54746"
+OAUTH_URL = "https://localhost:54746/oauth/token/"
 PAGE_SIZE = 10
 RETRY_COUNT = 0
+TOKEN = "038f4cb947c04fb4851fc3792c6b004f"
+TOKEN_RESPONSE = {
+  "access_token": "038f4cb947c04fb4851fc3792c6b004f",
+  "expires_in": 1800,
+  "token_type": "bearer"
+}
 
-
-@patch.dict(os.environ, {"OAUTHLIB_INSECURE_TRANSPORT": "1"})
 def describe_testing_RequestClient_class():
-    @pytest.fixture
+    @pytest.fixture()
     def default_request_client():
         return RequestClient(api_base_url=API_BASE_URL, api_key=FAKE_KEY, api_secret=FAKE_SECRET, page_size=PAGE_SIZE, retry_count=RETRY_COUNT)
-
-    class MockOAuth(object):
-        authorized = True
 
     def describe_when_constructing_instance():
 
@@ -85,24 +88,20 @@ def describe_testing_RequestClient_class():
                 assert result == expected_result
 
 
-"""     def describe_when_get_method_is_called():
+    def describe_when_get_method_is_called():
         def describe_given_error_occurs():
-            def it_raises_an_HTTPError(requests_mock, default_request_client):
-                expected_url = API_BASE_URL + FAKE_ENDPOINT_URL
+            def it_raises_an_error(default_request_client):
+                expected_url = API_BASE_URL + FAKE_ENDPOINT
 
-                # Arrange
-                default_request_client.oauth =  MagicMock(return_value=MockOAuth())
-                requests_mock.get(
-                    expected_url, reason="BadRequest", status_code=400, text="no good"
-                )
+                with pytest.raises(RuntimeError):
+                    with requests_mock.Mocker() as m:
+                        # Arrange
+                        m.post(OAUTH_URL, status_code=201, text=json.dumps(TOKEN_RESPONSE))
+                        m.get(expected_url, status_code=400, text="{\"error\":\"something bad\"}")
 
-                # Act
-                try:
-                    default_request_client.get(FAKE_ENDPOINT_URL)
-                    raise RuntimeError("expected an error to occur")
-                except RuntimeError as ex:
-                    assert str(ex) == "BadRequest (400): no good"
-
+                        # Act
+                        default_request_client.get(FAKE_ENDPOINT)
+"""
     def describe_when_getting_results():
         def describe_given_there_is_one_result_page():
             def it_returns_the_page(default_request_client, requests_mock):
