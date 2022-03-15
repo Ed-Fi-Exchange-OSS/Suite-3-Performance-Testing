@@ -96,7 +96,7 @@ def _run_coverage_without_report():
     )
 
 
-def _run_coverage():
+def _run_coverage(exit_immediately: bool = True):
     _run_coverage_without_report()
 
     _run_command(
@@ -106,12 +106,12 @@ def _run_coverage():
             "coverage",
             "report",
         ],
-        exit_immediately=True,
+        exit_immediately=exit_immediately,
     )
 
 
 def _run_coverage_html(exit_immediately: bool = True):
-    _run_coverage()
+    _run_coverage(exit_immediately)
 
     _run_command(
         [
