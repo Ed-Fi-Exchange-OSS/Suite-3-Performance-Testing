@@ -90,6 +90,7 @@ def _run_coverage_without_report():
             "-m",
             "pytest",
             "tests",
+            "--junitxml=junit.xml"
         ],
         exit_immediately=False,
     )
