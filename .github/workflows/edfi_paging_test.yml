@@ -60,12 +60,15 @@ jobs:
         uses: dorny/test-reporter@0d00bb14cb0cc2c9b8985df6e81dd333188224e1 #v1.5.0
         if: success() || failure()
         with:
-            name: Pytest and MyPy results
-            path: "**/*junit.xml"
+            name: Pytest results
+            path: "**/pytest-junit.xml"
             reporter: java-junit
 
-      - name: Archive code coverage results
-        uses: actions/upload-artifact@e448a9b857ee2131e752b06002bf0e093c65e571
+      - name: Test Report
+        uses: dorny/test-reporter@0d00bb14cb0cc2c9b8985df6e81dd333188224e1 #v1.5.0
+        if: success() || failure()
         with:
-          name: code-coverage-report
-          path: ${{ env.SRC_DIR }}/htmlcov/
+            name: MyPy results
+            path: "**/mypy-junit.xml"
+            reporter: java-junit
+
