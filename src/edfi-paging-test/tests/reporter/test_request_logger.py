@@ -3,8 +3,8 @@ from typing import List
 from pandas import DataFrame
 import pytest
 
-from edfi_paging_test.helpers.measurement import Measurement
-from edfi_paging_test.helpers.request_logger import get_DataFrame, log_request
+from edfi_paging_test.reporter.measurement import Measurement
+from edfi_paging_test.reporter.request_logger import get_DataFrame, log_request
 
 
 MEASUREMENT_1 = Measurement(

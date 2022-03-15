@@ -2,7 +2,7 @@ from typing import List
 
 from pandas import DataFrame
 
-from edfi_paging_test.helpers.measurement import Measurement
+from edfi_paging_test.reporter.measurement import Measurement
 
 _request_log: List[Measurement] = []
 

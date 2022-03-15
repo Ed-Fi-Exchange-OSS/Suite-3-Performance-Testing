@@ -3,7 +3,7 @@ from typing import Tuple
 
 import pytest
 
-from edfi_paging_test.helpers.measurement import Measurement
+from edfi_paging_test.reporter.measurement import Measurement
 
 SLEEP_TIME = 0.1
 
