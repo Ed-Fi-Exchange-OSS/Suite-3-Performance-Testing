@@ -1,4 +1,8 @@
 from dataclasses import dataclass
+from typing import Callable, Tuple, TypeVar
+import timeit
+
+T = TypeVar('T')
 
 
 @dataclass
@@ -10,3 +14,13 @@ class Measurement:
     number_of_records: int
     elapsed_time: int
     http_status_code: int
+
+    @staticmethod
+    def timeit(callback: Callable[[], T]) -> Tuple[float, T]:
+        start = timeit.default_timer()
+
+        response = callback()
+
+        elapsed = timeit.default_timer() - start
+
+        return (elapsed, response)
