@@ -26,6 +26,7 @@ TOKEN_RESPONSE = {
   "token_type": "bearer"
 }
 
+
 def describe_testing_RequestClient_class():
     @pytest.fixture()
     def default_request_client():
@@ -87,7 +88,6 @@ def describe_testing_RequestClient_class():
                 # Assert
                 assert result == expected_result
 
-
     def describe_when_get_method_is_called():
         def describe_given_error_occurs():
             def it_raises_an_error(default_request_client):
@@ -101,6 +101,8 @@ def describe_testing_RequestClient_class():
 
                         # Act
                         default_request_client.get(FAKE_ENDPOINT)
+
+
 """
     def describe_when_getting_results():
         def describe_given_there_is_one_result_page():
