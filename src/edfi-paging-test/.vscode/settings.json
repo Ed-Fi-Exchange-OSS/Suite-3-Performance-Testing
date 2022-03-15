@@ -1,3 +1,12 @@
 {
-    "python.formatting.provider": "black"
+    "python.analysis.extraPaths": ["./edfi_paging_test", "./tests"],
+    "python.analysis.typeCheckingMode": "basic",
+    "python.languageServer": "Pylance",
+    "python.linting.pylintEnabled": false,
+    "python.linting.enabled": true,
+    "python.linting.flake8Enabled": true,
+    "python.linting.flake8Args": [
+        "--max-line-length=110"
+    ],
+    "python.formatting.provider": "black",
 }

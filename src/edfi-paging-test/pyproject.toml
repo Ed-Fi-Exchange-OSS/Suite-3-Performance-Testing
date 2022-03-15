@@ -25,6 +25,7 @@ types-oauthlib = "^3.1.6"
 pytest-mock = "^3.7.0"
 requests-mock = "^1.9.3"
 types-requests = "^2.27.12"
+data-science-types = "^0.2.23"
 
 
 
