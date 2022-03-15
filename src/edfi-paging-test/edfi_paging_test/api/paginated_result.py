@@ -66,7 +66,10 @@ class PaginatedResult():
         """
 
         self.current_page = self.current_page + 1
-        next_url = f"{self.request_client.build_url_for_resource(self._resource_name)}?{self.request_client.build_query_params_for_page(self.current_page, self.page_size)}"
+        next_url = (
+            f"{self.request_client.build_url_for_resource(self._resource_name)}?"
+            f"{self.request_client.build_query_params_for_page(self.current_page, self.page_size)}"
+        )
         response = self.request_client.get(next_url)
 
         self._api_response = response

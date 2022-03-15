@@ -32,6 +32,7 @@ class RequestClient:
     """
     The RequestClient class wraps all the configuration complexity related
     to authentication and http requests
+
     Parameters
     ----------
     api_key : str
@@ -40,6 +41,7 @@ class RequestClient:
         The API client secret for EdFi.
     api_base_url : [str]
         The API base url.
+
     Attributes
     ----------
     oauth : OAuth2Session
@@ -65,6 +67,7 @@ class RequestClient:
     ) -> None:
         """
         Check a response for success
+
         Parameters
         ----------
         response: Response
@@ -75,6 +78,7 @@ class RequestClient:
             A human-readable string describing the http method, used for logging
         url: str
             The url of the request, used for logging
+
         Raises
         -------
         RuntimeError
@@ -88,14 +92,17 @@ class RequestClient:
     def get(self, resource: str) -> Dict[str, Any]:
         """
         Send an HTTP GET request.
+
         Parameters
         ----------
         resource : str
             The resource endpoint that you want to request.
+
         Returns
         -------
         dict
             A parsed response from the server
+
         Raises
         -------
         RuntimeError
@@ -142,14 +149,17 @@ class RequestClient:
     def get_total(self, resource: str) -> int:
         """
         Send an HTTP GET request.
+
         Parameters
         ----------
         resource : str
             The resource endpoint that you want to request.
+
         Returns
         -------
         int
             Total resource count
+
         Raises
         -------
         RuntimeError
@@ -170,6 +180,7 @@ class RequestClient:
             )
         except TokenExpiredError:
             self._authorize()
+            # Re-raise the exception to trigger an automated retry
             raise
 
         self._check_response(
@@ -211,12 +222,15 @@ class RequestClient:
         self, resource: str = PERF_RESOURCE_LIST[0], page_size: int = page_size
     ) -> List[Dict[str, Any]]:
         """
+
         Parameters
         ----------
         page_size : int
             Number of items per page
+
         Returns
         -------
+
         PaginatedResult
             A paged response from the API
         """
