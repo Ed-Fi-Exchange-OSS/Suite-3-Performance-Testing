@@ -133,6 +133,7 @@ class RequestClient:
             )
         except TokenExpiredError:
             self._authorize()
+            # Re-raise the exception to trigger an automated retry
             raise
 
         self._check_response(
