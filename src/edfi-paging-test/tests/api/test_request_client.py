@@ -8,8 +8,8 @@ import pytest
 
 import requests_mock
 
-# from edfi_paging_test.api.paginated_result import PaginatedResult
 from edfi_paging_test.api.request_client import RequestClient
+from http import HTTPStatus
 
 
 FAKE_KEY = "TEST_KEY"
@@ -97,82 +97,35 @@ def describe_testing_RequestClient_class():
                     with requests_mock.Mocker() as m:
                         # Arrange
                         m.post(OAUTH_URL, status_code=201, text=json.dumps(TOKEN_RESPONSE))
-                        m.get(expected_url, status_code=400, text="{\"error\":\"something bad\"}")
+                        m.get(expected_url, status_code=HTTPStatus.BAD_REQUEST, text="{\"error\":\"something bad\"}")
 
                         # Act
                         default_request_client.get(FAKE_ENDPOINT)
 
-
-"""
     def describe_when_getting_results():
         def describe_given_there_is_one_result_page():
-            def it_returns_the_page(default_request_client, requests_mock):
-                page_size = 435
-                expected_url_1 = "http://localhost:54746/data/v3/ed-fi/studentSectionAttendanceEvents?offset=0&limit=435"
-
+            def it_returns_the_page(default_request_client):
                 # Arrange
-                resource = "studentSectionAttendanceEvents"
-                text = '[{"id":"b"}]'
-                default_request_client.oauth =  MagicMock(return_value=MockOAuth())
-                requests_mock.get(
-                     expected_url_1, reason="OK", status_code=200, text=text
-                )
+                with requests_mock.Mocker() as m:
+                    expected_url = API_BASE_URL + FAKE_ENDPOINT
+                    m.post(OAUTH_URL, status_code=201, text=json.dumps(TOKEN_RESPONSE))
+                    m.get(expected_url, status_code=HTTPStatus.OK, text="[{\"id\":\"b\"}]")
+                    # Act
+                    result = default_request_client.get(FAKE_ENDPOINT)
 
-                # Act
-                result = default_request_client.get(resource)
+                    # Assert
+                    assert result[0]["id"] == "b"
 
-                assert result.get_all_pages()[0]["id"] == "b"
-
-
-        def describe_given_two_pages_of_results():
-            @pytest.fixture
-            def result(default_request_client, requests_mock):
-                section_id = 3324
-                page_size = 1
-                expected_url_1 = "http://localhost:54746/data/v3/ed-fi/studentSectionAttendanceEvents?offset=0&limit=1"
-                expected_url_2 = "http://localhost:54746/data/v3/ed-fi/studentSectionAttendanceEvents?offset=1&limit=1"
-
+    def describe_when_getting_total_count():
+        def describe_given_there_is_total_count_in_the_header():
+            def it_returns_the_total_count(default_request_client):
                 # Arrange
-                text_1 = '{[{"id":"b"}]}'
-                text_2 = '{[{"id":"c"}]}'
+                with requests_mock.Mocker() as m:
+                    expected_url = API_BASE_URL + FAKE_ENDPOINT
+                    m.post(OAUTH_URL, status_code=201, text=json.dumps(TOKEN_RESPONSE))
+                    m.get(expected_url, status_code=HTTPStatus.OK, headers={'total-count' : '2'})
+                    # Act
+                    result = default_request_client.get_total(FAKE_ENDPOINT)
 
-                def callback(request, context):
-                    if request.url == expected_url_1:
-                        return text_1
-                    else:
-                        return text_2
-
-                requests_mock.get(
-                    expected_url_1, reason="OK", status_code=200, text=callback
-                )
-                requests_mock.get(
-                    expected_url_2, reason="OK", status_code=200, text=callback
-                )
-
-                # Act
-                result = default_request_client.get_all(section_id, page_size)
-
-                return result
-
-            def it_should_return_two_result_pages(result: PaginatedResult, requests_mock):
-                assert result.get_next_page() is not None
-
-            def it_should_contain_first_result(
-                result: PaginatedResult, requests_mock
-            ):
-                assert (
-                    len([r for r in result.current_page_items if r["id"] == "b"]) == 1
-                )
-
-            def it_should_contain_second_result(result, requests_mock):
-                assert (
-                    len(
-                        [
-                            r
-                            for r in result.get_next_page().current_page_items
-                            if r["id"] == "c"
-                        ]
-                    )
-                    == 1
-                )
- """
+                    # Assert
+                    assert result == 2

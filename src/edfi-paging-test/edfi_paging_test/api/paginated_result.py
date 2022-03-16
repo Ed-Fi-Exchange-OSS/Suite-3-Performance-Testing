@@ -14,6 +14,7 @@ class PaginatedResult():
     """
     The PaginatedResult class is bound with information from the response of the
     api, specifically when it returns a list of items that could be paginated.
+
     Parameters
     ----------
     request_client : RequestClient
@@ -28,10 +29,6 @@ class PaginatedResult():
         The name used by the API for the current resource.
     current_page : Optional[str]
         The page that you have requested.
-    Attributes
-    ----------
-    current_page_items : Dict[str, Any]
-        The list of items for the current page.
     """
 
     def __init__(
@@ -49,15 +46,20 @@ class PaginatedResult():
         self.total_count = total_count
 
         if api_response is None:
-            self.current_page_items: Dict[str, Any] = []
+            self._current_page_items: Dict[str, Any] = []
         else:
-            self.current_page_items = api_response
+            self._current_page_items = api_response
 
         self._api_response = api_response
         self._resource_name = resource_name
 
+    @property
+    def current_page_items(self) -> Dict[str, Any] :
+        return self._current_page_items
+
     def get_next_page(self) -> Optional['PaginatedResult']:
         """Send an HTTP GET request for the next page.
+
         Returns
         -------
         Optional[PaginatedResult]
@@ -76,12 +78,13 @@ class PaginatedResult():
         if len(self._api_response) == 0:
             return None
         else:
-            self.current_page_items = self._api_response
+            self._current_page_items = self._api_response
         return self
 
     def get_all_pages(self) -> List[Any]:
         """
         Returns all items from the PaginatedResult object within all available pages
+
         Returns
         -------
         list
@@ -90,7 +93,7 @@ class PaginatedResult():
 
         items: List[Any] = []
         while True:
-            items = items + list(self.current_page_items)
+            items = items + list(self._current_page_items)
             if self.get_next_page() is None:
                 break
 
