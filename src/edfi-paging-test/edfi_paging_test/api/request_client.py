@@ -157,47 +157,10 @@ class RequestClient:
         retry_window_after_first_call_in_seconds=REQUEST_RETRY_TIMEOUT_SECONDS,
     )
     def _get_data(self, relative_url: str) -> Dict[str, Any]:
-        """
-        Send an HTTP GET request.
-
-        Parameters
-        ----------
-        resource : str
-            The resource endpoint that you want to request.
-
-        Returns
-        -------
-        dict
-            A parsed response from the server
-
-        Raises
-        -------
-        RuntimeError
-            If the GET operation is unsuccessful
-        """
         response = self._get(relative_url)
         return response.json()
 
     def _get_total(self, relative_url: str) -> int:
-        """
-        Get total resource count by sending an HTTP GET request.
-
-        Parameters
-        ----------
-        resource : str
-            The resource endpoint that you want to request.
-
-        Returns
-        -------
-        int
-            Total resource count
-
-        Raises
-        -------
-        RuntimeError
-            If the GET operation is unsuccessful
-        """
-
         response = self._get(relative_url)
 
         total = response.headers["total-count"]
@@ -226,14 +189,12 @@ class RequestClient:
         total_count_url = f"{self._build_url_for_resource(resource)}?{self._build_query_params_for_total_count()}"
         return self._get_total(total_count_url)
 
-    def get_next_page(self, page: int = 1, resource: str = PERF_RESOURCE_LIST[0], page_size: int = page_size) -> PaginatedResult:
+    def get_page(self, page: int = 1, resource: str = PERF_RESOURCE_LIST[0], page_size: int = page_size) -> PaginatedResult:
         """Send an HTTP GET request for the next page.
 
         Returns
         -------
-        Optional[PaginatedResult]
-            If there are more pages, this method will send a get request
-            in order to get the elements for the next page.
+        PaginatedResult
         """
 
         next_url = (
@@ -252,6 +213,7 @@ class RequestClient:
         self, resource: str = PERF_RESOURCE_LIST[0], page_size: int = page_size
     ) -> List[Dict[str, Any]]:
         """
+        Send an HTTP GET request for all pages of a resource.
 
         Parameters
         ----------
@@ -264,12 +226,12 @@ class RequestClient:
             A list of all parsed results
         """
 
-        pagination_result = self.get_next_page()
+        pagination_result = self.get_page()
 
         items: List[Any] = []
         while True:
             items = items + list(pagination_result.current_page_items)
-            pagination_result = self.get_next_page(pagination_result.current_page + 1)
+            pagination_result = self.get_page(pagination_result.current_page + 1)
             if(pagination_result.is_empty):
                 break
 
