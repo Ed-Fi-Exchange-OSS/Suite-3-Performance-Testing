@@ -16,12 +16,16 @@ def main() -> None:
         api_base_url=arguments.baseUrl, api_key=arguments.key, api_secret=arguments.secret, retry_count=arguments.retries, page_size=arguments.pageSize
     )
     resources = request_client.get_all()
+    total_count = request_client.get_total()
 
     print(arguments.baseUrl)
     print(arguments.key)
     print(arguments.resourceList)
     print(arguments.pageSize)
     print(f"Resource count: {len(resources)}")
+    assert total_count == len(
+            resources
+    ), f"Expected {total_count} results, got: {len(resources)}"
 
 
 if __name__ == "__main__":

@@ -59,6 +59,16 @@ class RequestClient:
         client = BackendApplicationClient(client_id=self.api_key)
         self.oauth = OAuth2Session(client=client)
 
+    def _build_url_for_resource(self, resource) -> str:
+        return f"/data/v3/ed-fi/{resource}"
+
+    def _build_query_params_for_page(self, page_index, page_size: int) -> str:
+        page_offset = (page_index - 1) * page_size
+        return f"offset={page_offset}&limit={page_size}"
+
+    def _build_query_params_for_total_count(self) -> str:
+        return f"offset={0}&limit={0}&totalCount=true"
+
     def _authorize(self) -> None:
         self.oauth.fetch_token(self.api_base_url + OAUTH_TOKEN_URL, auth=self.auth)
 
@@ -89,13 +99,13 @@ class RequestClient:
                 f"{response.reason} ({response.status_code}): {response.text}"
             )
 
-    def get(self, resource: str) -> Dict[str, Any]:
+    def _get(self, relative_url: str) -> Response:
         """
         Send an HTTP GET request.
 
         Parameters
         ----------
-        resource : str
+        relative_url : str
             The resource endpoint that you want to request.
 
         Returns
@@ -115,7 +125,7 @@ class RequestClient:
         if not self.oauth.authorized:
             self._authorize()
 
-        url = self.api_base_url + resource
+        url = self.api_base_url + relative_url
         try:
             response = self.oauth.get(
                 url=url,
@@ -128,7 +138,7 @@ class RequestClient:
         self._check_response(
             response=response, success_status=HTTPStatus.OK, http_method="GET", url=url
         )
-        return response.json()  # type: ignore
+        return response
 
     @retry(
         retry_on_exceptions=(
@@ -146,9 +156,31 @@ class RequestClient:
         max_calls_total=retry_count,
         retry_window_after_first_call_in_seconds=REQUEST_RETRY_TIMEOUT_SECONDS,
     )
-    def get_total(self, resource: str) -> int:
+    def _get_data(self, relative_url: str) -> Dict[str, Any]:
         """
         Send an HTTP GET request.
+
+        Parameters
+        ----------
+        resource : str
+            The resource endpoint that you want to request.
+
+        Returns
+        -------
+        dict
+            A parsed response from the server
+
+        Raises
+        -------
+        RuntimeError
+            If the GET operation is unsuccessful
+        """
+        response = self._get(relative_url)
+        return response.json()
+
+    def _get_total(self, relative_url: str) -> int:
+        """
+        Get total resource count by sending an HTTP GET request.
 
         Parameters
         ----------
@@ -165,58 +197,56 @@ class RequestClient:
         RuntimeError
             If the GET operation is unsuccessful
         """
-        assert isinstance(
-            self.api_base_url, str
-        ), "Property `api_base_url` should be of type `str`."
 
-        if not self.oauth.authorized:
-            self._authorize()
+        response = self._get(relative_url)
 
-        url = self.api_base_url + resource
-        try:
-            response = self.oauth.get(
-                url=url,
-                auth=self.oauth.auth,
-            )
-        except TokenExpiredError:
-            self._authorize()
-            # Re-raise the exception to trigger an automated retry
-            raise
-
-        self._check_response(
-            response=response,
-            success_status=response.status_code,
-            http_method="GET",
-            url=url,
-        )
-        total = response.headers["total-count"]  # type: ignore
+        total = response.headers["total-count"]
         return int(total)
 
-    @retry(
-        retry_on_exceptions=(
-            IOError,
-            TokenExpiredError,
-            ConnectionError,
-            RequestException,
-            HTTPError,
-            ProtocolError,
-            Timeout,
-            RuntimeError,
-            socket.timeout,
-            socket.error,
-        ),
-        max_calls_total=retry_count,
-        retry_window_after_first_call_in_seconds=REQUEST_RETRY_TIMEOUT_SECONDS,
-    )
-    def build_url_for_resource(self, resource) -> str:
-        return f"/data/v3/ed-fi/{resource}"
+    def get_total(self, resource: str = PERF_RESOURCE_LIST[0]) -> int:
+        """
+        Get total resource count by sending an HTTP GET request.
 
-    def build_query_params_for_page(self, page_index, page_size: int) -> str:
-        page_offset = (page_index - 1) * page_size
-        return f"offset={page_offset}&limit={page_size}"
+        Parameters
+        ----------
+        resource : str
+            The resource endpoint that you want to request.
 
-    def build_query_params_for_total_count(self) -> str:
-        return f"offset={0}&limit={0}&totalCount=true"
+        Returns
+        -------
+        int
+            Total resource count
+
+        Raises
+        -------
+        RuntimeError
+            If the GET operation is unsuccessful
+        """
+
+        total_count_url = f"{self._build_url_for_resource(resource)}?{self._build_query_params_for_total_count()}"
+        return self._get_total(total_count_url)
+
+    def get_next_page(self, page: int = 1, resource: str = PERF_RESOURCE_LIST[0], page_size: int = page_size) -> PaginatedResult:
+        """Send an HTTP GET request for the next page.
+
+        Returns
+        -------
+        Optional[PaginatedResult]
+            If there are more pages, this method will send a get request
+            in order to get the elements for the next page.
+        """
+
+        next_url = (
+            f"{self._build_url_for_resource(resource)}?"
+            f"{self._build_query_params_for_page(page, page_size)}"
+        )
+
+        return PaginatedResult(
+            resource_name=resource,
+            current_page=page,
+            page_size=page_size,
+            api_response=self._get_data(next_url)
+        )
 
     def get_all(
         self, resource: str = PERF_RESOURCE_LIST[0], page_size: int = page_size
@@ -230,22 +260,17 @@ class RequestClient:
 
         Returns
         -------
-
-        PaginatedResult
-            A paged response from the API
+        list
+            A list of all parsed results
         """
-        url = f"{self.build_url_for_resource(resource)}?{self.build_query_params_for_page(1, page_size)}"
-        total_count_url = f"{self.build_url_for_resource(resource)}?{self.build_query_params_for_total_count()}"
-        pagination_result = PaginatedResult(
-            self,
-            page_size=page_size,
-            total_count=self.get_total(total_count_url),
-            api_response=self.get(url),
-            resource_name=PERF_RESOURCE_LIST[0],
-        )
 
-        result = pagination_result.get_all_pages()
-        assert pagination_result.total_count == len(
-            result
-        ), f"Expected {pagination_result.total_count} results, got: {len(result)}"
-        return result
+        pagination_result = self.get_next_page()
+
+        items: List[Any] = []
+        while True:
+            items = items + list(pagination_result.current_page_items)
+            pagination_result = self.get_next_page(pagination_result.current_page + 1)
+            if(pagination_result.is_empty):
+                break
+
+        return items
