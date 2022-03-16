@@ -1,15 +1,13 @@
 import pytest
-from pandas import DataFrame
-import os
+from pandas import DataFrame, read_csv
+from os import path
 
-from pyfakefs.fake_filesystem import FakeFilesystem, OSType
+from pyfakefs.fake_filesystem import FakeFilesystem, OSType  # type: ignore
 
-from edfi_paging_test.reporter.reporter import create_detail_csv
+from edfi_paging_test.reporter.reporter import create_detail_csv, create_summary_csv
 
 
 def describe_when_creating_detail_csv() -> None:
-    OUTPUT_DIRECTORY = "/output"
-
     @pytest.fixture(autouse=True)
     def init_fs(fs: FakeFilesystem) -> None:
         # Fake as Linux so that all slashes in these test are forward
@@ -19,31 +17,191 @@ def describe_when_creating_detail_csv() -> None:
         fs.is_macos = False
 
     def describe_given_a_valid_DataFrame() -> None:
-
+        OUTPUT_DIRECTORY = "/output"
         RUN_NAME = "123"
-        EXPECTED_FILE = "/output/123.detail.csv"
+        EXPECTED_FILE = "/output/123/detail.csv"
         CONTENTS = """Resource,PageNumber,PageSize,NumberOfRecords,ElapsedTime,StatusCode
 a,2,3,4,1.3,200
 """
 
         @pytest.fixture(autouse=True)
         def act():
-            df = DataFrame([{
-                "Resource": "a",
-                "PageNumber": 2,
-                "PageSize": 3,
-                "NumberOfRecords": 4,
-                "ElapsedTime": 1.3,
-                "StatusCode": 200
-            }])
+            df = DataFrame(
+                [
+                    {
+                        "Resource": "a",
+                        "PageNumber": 2,
+                        "PageSize": 3,
+                        "NumberOfRecords": 4,
+                        "ElapsedTime": 1.3,
+                        "StatusCode": 200,
+                    }
+                ]
+            )
 
             create_detail_csv(df, OUTPUT_DIRECTORY, RUN_NAME)
 
         def it_creates_a_file(fs: FakeFilesystem) -> None:
-            assert os.path.exists(EXPECTED_FILE)
+            assert path.exists(EXPECTED_FILE)
 
         def the_file_has_expected_data(fs: FakeFilesystem) -> None:
             with open(EXPECTED_FILE) as f:
                 actual = f.read()
 
                 assert actual == CONTENTS
+
+
+def describe_when_creating_summary_csv() -> None:
+    OUTPUT_DIRECTORY = "/output"
+    RUN_NAME = "1243"
+    EXPECTED_FILE = "/output/1243/summary.csv"
+
+    @pytest.fixture(autouse=True)
+    def init_fs(fs: FakeFilesystem) -> None:
+        # Fake as Linux so that all slashes in these test are forward
+        fs.os = OSType.LINUX
+        fs.path_separator = "/"
+        fs.is_windows_fs = False
+        fs.is_macos = False
+
+        # Pre-create the output path, whereas it was not created before running
+        # the detail file test above.
+        fs.create_dir(path.join(OUTPUT_DIRECTORY, RUN_NAME))
+
+    def describe_given_a_valid_DataFrame() -> None:
+        @pytest.fixture(autouse=True)
+        def act():
+            df = DataFrame(
+                [
+                    {
+                        "Resource": "a",
+                        "PageNumber": 1,
+                        "PageSize": 3,
+                        "NumberOfRecords": 3,
+                        "ElapsedTime": 1.3,
+                        "StatusCode": 200,
+                    },
+                    {
+                        "Resource": "a",
+                        "PageNumber": 2,
+                        "PageSize": 3,
+                        "NumberOfRecords": 3,
+                        "ElapsedTime": 1.21,
+                        "StatusCode": 200,
+                    },
+                    {
+                        "Resource": "a",
+                        "PageNumber": 3,
+                        "PageSize": 3,
+                        "NumberOfRecords": 0,
+                        "ElapsedTime": 2.21,
+                        "StatusCode": 500,
+                    },
+                    {
+                        "Resource": "a",
+                        "PageNumber": 3,
+                        "PageSize": 3,
+                        "NumberOfRecords": 2,
+                        "ElapsedTime": 1.01,
+                        "StatusCode": 200,
+                    },
+                    {
+                        "Resource": "b",
+                        "PageNumber": 1,
+                        "PageSize": 500,
+                        "NumberOfRecords": 500,
+                        "ElapsedTime": 2.3323,
+                        "StatusCode": 200,
+                    },
+                    {
+                        "Resource": "b",
+                        "PageNumber": 2,
+                        "PageSize": 500,
+                        "NumberOfRecords": 499,
+                        "ElapsedTime": 2.0323,
+                        "StatusCode": 200,
+                    },
+                    {
+                        "Resource": "b",
+                        "PageNumber": 1,
+                        # Different page size, therefore will be treated as a different resource
+                        "PageSize": 10,
+                        "NumberOfRecords": 40,
+                        "ElapsedTime": 1.532,
+                        "StatusCode": 200,
+                    },
+                ]
+            )
+
+            create_summary_csv(df, OUTPUT_DIRECTORY, RUN_NAME)
+
+        def it_creates_the_file(fs) -> None:
+            assert fs.exists(EXPECTED_FILE)
+
+        @pytest.fixture
+        def file(fs) -> DataFrame:
+            return read_csv(EXPECTED_FILE)
+
+        @pytest.mark.parametrize(
+            "field, value",
+            [
+                ("Resource", "a"),
+                ("PageSize", 3),
+                ("NumberOfPages", 3),
+                ("NumberOfRecords", 8),
+                ("TotalTime", 5.73),
+                ("MeanTime", 1.4325),
+                ("StDeviation", 0.532314),
+                ("NumberOfErrors", 1),
+            ],
+        )
+        def it_creates_the_correct_record_for_resource_a(
+            file: DataFrame, field, value
+        ) -> None:
+            assert file.shape[0] == 3
+
+            query = file[(file.Resource == "a")][field]
+            assert query.iloc[0] == value
+
+        @pytest.mark.parametrize(
+            "field, value",
+            [
+                ("Resource", "b"),
+                ("PageSize", 500),
+                ("NumberOfPages", 2),
+                ("NumberOfRecords", 999),
+                ("TotalTime", 4.3646),
+                ("MeanTime", 2.1823),
+                ("StDeviation", 0.212132),
+                ("NumberOfErrors", 0),
+            ],
+        )
+        def it_creates_the_correct_record_for_resource_b_500(
+            file: DataFrame, field, value
+        ) -> None:
+            assert file.shape[0] == 3
+
+            query = file[(file.Resource == "b") & (file.PageSize == 500)][field]
+
+            assert query.iloc[0] == value
+
+        @pytest.mark.parametrize(
+            "field, value",
+            [
+                ("Resource", "b"),
+                ("PageSize", 10),
+                ("NumberOfPages", 1),
+                ("NumberOfRecords", 40),
+                ("TotalTime", 1.532),
+                ("MeanTime", 1.532),
+                ("StDeviation", 0),
+                ("NumberOfErrors", 0),
+            ],
+        )
+        def it_creates_the_correct_record_for_resource_b_10(
+            file: DataFrame, field, value
+        ) -> None:
+            assert file.shape[0] == 3
+
+            query = file[(file.Resource == "b") & (file.PageSize == 10)][field]
+            assert query.iloc[0] == value
