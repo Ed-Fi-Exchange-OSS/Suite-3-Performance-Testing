@@ -15,10 +15,17 @@ def create_detail_csv(df: DataFrame, output_dir: str, run_name: str) -> None:
     df.to_csv(file_path, index=False)
 
 
-def create_summary_csv(df: DataFrame, output_dir: str, run_name: str) -> None:
+def create_detail_json(df: DataFrame, output_dir: str, run_name: str) -> None:
     run_dir = path.join(output_dir, run_name)
     _create_if_not_exists(run_dir)
 
+    file_path = path.join(run_dir, "detail.json")
+
+    # Apparently to_json is not in the type stub
+    df.to_json(file_path, orient="records")  # type: ignore
+
+
+def _calculate_summary(df: DataFrame) -> DataFrame:
     summary = df.copy()
 
     # Need multiple columns in order to perform three different aggregations
@@ -27,7 +34,7 @@ def create_summary_csv(df: DataFrame, output_dir: str, run_name: str) -> None:
 
     # This is a fascinating capability. Found mention in Medium article,
     # though not at all clear from the Pandas documentation. Type check
-    # does not like it.
+    # does not like it, because not covered in the type stub
     summary = summary.groupby(by=["Resource", "PageSize"], as_index=False).apply(
         lambda s: Series(
             {
@@ -45,5 +52,22 @@ def create_summary_csv(df: DataFrame, output_dir: str, run_name: str) -> None:
 
     summary.fillna(value=0, inplace=True)
 
+    return summary
+
+
+def create_summary_csv(df: DataFrame, output_dir: str, run_name: str) -> None:
+    run_dir = path.join(output_dir, run_name)
+    _create_if_not_exists(run_dir)
+
     file_path = path.join(run_dir, "summary.csv")
-    summary.to_csv(file_path, index=False)
+    _calculate_summary(df).to_csv(file_path, index=False)
+
+
+def create_summary_json(df: DataFrame, output_dir: str, run_name: str) -> None:
+    run_dir = path.join(output_dir, run_name)
+    _create_if_not_exists(run_dir)
+
+    file_path = path.join(run_dir, "summary.csv")
+
+    # Apparently to_json is not in the type stub
+    _calculate_summary(df).to_json(file_path)  # type: ignore
