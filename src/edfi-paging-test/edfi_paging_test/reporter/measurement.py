@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Callable, Tuple, TypeVar
 import timeit
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 @dataclass

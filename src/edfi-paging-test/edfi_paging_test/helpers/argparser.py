@@ -88,6 +88,14 @@ def parse_main_arguments() -> MainArguments:
         env_var="PERF_CONTENT_TYPE",
     )
     parser.add(  # type: ignore
+        "-r",
+        "--retries",
+        help="Number of time to retry in case of error",
+        type=int,
+        default=5,
+        env_var="PERF_RETRY_COUNT",
+    )
+    parser.add(  # type: ignore
         "-l",
         "--resourceList",
         help="(Optional) List of resources to test  - if not provided, all resources will be retrieved",

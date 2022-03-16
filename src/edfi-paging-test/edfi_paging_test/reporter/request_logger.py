@@ -28,7 +28,9 @@ def get_DataFrame() -> DataFrame:
         A new DataFrame, or the modified Dataframe if `df` is provided
     """
     if len(_request_log) == 0:
-        raise RuntimeError("No measurements have been captured, therefore cannot create a DataFrame")
+        raise RuntimeError(
+            "No measurements have been captured, therefore cannot create a DataFrame"
+        )
 
     df = DataFrame(data=_request_log)
     df.rename(

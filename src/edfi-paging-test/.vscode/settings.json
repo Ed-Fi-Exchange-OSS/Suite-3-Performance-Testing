@@ -9,4 +9,7 @@
         "--max-line-length=110"
     ],
     "python.formatting.provider": "black",
+    "cSpell.words": [
+        "iloc"
+    ],
 }
