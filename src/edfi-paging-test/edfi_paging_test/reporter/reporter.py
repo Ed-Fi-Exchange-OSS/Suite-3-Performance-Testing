@@ -55,7 +55,7 @@ def _calculate_summary(df: DataFrame) -> DataFrame:
     return summary
 
 
-def create_summary_csv(df: DataFrame, output_dir: str, run_name: str) -> None:
+def create_statistics_csv(df: DataFrame, output_dir: str, run_name: str) -> None:
     run_dir = path.join(output_dir, run_name)
     _create_if_not_exists(run_dir)
 
@@ -63,7 +63,7 @@ def create_summary_csv(df: DataFrame, output_dir: str, run_name: str) -> None:
     _calculate_summary(df).to_csv(file_path, index=False)
 
 
-def create_summary_json(df: DataFrame, output_dir: str, run_name: str) -> None:
+def create_statistics_json(df: DataFrame, output_dir: str, run_name: str) -> None:
     run_dir = path.join(output_dir, run_name)
     _create_if_not_exists(run_dir)
 

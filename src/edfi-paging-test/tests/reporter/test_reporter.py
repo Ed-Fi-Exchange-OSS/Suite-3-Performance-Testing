@@ -6,9 +6,9 @@ from pyfakefs.fake_filesystem import FakeFilesystem, OSType  # type: ignore
 
 from edfi_paging_test.reporter.reporter import (
     create_detail_csv,
-    create_summary_csv,
+    create_statistics_csv,
     create_detail_json,
-    create_summary_json,
+    create_statistics_json,
 )
 
 
@@ -138,7 +138,7 @@ def describe_when_creating_summary_csv() -> None:
                 ]
             )
 
-            create_summary_csv(df, OUTPUT_DIRECTORY, RUN_NAME)
+            create_statistics_csv(df, OUTPUT_DIRECTORY, RUN_NAME)
 
         def it_creates_the_file(fs) -> None:
             assert fs.exists(EXPECTED_FILE)
@@ -336,7 +336,7 @@ def describe_when_creating_summary_json() -> None:
                 ]
             )
 
-            create_summary_json(df, OUTPUT_DIRECTORY, RUN_NAME)
+            create_statistics_json(df, OUTPUT_DIRECTORY, RUN_NAME)
 
         def it_creates_the_file(fs) -> None:
             assert fs.exists(EXPECTED_FILE)
