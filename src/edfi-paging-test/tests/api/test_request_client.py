@@ -141,7 +141,6 @@ def describe_testing_RequestClient_class():
             # Assert
             assert len(result) == TOTAL_COUNT
 
-
     def describe_when_get_method_is_called():
         def describe_given_error_occurs():
             def it_raises_an_error(default_request_client):
@@ -150,8 +149,14 @@ def describe_testing_RequestClient_class():
                 with pytest.raises(RuntimeError):
                     with requests_mock.Mocker() as m:
                         # Arrange
-                        m.post(OAUTH_URL, status_code=201, text=json.dumps(TOKEN_RESPONSE))
-                        m.get(expected_url, status_code=HTTPStatus.BAD_REQUEST, text="{\"error\":\"something bad\"}")
+                        m.post(
+                            OAUTH_URL, status_code=201, text=json.dumps(TOKEN_RESPONSE)
+                        )
+                        m.get(
+                            expected_url,
+                            status_code=HTTPStatus.BAD_REQUEST,
+                            text='{"error":"something bad"}',
+                        )
 
                         # Act
                         default_request_client._get_data(FAKE_ENDPOINT)
