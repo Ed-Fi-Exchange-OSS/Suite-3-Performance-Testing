@@ -4,7 +4,7 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from requests import Response
 from requests.auth import HTTPBasicAuth
@@ -141,8 +141,7 @@ class RequestClient:
     def get_page(
         self,
         resource: str = PERF_RESOURCE_LIST[0],
-        page: int = 1,
-        page_size: Optional[int] = None,
+        page: int = 1
     ) -> PaginatedResult:
         """Send an HTTP GET request for the next page.
 
@@ -151,12 +150,9 @@ class RequestClient:
         PaginatedResult
         """
 
-        if page_size is None:
-            page_size = self.page_size
-
         next_url = (
             f"{self._build_url_for_resource(resource)}?"
-            f"{self._build_query_params_for_page(page, page_size)}"
+            f"{self._build_query_params_for_page(page, self.page_size)}"
         )
 
         response: Response = self._get(next_url)
@@ -164,13 +160,13 @@ class RequestClient:
         return PaginatedResult(
             resource_name=resource,
             current_page=page,
-            page_size=page_size,
+            page_size=self.page_size,
             api_response=response.json(),
             status_code=response.status_code,
         )
 
     def get_all(
-        self, resource: str = PERF_RESOURCE_LIST[0], page_size: Optional[int] = None
+        self, resource: str = PERF_RESOURCE_LIST[0]
     ) -> List[Dict[str, Any]]:
         """
         Send an HTTP GET request for all pages of a resource.
@@ -186,21 +182,18 @@ class RequestClient:
             A list of all parsed results
         """
 
-        if page_size is None:
-            page_size = self.page_size
-
         def _timed_get(page: int) -> PaginatedResult:
             elapsed: float
             response: PaginatedResult
             elapsed, response = Measurement.timeit(
-                lambda: self.get_page(resource, page, page_size)
+                lambda: self.get_page(resource, page)
             )
 
             log_request(
                 resource,
                 self.api_base_url,
                 page,
-                page_size,
+                self.page_size,
                 len(response.current_page_items),
                 elapsed,
                 response.status_code,
@@ -211,12 +204,10 @@ class RequestClient:
         pagination_result = _timed_get(1)
 
         items: List[Any] = []
-        i = 0
         while True:
             items.extend(pagination_result.current_page_items)
             pagination_result = _timed_get(pagination_result.current_page + 1)
-            print(i)
-            i += 1
+
             if pagination_result.is_empty:
                 break
 

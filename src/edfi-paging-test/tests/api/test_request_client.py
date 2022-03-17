@@ -4,13 +4,9 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 import json
-from telnetlib import STATUS
-from urllib.request import Request
 import pytest
 import requests_mock
 from http import HTTPStatus
-import json
-from requests import Response
 
 from edfi_paging_test.api.request_client import RequestClient
 from edfi_paging_test.helpers.argparser import MainArguments

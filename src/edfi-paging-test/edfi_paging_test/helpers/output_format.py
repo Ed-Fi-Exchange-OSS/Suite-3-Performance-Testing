@@ -11,9 +11,9 @@ class OutputFormat(Enum):
     CSV = "csv"
 
     @classmethod
-    def _missing_(cls, value: str) -> "OutputFormat":
+    def _missing_(cls, value: object) -> "OutputFormat":
         for member in cls:
-            if member.value == value.upper():
+            if member.value == str(value).upper():
                 return member
 
         raise ValueError(f"{value} is not a valid OutputFormat")
