@@ -7,6 +7,8 @@ from configargparse import ArgParser  # type: ignore
 from typing import List
 from dataclasses import dataclass
 
+from edfi_paging_test.helpers.output_format import OutputFormat
+
 
 @dataclass
 class MainArguments:
@@ -19,7 +21,7 @@ class MainArguments:
     key: str
     secret: str
     output: str
-    contentType: str
+    contentType: OutputFormat
     resourceList: List[str]
     pageSize: int = 100
 
@@ -83,8 +85,9 @@ def parse_main_arguments() -> MainArguments:
         "-t",
         "--contentType",
         help="CSV or JSON",
-        choices=["JSON", "CSV"],
-        default="CSV",
+        choices=list(OutputFormat),
+        default=OutputFormat.CSV,
+        type=OutputFormat,
         env_var="PERF_CONTENT_TYPE",
     )
     parser.add(  # type: ignore

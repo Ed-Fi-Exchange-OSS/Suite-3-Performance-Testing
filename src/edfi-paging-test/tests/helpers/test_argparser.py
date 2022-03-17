@@ -10,6 +10,7 @@ import sys
 import pytest
 
 from edfi_paging_test.helpers.argparser import MainArguments, parse_main_arguments
+from edfi_paging_test.helpers.output_format import OutputFormat
 
 
 BASEURL = "http://localhost:54746"
@@ -89,7 +90,7 @@ def describe_when_parsing_from_env_vars() -> None:
         os.environ["PERF_API_SECRET"] = "populatedSecret"
         os.environ["PERF_CONNECTION_LIMIT"] = "40"
         os.environ["PERF_OUTPUT_DIR"] = "test_output"
-        os.environ["PERF_CONTENT_TYPE"] = "JSON"
+        os.environ["PERF_CONTENT_TYPE"] = str(OutputFormat.JSON)
         os.environ["PERF_RESOURCE_LIST"] = '["a", "b"]'
         os.environ["PERF_API_PAGE_SIZE"] = "402"
 
@@ -113,7 +114,7 @@ def describe_when_parsing_from_env_vars() -> None:
         assert main_arguments.output == "test_output"
 
     def it_sets_content_type(main_arguments: MainArguments) -> None:
-        assert main_arguments.contentType == "JSON"
+        assert main_arguments.contentType == OutputFormat.JSON
 
     def it_sets_resource_list(main_arguments: MainArguments) -> None:
         assert main_arguments.resourceList == ["a", "b"]
