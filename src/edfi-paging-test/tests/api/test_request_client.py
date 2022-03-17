@@ -142,7 +142,7 @@ def describe_testing_RequestClient_class():
             assert len(result) == TOTAL_COUNT
 
 
-"""     def describe_when_get_method_is_called():
+    def describe_when_get_method_is_called():
         def describe_given_error_occurs():
             def it_raises_an_error(default_request_client):
                 expected_url = API_BASE_URL + FAKE_ENDPOINT
@@ -154,4 +154,4 @@ def describe_testing_RequestClient_class():
                         m.get(expected_url, status_code=HTTPStatus.BAD_REQUEST, text="{\"error\":\"something bad\"}")
 
                         # Act
-                        default_request_client._get_data(FAKE_ENDPOINT) """
+                        default_request_client._get_data(FAKE_ENDPOINT)
