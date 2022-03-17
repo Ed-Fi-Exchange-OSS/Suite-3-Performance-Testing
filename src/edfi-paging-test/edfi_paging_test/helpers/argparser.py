@@ -20,7 +20,6 @@ class MainArguments:
     secret: str
     output: str
     contentType: str
-    retries: str
     resourceList: List[str]
     pageSize: int = 100
 
@@ -46,7 +45,7 @@ def parse_main_arguments() -> MainArguments:
         help="The base url used to derive the api, metadata, oauth, and dependency urls (e.g., http://server).",
         type=str,
         required=True,
-        env_var="PERF_API_BASEURL"
+        env_var="PERF_API_BASEURL",
     )
     parser.add(  # type: ignore
         "-k",
@@ -54,7 +53,7 @@ def parse_main_arguments() -> MainArguments:
         help="The web API OAuth key",
         type=str,
         required=True,
-        env_var="PERF_API_KEY"
+        env_var="PERF_API_KEY",
     )
     parser.add(  # type: ignore
         "-s",
@@ -62,7 +61,7 @@ def parse_main_arguments() -> MainArguments:
         help="The web API OAuth secret",
         type=str,
         required=True,
-        env_var="PERF_API_SECRET"
+        env_var="PERF_API_SECRET",
     )
     parser.add(  # type: ignore
         "-c",
@@ -70,7 +69,7 @@ def parse_main_arguments() -> MainArguments:
         help="Maximum concurrent connections to api",
         type=int,
         default=4,
-        env_var="PERF_CONNECTION_LIMIT"
+        env_var="PERF_CONNECTION_LIMIT",
     )
     parser.add(  # type: ignore
         "-o",
@@ -78,7 +77,7 @@ def parse_main_arguments() -> MainArguments:
         help="Directory for writing results",
         type=str,
         default="out",
-        env_var="PERF_OUTPUT_DIR"
+        env_var="PERF_OUTPUT_DIR",
     )
     parser.add(  # type: ignore
         "-t",
@@ -86,22 +85,14 @@ def parse_main_arguments() -> MainArguments:
         help="CSV or JSON",
         choices=["JSON", "CSV"],
         default="CSV",
-        env_var="PERF_CONTENT_TYPE"
-    )
-    parser.add(  # type: ignore
-        "-r",
-        "--retries",
-        help="Number of time to retry in case of error",
-        type=int,
-        default=5,
-        env_var="PERF_RETRY_COUNT"
+        env_var="PERF_CONTENT_TYPE",
     )
     parser.add(  # type: ignore
         "-l",
         "--resourceList",
         help="(Optional) List of resources to test  - if not provided, all resources will be retrieved",
         nargs="+",
-        env_var="PERF_RESOURCE_LIST"
+        env_var="PERF_RESOURCE_LIST",
     )
     parser.add(  # type: ignore
         "-p",
@@ -109,7 +100,7 @@ def parse_main_arguments() -> MainArguments:
         help="The page size to request. Max: 500.",
         type=int,
         default="100",
-        env_var="PERF_API_PAGE_SIZE"
+        env_var="PERF_API_PAGE_SIZE",
     )
 
     args_parsed = parser.parse_args()
@@ -121,7 +112,6 @@ def parse_main_arguments() -> MainArguments:
         args_parsed.secret,
         args_parsed.output,
         args_parsed.contentType,
-        args_parsed.retries,
         args_parsed.resourceList,
         args_parsed.pageSize,
     )

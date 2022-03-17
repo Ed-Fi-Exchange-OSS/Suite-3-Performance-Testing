@@ -90,7 +90,6 @@ def describe_when_parsing_from_env_vars() -> None:
         os.environ["PERF_CONNECTION_LIMIT"] = "40"
         os.environ["PERF_OUTPUT_DIR"] = "test_output"
         os.environ["PERF_CONTENT_TYPE"] = "JSON"
-        os.environ["PERF_RETRY_COUNT"] = "4"
         os.environ["PERF_RESOURCE_LIST"] = '["a", "b"]'
         os.environ["PERF_API_PAGE_SIZE"] = "402"
 
@@ -115,9 +114,6 @@ def describe_when_parsing_from_env_vars() -> None:
 
     def it_sets_content_type(main_arguments: MainArguments) -> None:
         assert main_arguments.contentType == "JSON"
-
-    def it_sets_retry_count(main_arguments: MainArguments) -> None:
-        assert main_arguments.retries == 4
 
     def it_sets_resource_list(main_arguments: MainArguments) -> None:
         assert main_arguments.resourceList == ["a", "b"]
