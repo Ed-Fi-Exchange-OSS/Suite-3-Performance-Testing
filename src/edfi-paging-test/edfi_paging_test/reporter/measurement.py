@@ -12,7 +12,7 @@ class Measurement:
     page_number: int
     page_size: int
     number_of_records: int
-    elapsed_time: int
+    elapsed_time: float
     http_status_code: int
 
     @staticmethod

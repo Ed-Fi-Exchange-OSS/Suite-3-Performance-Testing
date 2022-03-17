@@ -12,8 +12,11 @@ from requests.auth import HTTPBasicAuth
 from oauthlib.oauth2 import BackendApplicationClient
 from oauthlib.oauth2 import TokenExpiredError
 from requests_oauthlib import OAuth2Session  # type: ignore
+
 from edfi_paging_test.api.paginated_result import PaginatedResult
 from edfi_paging_test.helpers.argparser import MainArguments
+from edfi_paging_test.reporter.measurement import Measurement
+from edfi_paging_test.reporter.request_logger import log_request
 
 PERF_RESOURCE_LIST = list(
     os.environ.get("PERF_RESOURCE_LIST") or ["StudentSectionAttendanceEvents"]
@@ -218,12 +221,32 @@ class RequestClient:
         if page_size is None:
             page_size = self.page_size
 
-        pagination_result = self.get_page(1, resource, page_size)
+        def _timed_get(page: int) -> PaginatedResult:
+            elapsed: float
+            response: PaginatedResult
+            elapsed, response = Measurement.timeit(
+                lambda: self.get_page(page, resource, page_size)
+            )
+            m = Measurement(
+                resource,
+                self.api_base_url,
+                page,
+                page_size,
+                len(response.current_page_items),
+                elapsed,
+                200,
+            )
+            # This is a little complicated looking. Refactor it.
+            log_request(m)
+
+            return response
+
+        pagination_result = _timed_get(1)
 
         items: List[Any] = []
         while True:
             items = items + list(pagination_result.current_page_items)
-            pagination_result = self.get_page(pagination_result.current_page + 1)
+            pagination_result = _timed_get(pagination_result.current_page + 1)
             if pagination_result.is_empty:
                 break
 
