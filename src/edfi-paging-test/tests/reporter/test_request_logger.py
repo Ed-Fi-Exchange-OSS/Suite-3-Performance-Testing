@@ -51,7 +51,11 @@ def describe_when_logging_a_request() -> None:
 
 def describe_when_converting_to_a_DataFrame() -> None:
     def describe_given_given_an_empty_list() -> None:
-        def it_raises_a_RuntimeError() -> None:
+        def it_raises_a_RuntimeError(mocker) -> None:
+            mocker.patch(
+                "edfi_paging_test.reporter.request_logger._request_log", []
+            )
+
             with pytest.raises(RuntimeError):
                 get_DataFrame()
 
