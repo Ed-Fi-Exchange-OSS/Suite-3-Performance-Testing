@@ -5,11 +5,11 @@
 
 import json
 import pytest
-
 import requests_mock
+from http import HTTPStatus
 
 from edfi_paging_test.api.request_client import RequestClient
-from http import HTTPStatus
+from edfi_paging_test.helpers.argparser import MainArguments
 
 
 FAKE_KEY = "TEST_KEY"
@@ -17,46 +17,46 @@ FAKE_SECRET = "TEST_SECRET"
 FAKE_ENDPOINT = "/ENDPOINT"
 API_BASE_URL = "https://localhost:54746"
 OAUTH_URL = "https://localhost:54746/oauth/token/"
-FAKE_API_RESPONSE_PAGE1 = [{"id" : "a"}, {"id" : "b"}]
-FAKE_API_RESPONSE_PAGE2 = [{"id" : "c"}, {"id" : "d"}]
+FAKE_API_RESPONSE_PAGE1 = [{"id": "a"}, {"id": "b"}]
+FAKE_API_RESPONSE_PAGE2 = [{"id": "c"}, {"id": "d"}]
 PAGE_SIZE = 2
 NUMBER_OF_PAGES = 2
-RETRY_COUNT = 0
 TOTAL_COUNT = 4
 TOKEN = "038f4cb947c04fb4851fc3792c6b004f"
 TOKEN_RESPONSE = {
-  "access_token": "038f4cb947c04fb4851fc3792c6b004f",
-  "expires_in": 1800,
-  "token_type": "bearer"
+    "access_token": "038f4cb947c04fb4851fc3792c6b004f",
+    "expires_in": 1800,
+    "token_type": "bearer",
 }
 
 
 def describe_testing_RequestClient_class():
     @pytest.fixture()
-    def default_request_client(mocker):
-        return RequestClient(api_base_url=API_BASE_URL, api_key=FAKE_KEY, api_secret=FAKE_SECRET, page_size=PAGE_SIZE, retry_count=RETRY_COUNT)
+    def default_request_client():
+        args = MainArguments(
+            API_BASE_URL,
+            1,
+            FAKE_KEY,
+            FAKE_SECRET,
+            "doesn't matter",
+            "CSV",
+            [],
+            PAGE_SIZE,
+        )
+        return RequestClient(args)
 
     @pytest.fixture()
-    def paging_request_client(mocker):
-        request_client = RequestClient(api_base_url=API_BASE_URL, api_key=FAKE_KEY, api_secret=FAKE_SECRET, page_size=PAGE_SIZE, retry_count=RETRY_COUNT)
-        request_client._get_data = mocker.MagicMock(side_effect=[FAKE_API_RESPONSE_PAGE1, FAKE_API_RESPONSE_PAGE2, []])
-        return request_client
+    def paging_request_client(default_request_client, mocker):
+        default_request_client._get_data = mocker.MagicMock(
+            side_effect=[FAKE_API_RESPONSE_PAGE1, FAKE_API_RESPONSE_PAGE2, []]
+        )
+        return default_request_client
 
     def describe_when_constructing_instance():
-
         def it_sets_base_url(default_request_client: RequestClient) -> None:
             assert default_request_client.api_base_url == API_BASE_URL
 
-        def it_sets_api_key(default_request_client: RequestClient) -> None:
-            assert default_request_client.api_key == FAKE_KEY
-
-        def it_sets_api_secret(default_request_client: RequestClient) -> None:
-            assert default_request_client.api_secret == FAKE_SECRET
-
-        def it_sets_connection_limit(default_request_client: RequestClient) -> None:
-            assert default_request_client.retry_count == RETRY_COUNT
-
-        def it_sets_output_dir(default_request_client: RequestClient) -> None:
+        def it_sets_page_size(default_request_client: RequestClient) -> None:
             assert default_request_client.page_size == PAGE_SIZE
 
     def describe_when_build_query_params_for_page_method_is_called():
@@ -67,9 +67,7 @@ def describe_testing_RequestClient_class():
                 expected_result = "/data/v3/ed-fi/resource"
 
                 # Act
-                result = default_request_client._build_url_for_resource(
-                   resource_name
-                )
+                result = default_request_client._build_url_for_resource(resource_name)
 
                 # Assert
                 assert result == expected_result
@@ -81,8 +79,7 @@ def describe_testing_RequestClient_class():
 
                 # Act
                 result = default_request_client._build_query_params_for_page(
-                    5,
-                    items_per_page
+                    5, items_per_page
                 )
 
                 # Assert
@@ -100,12 +97,12 @@ def describe_testing_RequestClient_class():
 
     def describe_when_getting_results():
         def describe_given_there_is_one_result_page():
-            def it_returns_the_page(default_request_client):
+            def it_returns_the_page(default_request_client: RequestClient):
                 # Arrange
                 with requests_mock.Mocker() as m:
                     expected_url = API_BASE_URL + FAKE_ENDPOINT
                     m.post(OAUTH_URL, status_code=201, text=json.dumps(TOKEN_RESPONSE))
-                    m.get(expected_url, status_code=HTTPStatus.OK, text="[{\"id\":\"b\"}]")
+                    m.get(expected_url, status_code=HTTPStatus.OK, text='[{"id":"b"}]')
                     # Act
                     result = default_request_client._get_data(FAKE_ENDPOINT)
 
@@ -119,7 +116,11 @@ def describe_testing_RequestClient_class():
                 with requests_mock.Mocker() as m:
                     expected_url = API_BASE_URL + FAKE_ENDPOINT
                     m.post(OAUTH_URL, status_code=201, text=json.dumps(TOKEN_RESPONSE))
-                    m.get(expected_url, status_code=HTTPStatus.OK, headers={'total-count' : '2'})
+                    m.get(
+                        expected_url,
+                        status_code=HTTPStatus.OK,
+                        headers={"total-count": "2"},
+                    )
                     # Act
                     result = default_request_client._get_total(FAKE_ENDPOINT)
 

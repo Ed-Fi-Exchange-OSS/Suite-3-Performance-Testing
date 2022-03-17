@@ -3,31 +3,24 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-from dataclasses import dataclass
 import os
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from http import HTTPStatus
-import socket
 
-from opnieuw import retry
 from requests import Response
-from requests.exceptions import ConnectionError, HTTPError, RequestException, Timeout
 from requests.auth import HTTPBasicAuth
-from urllib3.exceptions import ProtocolError
 from oauthlib.oauth2 import BackendApplicationClient
 from oauthlib.oauth2 import TokenExpiredError
 from requests_oauthlib import OAuth2Session  # type: ignore
 from edfi_paging_test.api.paginated_result import PaginatedResult
+from edfi_paging_test.helpers.argparser import MainArguments
 
-
-REQUEST_RETRY_TIMEOUT_SECONDS = 60
 PERF_RESOURCE_LIST = list(
     os.environ.get("PERF_RESOURCE_LIST") or ["StudentSectionAttendanceEvents"]
 )
 OAUTH_TOKEN_URL = "/oauth/token/"
 
 
-@dataclass
 class RequestClient:
     """
     The RequestClient class wraps all the configuration complexity related
@@ -48,15 +41,12 @@ class RequestClient:
         The two-legged authenticated OAuth2 session.
     """
 
-    api_key: str = str(os.environ.get("PERF_API_KEY"))
-    api_secret: str = str(os.environ.get("PERF_API_SECRET"))
-    api_base_url: str = str(os.environ.get("PERF_API_BASEURL"))
-    retry_count: int = int(os.environ.get("PERF_RETRY_COUNT") or 4)
-    page_size: int = int(os.environ.get("PERF_API_PAGE_SIZE") or 100)
+    def __init__(self, args: MainArguments) -> None:
+        self.api_base_url = args.baseUrl
+        self.page_size = args.pageSize
 
-    def __post_init__(self) -> None:
-        self.auth = HTTPBasicAuth(self.api_key, self.api_secret)
-        client = BackendApplicationClient(client_id=self.api_key)
+        self.auth = HTTPBasicAuth(args.key, args.secret)
+        client = BackendApplicationClient(client_id=args.key)
         self.oauth = OAuth2Session(client=client)
 
     def _build_url_for_resource(self, resource) -> str:
@@ -126,38 +116,28 @@ class RequestClient:
             self._authorize()
 
         url = self.api_base_url + relative_url
-        try:
-            response = self.oauth.get(
+
+        response: Response
+
+        def _get() -> Response:
+            return self.oauth.get(
                 url=url,
                 auth=self.oauth.auth,
             )
+
+        try:
+            response = _get()
         except TokenExpiredError:
             self._authorize()
-            # Re-raise the exception to trigger an automated retry
-            raise
+            response = _get()
+            # If that fails after authorization, then let it go
 
         self._check_response(
             response=response, success_status=HTTPStatus.OK, http_method="GET", url=url
         )
         return response
 
-    @retry(
-        retry_on_exceptions=(
-            IOError,
-            TokenExpiredError,
-            ConnectionError,
-            RequestException,
-            HTTPError,
-            ProtocolError,
-            Timeout,
-            RuntimeError,
-            socket.timeout,
-            socket.error,
-        ),
-        max_calls_total=retry_count,
-        retry_window_after_first_call_in_seconds=REQUEST_RETRY_TIMEOUT_SECONDS,
-    )
-    def _get_data(self, relative_url: str) -> Dict[str, Any]:
+    def _get_data(self, relative_url: str) -> Dict[Any, Any]:
         response = self._get(relative_url)
         return response.json()
 
@@ -190,13 +170,21 @@ class RequestClient:
         total_count_url = f"{self._build_url_for_resource(resource)}?{self._build_query_params_for_total_count()}"
         return self._get_total(total_count_url)
 
-    def get_page(self, page: int = 1, resource: str = PERF_RESOURCE_LIST[0], page_size: int = page_size) -> PaginatedResult:
+    def get_page(
+        self,
+        page: int = 1,
+        resource: str = PERF_RESOURCE_LIST[0],
+        page_size: Optional[int] = None,
+    ) -> PaginatedResult:
         """Send an HTTP GET request for the next page.
 
         Returns
         -------
         PaginatedResult
         """
+
+        if page_size is None:
+            page_size = self.page_size
 
         next_url = (
             f"{self._build_url_for_resource(resource)}?"
@@ -207,11 +195,11 @@ class RequestClient:
             resource_name=resource,
             current_page=page,
             page_size=page_size,
-            api_response=self._get_data(next_url)
+            api_response=self._get_data(next_url),
         )
 
     def get_all(
-        self, resource: str = PERF_RESOURCE_LIST[0], page_size: int = page_size
+        self, resource: str = PERF_RESOURCE_LIST[0], page_size: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """
         Send an HTTP GET request for all pages of a resource.
@@ -227,13 +215,16 @@ class RequestClient:
             A list of all parsed results
         """
 
-        pagination_result = self.get_page()
+        if page_size is None:
+            page_size = self.page_size
+
+        pagination_result = self.get_page(1, resource, page_size)
 
         items: List[Any] = []
         while True:
             items = items + list(pagination_result.current_page_items)
             pagination_result = self.get_page(pagination_result.current_page + 1)
-            if(pagination_result.is_empty):
+            if pagination_result.is_empty:
                 break
 
         return items
