@@ -12,6 +12,23 @@ from edfi_paging_test.helpers.argparser import MainArguments
 from edfi_paging_test.helpers.output_format import OutputFormat
 
 
+def _generate_output_reports(args: MainArguments) -> None:
+    df = request_logger.get_DataFrame()
+
+    run_name = datetime.now().strftime("%Y-%m-%d-%H-%M-%S)")
+    create_detail_out = {
+        OutputFormat.CSV: reporter.create_detail_csv,
+        OutputFormat.JSON: reporter.create_detail_json
+    }
+    create_detail_out[args.contentType](df, args.output, run_name)
+
+    create_statistics_out = {
+        OutputFormat.CSV: reporter.create_statistics_csv,
+        OutputFormat.JSON: reporter.create_statistics_json
+    }
+    create_statistics_out[args.contentType](df, args.output, run_name)
+
+
 def run(args: MainArguments) -> None:
     request_client: RequestClient = RequestClient(args)
 
@@ -32,17 +49,4 @@ def run(args: MainArguments) -> None:
         resources
     ), f"Expected {total_count} results, got: {len(resources)}"
 
-    df = request_logger.get_DataFrame()
-
-    run_name = datetime.now().strftime("%Y-%m-%d-%H-%M-%S)")
-    create_detail_out = {
-        OutputFormat.CSV: reporter.create_detail_csv,
-        OutputFormat.JSON: reporter.create_detail_json
-    }
-    create_detail_out[args.contentType](df, args.output, run_name)
-
-    create_statistics_out = {
-        OutputFormat.CSV: reporter.create_statistics_csv,
-        OutputFormat.JSON: reporter.create_statistics_json
-    }
-    create_statistics_out[args.contentType](df, args.output, run_name)
+    _generate_output_reports(args)
