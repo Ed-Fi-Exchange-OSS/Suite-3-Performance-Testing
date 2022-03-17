@@ -7,8 +7,26 @@ from edfi_paging_test.reporter.measurement import Measurement
 _request_log: List[Measurement] = []
 
 
-def log_request(measurement: Measurement) -> None:
-    _request_log.append(measurement)
+def log_request(
+    resource: str,
+    base_url: str,
+    page: int,
+    page_size: int,
+    number_of_records: int,
+    elapsed: float,
+    status_code: int,
+) -> None:
+    m = Measurement(
+        resource,
+        base_url,
+        page,
+        page_size,
+        number_of_records,
+        elapsed,
+        status_code,
+    )
+
+    _request_log.append(m)
 
 
 def get_DataFrame() -> DataFrame:

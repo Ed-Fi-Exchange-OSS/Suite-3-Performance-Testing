@@ -9,20 +9,20 @@ from edfi_paging_test.reporter.request_logger import get_DataFrame, log_request
 
 MEASUREMENT_1 = Measurement(
     "academicWeeks",
-    "https://localhost/WebApi/data/v3/ed-fi/academicWeeks",
+    "https://localhost/WebApi/data/v3/",
     1,
     200,
     30,
-    40,
+    40.0,
     200,
 )
 MEASUREMENT_2 = Measurement(
     "assignments",
-    "https://localhost/WebApi/data/v3/lmsx/assignments",
+    "https://localhost/WebApi/data/v3/",
     3,
     500,
     500,
-    321,
+    321.0,
     200,
 )
 
@@ -36,7 +36,15 @@ def describe_when_logging_a_request() -> None:
                 "edfi_paging_test.reporter.request_logger._request_log", request_log
             )
 
-            log_request(MEASUREMENT_2)
+            log_request(
+                MEASUREMENT_2.resource,
+                MEASUREMENT_2.URL,
+                MEASUREMENT_2.page_number,
+                MEASUREMENT_2.page_size,
+                MEASUREMENT_2.number_of_records,
+                MEASUREMENT_2.elapsed_time,
+                MEASUREMENT_2.http_status_code
+            )
 
             return request_log
 
@@ -52,9 +60,7 @@ def describe_when_logging_a_request() -> None:
 def describe_when_converting_to_a_DataFrame() -> None:
     def describe_given_given_an_empty_list() -> None:
         def it_raises_a_RuntimeError(mocker) -> None:
-            mocker.patch(
-                "edfi_paging_test.reporter.request_logger._request_log", []
-            )
+            mocker.patch("edfi_paging_test.reporter.request_logger._request_log", [])
 
             with pytest.raises(RuntimeError):
                 get_DataFrame()
