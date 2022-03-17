@@ -15,6 +15,7 @@ API_BASE_URL = "http://localhost:54746"
 FAKE_RESOURCE_NAME = "resource_name"
 FAKE_API_RESPONSE_PAGE1 = [{"id" : "a"}, {"id" : "b"}]
 PAGE_SIZE = 2
+STATUS_CODE = 200
 
 
 @pytest.fixture
@@ -23,6 +24,7 @@ def default_paginated_result():
         page_size=PAGE_SIZE,
         api_response=FAKE_API_RESPONSE_PAGE1,
         resource_name=FAKE_RESOURCE_NAME,
+        status_code=STATUS_CODE
     )
     return paginated_result
 
@@ -31,8 +33,9 @@ def default_paginated_result():
 def empty_paginated_result():
     paginated_result = PaginatedResult(
         page_size=PAGE_SIZE,
-        api_response=[],
+        api_response={},
         resource_name=FAKE_RESOURCE_NAME,
+        status_code=STATUS_CODE
     )
     return paginated_result
 

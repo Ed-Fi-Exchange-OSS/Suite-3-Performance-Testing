@@ -5,7 +5,6 @@
 
 import os
 from typing import Any, Dict, List, Optional
-from http import HTTPStatus
 
 from requests import Response
 from requests.auth import HTTPBasicAuth
@@ -65,33 +64,6 @@ class RequestClient:
     def _authorize(self) -> None:
         self.oauth.fetch_token(self.api_base_url + OAUTH_TOKEN_URL, auth=self.auth)
 
-    def _check_response(
-        self, response: Response, success_status: HTTPStatus, http_method: str, url: str
-    ) -> None:
-        """
-        Check a response for success
-
-        Parameters
-        ----------
-        response: Response
-            The HTTP response to check
-        success_status: HTTPStatus
-            The HTTP status that indicates success
-        http_method: str
-            A human-readable string describing the http method, used for logging
-        url: str
-            The url of the request, used for logging
-
-        Raises
-        -------
-        RuntimeError
-            If the response indicates failure
-        """
-        if response.status_code != success_status:
-            raise RuntimeError(
-                f"{response.reason} ({response.status_code}): {response.text}"
-            )
-
     def _get(self, relative_url: str) -> Response:
         """
         Send an HTTP GET request.
@@ -135,14 +107,7 @@ class RequestClient:
             response = _get()
             # If that fails after authorization, then let it go
 
-        self._check_response(
-            response=response, success_status=HTTPStatus.OK, http_method="GET", url=url
-        )
         return response
-
-    def _get_data(self, relative_url: str) -> Dict[Any, Any]:
-        response = self._get(relative_url)
-        return response.json()
 
     def _get_total(self, relative_url: str) -> int:
         response = self._get(relative_url)
@@ -175,8 +140,8 @@ class RequestClient:
 
     def get_page(
         self,
-        page: int = 1,
         resource: str = PERF_RESOURCE_LIST[0],
+        page: int = 1,
         page_size: Optional[int] = None,
     ) -> PaginatedResult:
         """Send an HTTP GET request for the next page.
@@ -194,11 +159,14 @@ class RequestClient:
             f"{self._build_query_params_for_page(page, page_size)}"
         )
 
+        response: Response = self._get(next_url)
+
         return PaginatedResult(
             resource_name=resource,
             current_page=page,
             page_size=page_size,
-            api_response=self._get_data(next_url),
+            api_response=response.json(),
+            status_code=response.status_code,
         )
 
     def get_all(
@@ -225,28 +193,30 @@ class RequestClient:
             elapsed: float
             response: PaginatedResult
             elapsed, response = Measurement.timeit(
-                lambda: self.get_page(page, resource, page_size)
+                lambda: self.get_page(resource, page, page_size)
             )
-            m = Measurement(
+
+            log_request(
                 resource,
                 self.api_base_url,
                 page,
                 page_size,
                 len(response.current_page_items),
                 elapsed,
-                200,
+                response.status_code,
             )
-            # This is a little complicated looking. Refactor it.
-            log_request(m)
 
             return response
 
         pagination_result = _timed_get(1)
 
         items: List[Any] = []
+        i = 0
         while True:
-            items = items + list(pagination_result.current_page_items)
+            items.extend(pagination_result.current_page_items)
             pagination_result = _timed_get(pagination_result.current_page + 1)
+            print(i)
+            i += 1
             if pagination_result.is_empty:
                 break
 
