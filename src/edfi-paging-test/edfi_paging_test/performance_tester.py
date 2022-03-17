@@ -15,7 +15,7 @@ from edfi_paging_test.helpers.output_format import OutputFormat
 def _generate_output_reports(args: MainArguments) -> None:
     df = request_logger.get_DataFrame()
 
-    run_name = datetime.now().strftime("%Y-%m-%d-%H-%M-%S)")
+    run_name = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     create_detail_out = {
         OutputFormat.CSV: reporter.create_detail_csv,
         OutputFormat.JSON: reporter.create_detail_json
@@ -40,11 +40,6 @@ def run(args: MainArguments) -> None:
     resources = request_client.get_all()
     total_count = request_client.get_total()
 
-    print(args.baseUrl)
-    print(args.key)
-    print(args.resourceList)
-    print(args.pageSize)
-    print(f"Resource count: {len(resources)}")
     assert total_count == len(
         resources
     ), f"Expected {total_count} results, got: {len(resources)}"
