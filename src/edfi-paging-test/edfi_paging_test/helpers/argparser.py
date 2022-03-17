@@ -7,7 +7,6 @@ from configargparse import ArgParser  # type: ignore
 from typing import List
 from dataclasses import dataclass
 
-
 @dataclass
 class MainArguments:
     """
@@ -20,7 +19,6 @@ class MainArguments:
     secret: str
     output: str
     contentType: str
-    retries: int
     resourceList: List[str]
     pageSize: int = 100
 
@@ -89,14 +87,6 @@ def parse_main_arguments() -> MainArguments:
         env_var="PERF_CONTENT_TYPE"
     )
     parser.add(  # type: ignore
-        "-r",
-        "--retries",
-        help="Number of time to retry in case of error",
-        type=int,
-        default=5,
-        env_var="PERF_RETRY_COUNT"
-    )
-    parser.add(  # type: ignore
         "-l",
         "--resourceList",
         help="(Optional) List of resources to test  - if not provided, all resources will be retrieved",
@@ -121,7 +111,6 @@ def parse_main_arguments() -> MainArguments:
         args_parsed.secret,
         args_parsed.output,
         args_parsed.contentType,
-        args_parsed.retries,
         args_parsed.resourceList,
         args_parsed.pageSize,
     )
