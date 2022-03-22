@@ -70,4 +70,4 @@ def create_statistics_json(df: DataFrame, output_dir: str, run_name: str) -> Non
     file_path = path.join(run_dir, "statistics.json")
 
     # Apparently to_json is not in the type stub
-    _calculate_summary(df).to_json(file_path)  # type: ignore
+    _calculate_summary(df).to_json(file_path, orient="records")  # type: ignore
