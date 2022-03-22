@@ -4,21 +4,33 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 import os
-from typing import Any, Dict, List, Optional
-from http import HTTPStatus
+from typing import Any, Callable, Dict, List, Tuple, TypeVar
+from timeit import default_timer
 
 from requests import Response
 from requests.auth import HTTPBasicAuth
 from oauthlib.oauth2 import BackendApplicationClient
 from oauthlib.oauth2 import TokenExpiredError
 from requests_oauthlib import OAuth2Session  # type: ignore
+
 from edfi_paging_test.api.paginated_result import PaginatedResult
 from edfi_paging_test.helpers.argparser import MainArguments
+from edfi_paging_test.reporter.request_logger import log_request
 
 PERF_RESOURCE_LIST = list(
     os.environ.get("PERF_RESOURCE_LIST") or ["StudentSectionAttendanceEvents"]
 )
 OAUTH_TOKEN_URL = "/oauth/token/"
+
+T = TypeVar("T")
+
+
+def timeit(callback: Callable[[], T]) -> Tuple[float, T]:
+    start = default_timer()
+    response = callback()
+    elapsed = default_timer() - start
+
+    return (elapsed, response)
 
 
 class RequestClient:
@@ -61,33 +73,6 @@ class RequestClient:
 
     def _authorize(self) -> None:
         self.oauth.fetch_token(self.api_base_url + OAUTH_TOKEN_URL, auth=self.auth)
-
-    def _check_response(
-        self, response: Response, success_status: HTTPStatus, http_method: str, url: str
-    ) -> None:
-        """
-        Check a response for success
-
-        Parameters
-        ----------
-        response: Response
-            The HTTP response to check
-        success_status: HTTPStatus
-            The HTTP status that indicates success
-        http_method: str
-            A human-readable string describing the http method, used for logging
-        url: str
-            The url of the request, used for logging
-
-        Raises
-        -------
-        RuntimeError
-            If the response indicates failure
-        """
-        if response.status_code != success_status:
-            raise RuntimeError(
-                f"{response.reason} ({response.status_code}): {response.text}"
-            )
 
     def _get(self, relative_url: str) -> Response:
         """
@@ -132,14 +117,7 @@ class RequestClient:
             response = _get()
             # If that fails after authorization, then let it go
 
-        self._check_response(
-            response=response, success_status=HTTPStatus.OK, http_method="GET", url=url
-        )
         return response
-
-    def _get_data(self, relative_url: str) -> Dict[Any, Any]:
-        response = self._get(relative_url)
-        return response.json()
 
     def _get_total(self, relative_url: str) -> int:
         response = self._get(relative_url)
@@ -171,10 +149,7 @@ class RequestClient:
         return self._get_total(total_count_url)
 
     def get_page(
-        self,
-        page: int = 1,
-        resource: str = PERF_RESOURCE_LIST[0],
-        page_size: Optional[int] = None,
+        self, resource: str = PERF_RESOURCE_LIST[0], page: int = 1
     ) -> PaginatedResult:
         """Send an HTTP GET request for the next page.
 
@@ -183,24 +158,34 @@ class RequestClient:
         PaginatedResult
         """
 
-        if page_size is None:
-            page_size = self.page_size
-
         next_url = (
             f"{self._build_url_for_resource(resource)}?"
-            f"{self._build_query_params_for_page(page, page_size)}"
+            f"{self._build_query_params_for_page(page, self.page_size)}"
+        )
+
+        elapsed, response = timeit(lambda: self._get(next_url))
+
+        items = response.json()
+
+        log_request(
+            resource,
+            next_url,
+            page,
+            self.page_size,
+            len(items),
+            elapsed,
+            response.status_code,
         )
 
         return PaginatedResult(
             resource_name=resource,
             current_page=page,
-            page_size=page_size,
-            api_response=self._get_data(next_url),
+            page_size=self.page_size,
+            api_response=items,
+            status_code=response.status_code,
         )
 
-    def get_all(
-        self, resource: str = PERF_RESOURCE_LIST[0], page_size: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
+    def get_all(self, resource: str = PERF_RESOURCE_LIST[0]) -> List[Dict[str, Any]]:
         """
         Send an HTTP GET request for all pages of a resource.
 
@@ -215,15 +200,15 @@ class RequestClient:
             A list of all parsed results
         """
 
-        if page_size is None:
-            page_size = self.page_size
-
-        pagination_result = self.get_page(1, resource, page_size)
+        pagination_result = self.get_page(resource, 1)
 
         items: List[Any] = []
         while True:
-            items = items + list(pagination_result.current_page_items)
-            pagination_result = self.get_page(pagination_result.current_page + 1)
+            items.extend(pagination_result.current_page_items)
+            pagination_result = self.get_page(
+                resource, pagination_result.current_page + 1
+            )
+
             if pagination_result.is_empty:
                 break
 

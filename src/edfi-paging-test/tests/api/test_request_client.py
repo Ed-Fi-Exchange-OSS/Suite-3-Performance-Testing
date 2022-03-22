@@ -4,12 +4,16 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 import json
+from time import sleep
+from typing import Tuple
+
 import pytest
 import requests_mock
 from http import HTTPStatus
 
-from edfi_paging_test.api.request_client import RequestClient
+from edfi_paging_test.api.request_client import RequestClient, timeit
 from edfi_paging_test.helpers.argparser import MainArguments
+from edfi_paging_test.helpers.output_format import OutputFormat
 
 
 FAKE_KEY = "TEST_KEY"
@@ -39,18 +43,11 @@ def describe_testing_RequestClient_class():
             FAKE_KEY,
             FAKE_SECRET,
             "doesn't matter",
-            "CSV",
+            OutputFormat.CSV,
             [],
             PAGE_SIZE,
         )
         return RequestClient(args)
-
-    @pytest.fixture()
-    def paging_request_client(default_request_client, mocker):
-        default_request_client._get_data = mocker.MagicMock(
-            side_effect=[FAKE_API_RESPONSE_PAGE1, FAKE_API_RESPONSE_PAGE2, []]
-        )
-        return default_request_client
 
     def describe_when_constructing_instance():
         def it_sets_base_url(default_request_client: RequestClient) -> None:
@@ -98,16 +95,19 @@ def describe_testing_RequestClient_class():
     def describe_when_getting_results():
         def describe_given_there_is_one_result_page():
             def it_returns_the_page(default_request_client: RequestClient):
+                CONTENT = '[{"id":"b"}]'
+
                 # Arrange
                 with requests_mock.Mocker() as m:
                     expected_url = API_BASE_URL + FAKE_ENDPOINT
                     m.post(OAUTH_URL, status_code=201, text=json.dumps(TOKEN_RESPONSE))
-                    m.get(expected_url, status_code=HTTPStatus.OK, text='[{"id":"b"}]')
+                    m.get(expected_url, status_code=HTTPStatus.OK, text=CONTENT)
+
                     # Act
-                    result = default_request_client._get_data(FAKE_ENDPOINT)
+                    result = default_request_client._get(FAKE_ENDPOINT)
 
                     # Assert
-                    assert result[0]["id"] == "b"
+                    assert result.text == CONTENT
 
     def describe_when_getting_total_count():
         def describe_given_there_is_total_count_in_the_header():
@@ -128,35 +128,69 @@ def describe_testing_RequestClient_class():
                     assert result == 2
 
     def describe_when_getting_all_pages():
-        def it_should_call_all_pages(paging_request_client):
-            # Act
-            paging_request_client.get_all()
+        def it_should_return_all_available_items(default_request_client: RequestClient):
+            with requests_mock.Mocker() as m:
+                m.post(OAUTH_URL, status_code=201, text=json.dumps(TOKEN_RESPONSE))
+                m.get(
+                    "https://localhost:54746/data/v3/ed-fi//ENDPOINT?offset=0&limit=2",
+                    status_code=HTTPStatus.OK,
+                    text=json.dumps(FAKE_API_RESPONSE_PAGE1),
+                )
+                m.get(
+                    "https://localhost:54746/data/v3/ed-fi//ENDPOINT?offset=2&limit=2",
+                    status_code=HTTPStatus.OK,
+                    text=json.dumps(FAKE_API_RESPONSE_PAGE2),
+                )
+                m.get(
+                    "https://localhost:54746/data/v3/ed-fi//ENDPOINT?offset=4&limit=2",
+                    status_code=HTTPStatus.OK,
+                    text="[]",
+                )
+                result = default_request_client.get_all(FAKE_ENDPOINT)
 
-            # Assert
-            assert paging_request_client._get_data.call_count == NUMBER_OF_PAGES + 1
-
-        def it_should_return_all_available_items(paging_request_client):
-            # Act
-            result = paging_request_client.get_all()
-            # Assert
-            assert len(result) == TOTAL_COUNT
+                assert len(result) == TOTAL_COUNT
 
     def describe_when_get_method_is_called():
         def describe_given_error_occurs():
-            def it_raises_an_error(default_request_client):
+            def it_continues_normal_operation(default_request_client):
                 expected_url = API_BASE_URL + FAKE_ENDPOINT
 
-                with pytest.raises(RuntimeError):
-                    with requests_mock.Mocker() as m:
-                        # Arrange
-                        m.post(
-                            OAUTH_URL, status_code=201, text=json.dumps(TOKEN_RESPONSE)
-                        )
-                        m.get(
-                            expected_url,
-                            status_code=HTTPStatus.BAD_REQUEST,
-                            text='{"error":"something bad"}',
-                        )
+                with requests_mock.Mocker() as m:
+                    # Arrange
+                    m.post(
+                        OAUTH_URL,
+                        status_code=HTTPStatus.CREATED,
+                        text=json.dumps(TOKEN_RESPONSE),
+                    )
+                    m.get(
+                        expected_url,
+                        status_code=HTTPStatus.BAD_REQUEST,
+                        text='{"error":"something bad"}',
+                    )
 
-                        # Act
-                        default_request_client._get_data(FAKE_ENDPOINT)
+                    # Act
+                    response = default_request_client._get(FAKE_ENDPOINT)
+
+                    # Assert
+                    assert response.status_code == HTTPStatus.BAD_REQUEST
+
+
+def describe_when_timing_a_callback():
+    RESPONSE = {"a": "b"}
+    SLEEP_TIME = 0.1
+
+    def callback() -> dict:
+        sleep(SLEEP_TIME)
+        return RESPONSE
+
+    @pytest.fixture
+    def time_response() -> Tuple[float, dict]:
+        return timeit(callback)
+
+    def it_returns_measured_time(time_response: Tuple[float, dict]):
+        assert time_response[0] > SLEEP_TIME
+        # Just confirm it is very close to the sleep time.
+        assert time_response[0] < SLEEP_TIME * 1.1
+
+    def it_returns_callback_response(time_response: Tuple[float, dict]):
+        assert time_response[1] == RESPONSE

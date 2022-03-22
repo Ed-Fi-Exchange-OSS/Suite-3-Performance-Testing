@@ -3,7 +3,7 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 
 class PaginatedResult():
@@ -31,24 +31,22 @@ class PaginatedResult():
         self,
         resource_name: str,
         page_size: int,
-        api_response: Dict[str, Any],
+        api_response: List[Dict[str, Any]],
+        status_code: int,
         current_page: int = 1,
     ):
         self.page_size = page_size
         self.current_page = current_page
 
         if api_response is None:
-            self._current_page_items: Dict[str, Any] = []
+            self.current_page_items: List[Dict[str, Any]] = []
         else:
-            self._current_page_items = api_response
+            self.current_page_items = api_response
 
         self._api_response = api_response
         self._resource_name = resource_name
-
-    @property
-    def current_page_items(self) -> Dict[str, Any] :
-        return self._current_page_items
+        self.status_code = status_code
 
     @property
     def is_empty(self) -> bool :
-        return len(self._current_page_items) == 0
+        return len(self.current_page_items) == 0
