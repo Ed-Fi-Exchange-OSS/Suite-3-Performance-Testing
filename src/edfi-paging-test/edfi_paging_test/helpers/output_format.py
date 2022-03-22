@@ -7,5 +7,5 @@ from edfi_paging_test.helpers.case_insensitive_enum import CaseInsensitiveEnum
 
 
 class OutputFormat(CaseInsensitiveEnum):
-    JSON = "json"
-    CSV = "csv"
+    JSON = "JSON"
+    CSV = "CSV"

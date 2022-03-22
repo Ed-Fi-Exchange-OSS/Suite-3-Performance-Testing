@@ -35,10 +35,10 @@ Supported arguments:
 | `-s` or `--secret`          | yes (no default)   | The web API OAuth secret                                                                      |
 | `-c` or `--connectionLimit` | no (default: 4)    | Maximum concurrent connections to api                                                         |
 | `-o` or `--output`          | no default: out)   | Directory for writing results                                                                 |
-| `-t` or `--contentType`     | no (default: csv)  | CSV or JSON                                                                                   |
+| `-t` or `--contentType`     | no (default: csv)  | Output file content type: CSV, JSON                                                           |
 | `-r` or `--resourceList`    | no (no default)    | (Optional) List of resources to test  - if not provided, all resources will be retrieved      |
 | `-p` or `--pageSize`        | no (default: 100)  | The page size to request. Max: 500.                                                           |
-| `-l` or `--logLevel`        | no (default: INFO) | Override the console output log level                                                         |
+| `-l` or `--logLevel`        | no (default: INFO) | Override the console output log level: VERBOSE, DEBUG, INFO, WARN, ERROR                      |
 
 Each argument can also be set by environment variable, or by using as `.env`
 file. See [.env.example](edfi_paging_test/.env.example). Arguments provided at

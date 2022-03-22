@@ -11,3 +11,7 @@ class LogLevel(CaseInsensitiveEnum):
     INFO = "INFO"
     WARNING = "WARNING"
     ERROR = "ERROR"
+    VERBOSE = "VERBOSE"
+
+    def __eq__(self, other: object) -> bool:
+        return self.value == LogLevel(other).value

@@ -10,7 +10,7 @@ class CaseInsensitiveEnum(Enum):
     @classmethod
     def _missing_(cls, value: object) -> "CaseInsensitiveEnum":
         for member in cls:
-            if member.value == str(value).lower():
+            if member.value == str(value).upper():
                 return member
 
         raise KeyError(f"{value} is not a valid {type(cls)}")
