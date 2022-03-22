@@ -4,11 +4,14 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 import json
+from time import sleep
+from typing import Tuple
+
 import pytest
 import requests_mock
 from http import HTTPStatus
 
-from edfi_paging_test.api.request_client import RequestClient
+from edfi_paging_test.api.request_client import RequestClient, timeit
 from edfi_paging_test.helpers.argparser import MainArguments
 from edfi_paging_test.helpers.output_format import OutputFormat
 
@@ -170,3 +173,24 @@ def describe_testing_RequestClient_class():
 
                     # Assert
                     assert response.status_code == HTTPStatus.BAD_REQUEST
+
+
+def describe_when_timing_a_callback():
+    RESPONSE = {"a": "b"}
+    SLEEP_TIME = 0.1
+
+    def callback() -> dict:
+        sleep(SLEEP_TIME)
+        return RESPONSE
+
+    @pytest.fixture
+    def time_response() -> Tuple[float, dict]:
+        return timeit(callback)
+
+    def it_returns_measured_time(time_response: Tuple[float, dict]):
+        assert time_response[0] > SLEEP_TIME
+        # Just confirm it is very close to the sleep time.
+        assert time_response[0] < SLEEP_TIME * 1.1
+
+    def it_returns_callback_response(time_response: Tuple[float, dict]):
+        assert time_response[1] == RESPONSE

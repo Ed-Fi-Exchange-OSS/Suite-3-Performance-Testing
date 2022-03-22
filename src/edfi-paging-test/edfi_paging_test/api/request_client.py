@@ -4,7 +4,8 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 import os
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List, Tuple, TypeVar
+from timeit import default_timer
 
 from requests import Response
 from requests.auth import HTTPBasicAuth
@@ -14,13 +15,22 @@ from requests_oauthlib import OAuth2Session  # type: ignore
 
 from edfi_paging_test.api.paginated_result import PaginatedResult
 from edfi_paging_test.helpers.argparser import MainArguments
-from edfi_paging_test.reporter.measurement import Measurement
 from edfi_paging_test.reporter.request_logger import log_request
 
 PERF_RESOURCE_LIST = list(
     os.environ.get("PERF_RESOURCE_LIST") or ["StudentSectionAttendanceEvents"]
 )
 OAUTH_TOKEN_URL = "/oauth/token/"
+
+T = TypeVar("T")
+
+
+def timeit(callback: Callable[[], T]) -> Tuple[float, T]:
+    start = default_timer()
+    response = callback()
+    elapsed = default_timer() - start
+
+    return (elapsed, response)
 
 
 class RequestClient:
@@ -153,7 +163,7 @@ class RequestClient:
             f"{self._build_query_params_for_page(page, self.page_size)}"
         )
 
-        elapsed, response = Measurement.timeit(lambda: self._get(next_url))
+        elapsed, response = timeit(lambda: self._get(next_url))
 
         items = response.json()
 
