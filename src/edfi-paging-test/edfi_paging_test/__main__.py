@@ -11,7 +11,7 @@ from errorhandler import ErrorHandler
 
 from edfi_paging_test.helpers.argparser import parse_main_arguments, MainArguments
 from edfi_paging_test.performance_tester import run
-from helpers.log_level import LogLevel
+from edfi_paging_test.helpers.log_level import LogLevel
 
 
 def _redefine_debug_as_verbose(configuration: MainArguments, logger: str) -> None:
