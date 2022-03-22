@@ -3,6 +3,7 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
+import logging
 import os
 from typing import Any, Callable, Dict, List, Tuple, TypeVar
 from timeit import default_timer
@@ -23,6 +24,8 @@ PERF_RESOURCE_LIST = list(
 OAUTH_TOKEN_URL = "/oauth/token/"
 
 T = TypeVar("T")
+
+logger = logging.getLogger(__name__)
 
 
 def timeit(callback: Callable[[], T]) -> Tuple[float, T]:
@@ -72,6 +75,7 @@ class RequestClient:
         return f"offset={0}&limit={0}&totalCount=true"
 
     def _authorize(self) -> None:
+        logger.debug("Authenticating to the ODS/API")
         self.oauth.fetch_token(self.api_base_url + OAUTH_TOKEN_URL, auth=self.auth)
 
     def _get(self, relative_url: str) -> Response:
@@ -144,8 +148,9 @@ class RequestClient:
         RuntimeError
             If the GET operation is unsuccessful
         """
-
+        logger.info(f"Getting total count for {resource}.")
         total_count_url = f"{self._build_url_for_resource(resource)}?{self._build_query_params_for_total_count()}"
+        logger.debug(f"GET {total_count_url}")
         return self._get_total(total_count_url)
 
     def get_page(
@@ -163,6 +168,7 @@ class RequestClient:
             f"{self._build_query_params_for_page(page, self.page_size)}"
         )
 
+        logger.debug(f"GET {next_url}")
         elapsed, response = timeit(lambda: self._get(next_url))
 
         items = response.json()
@@ -199,6 +205,8 @@ class RequestClient:
         list
             A list of all parsed results
         """
+
+        logger.info(f"Retrieving all {resource} records...")
 
         pagination_result = self.get_page(resource, 1)
 

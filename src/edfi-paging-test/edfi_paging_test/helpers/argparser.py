@@ -110,7 +110,7 @@ def parse_main_arguments() -> MainArguments:
     parser.add(  # type: ignore
         "-l",
         "--logLevel",
-        help="Console log level: DEBUG, INFO, WARN, ERROR",
+        help="Console log level: VERBOSE, DEBUG, INFO, WARN, ERROR",
         type=LogLevel,
         choices=list(LogLevel),
         default=LogLevel.INFO,
