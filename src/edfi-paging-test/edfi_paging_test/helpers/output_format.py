@@ -3,20 +3,9 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-from enum import Enum
+from edfi_paging_test.helpers.case_insensitive_enum import CaseInsensitiveEnum
 
 
-class OutputFormat(Enum):
+class OutputFormat(CaseInsensitiveEnum):
     JSON = "json"
     CSV = "csv"
-
-    @classmethod
-    def _missing_(cls, value: object) -> "OutputFormat":
-        for member in cls:
-            if member.value == str(value).lower():
-                return member
-
-        raise KeyError(f"{value} is not a valid OutputFormat")
-
-    def __str__(self):
-        return self.value
