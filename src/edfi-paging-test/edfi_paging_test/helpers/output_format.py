@@ -13,10 +13,10 @@ class OutputFormat(Enum):
     @classmethod
     def _missing_(cls, value: object) -> "OutputFormat":
         for member in cls:
-            if member.value == str(value).upper():
+            if member.value == str(value).lower():
                 return member
 
-        raise ValueError(f"{value} is not a valid OutputFormat")
+        raise KeyError(f"{value} is not a valid OutputFormat")
 
     def __str__(self):
         return self.value
