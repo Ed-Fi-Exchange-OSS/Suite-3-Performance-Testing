@@ -4,6 +4,7 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 import sys
+import logging
 
 from dotenv import load_dotenv
 from errorhandler import ErrorHandler
@@ -13,10 +14,20 @@ from edfi_paging_test.performance_tester import run
 
 
 def main() -> None:
-    error_tracker = ErrorHandler()
-
     load_dotenv()
-    run(parse_main_arguments())
+    configuration = parse_main_arguments()
+
+    logging.basicConfig(
+        handlers=[
+            logging.StreamHandler(sys.stdout),
+        ],
+        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+        level=str(configuration.log_level),
+    )
+
+    # Important that this comes _after_ the logging configuration
+    error_tracker = ErrorHandler()
+    run(configuration)
 
     if error_tracker.fired:
         print(

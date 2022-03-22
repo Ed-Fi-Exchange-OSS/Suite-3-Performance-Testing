@@ -7,7 +7,7 @@ from edfi_paging_test.helpers.case_insensitive_enum import CaseInsensitiveEnum
 
 
 class LogLevel(CaseInsensitiveEnum):
-    DEBUG = "debug"
-    INFO = "info"
-    WARNING = "warning"
-    ERROR = "error"
+    DEBUG = "DEBUG"
+    INFO = "INFO"
+    WARNING = "WARNING"
+    ERROR = "ERROR"

@@ -4,12 +4,15 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 from datetime import datetime
+import logging
 
 from edfi_paging_test.api.request_client import RequestClient
 from edfi_paging_test.reporter import request_logger
 from edfi_paging_test.reporter import reporter
 from edfi_paging_test.helpers.argparser import MainArguments
 from edfi_paging_test.helpers.output_format import OutputFormat
+
+logger = logging.getLogger(__name__)
 
 
 def _generate_output_reports(args: MainArguments) -> None:
@@ -30,18 +33,24 @@ def _generate_output_reports(args: MainArguments) -> None:
 
 
 def run(args: MainArguments) -> None:
-    request_client: RequestClient = RequestClient(args)
 
-    # TODO: once we are reading multiple requests, we probably want to pass the
-    # endpoint to the calls below. I like the call to get_total. The assert
-    # should become a WARNING log (see new ticket PERF-233 for logging). we
-    # probably want a module that wraps up the calls to get_all(), get_total(),
-    # and the validation.
-    resources = request_client.get_all()
-    total_count = request_client.get_total()
+    try:
+        logger.info("Starting paging volume test...")
+        request_client: RequestClient = RequestClient(args)
 
-    assert total_count == len(
-        resources
-    ), f"Expected {total_count} results, got: {len(resources)}"
+        # TODO: once we are reading multiple requests, we probably want to pass the
+        # endpoint to the calls below. I like the call to get_total. The assert
+        # should become a WARNING log (see new ticket PERF-233 for logging). we
+        # probably want a module that wraps up the calls to get_all(), get_total(),
+        # and the validation.
+        resources = request_client.get_all()
+        total_count = request_client.get_total()
 
-    _generate_output_reports(args)
+        assert total_count == len(
+            resources
+        ), f"Expected {total_count} results, got: {len(resources)}"
+
+        _generate_output_reports(args)
+        logging.info("Finished with paging volume test.")
+    except BaseException as err:
+        logger.error(err)
