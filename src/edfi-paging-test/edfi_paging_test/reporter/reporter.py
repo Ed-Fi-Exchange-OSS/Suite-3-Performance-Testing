@@ -59,7 +59,7 @@ def create_statistics_csv(df: DataFrame, output_dir: str, run_name: str) -> None
     run_dir = path.join(output_dir, run_name)
     _create_if_not_exists(run_dir)
 
-    file_path = path.join(run_dir, "summary.csv")
+    file_path = path.join(run_dir, "statistics.csv")
     _calculate_summary(df).to_csv(file_path, index=False)
 
 
@@ -67,7 +67,7 @@ def create_statistics_json(df: DataFrame, output_dir: str, run_name: str) -> Non
     run_dir = path.join(output_dir, run_name)
     _create_if_not_exists(run_dir)
 
-    file_path = path.join(run_dir, "summary.csv")
+    file_path = path.join(run_dir, "statistics.json")
 
     # Apparently to_json is not in the type stub
     _calculate_summary(df).to_json(file_path)  # type: ignore

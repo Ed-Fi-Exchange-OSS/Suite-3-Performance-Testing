@@ -56,10 +56,10 @@ a,2,3,4,1.3,200
                 assert actual == CONTENTS
 
 
-def describe_when_creating_summary_csv() -> None:
+def describe_when_creating_statistics_csv() -> None:
     OUTPUT_DIRECTORY = "/output"
     RUN_NAME = "1243"
-    EXPECTED_FILE = "/output/1243/summary.csv"
+    EXPECTED_FILE = "/output/1243/statistics.csv"
 
     @pytest.fixture(autouse=True)
     def init_fs(fs: FakeFilesystem) -> None:
@@ -254,10 +254,10 @@ def describe_when_creating_detail_json() -> None:
                 assert actual == CONTENTS
 
 
-def describe_when_creating_summary_json() -> None:
+def describe_when_creating_statistics_json() -> None:
     OUTPUT_DIRECTORY = "/output"
     RUN_NAME = "1243"
-    EXPECTED_FILE = "/output/1243/summary.csv"
+    EXPECTED_FILE = "/output/1243/statistics.json"
 
     @pytest.fixture(autouse=True)
     def init_fs(fs: FakeFilesystem) -> None:

@@ -22,7 +22,7 @@ def describe_when_parsing_enum() -> None:
             assert OutputFormat(input) == expected
 
     def describe_given_invalid_option() -> None:
-        @pytest.mark.parametrize("input", [])
+        @pytest.mark.parametrize("input", ["csv_", "jsonp", "txt"])
         def it_raises_KeyError(input: str) -> None:
             with pytest.raises(KeyError):
                 OutputFormat(input)
