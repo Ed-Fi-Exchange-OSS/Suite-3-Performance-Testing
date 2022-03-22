@@ -11,6 +11,7 @@ import pytest
 
 from edfi_paging_test.helpers.argparser import MainArguments, parse_main_arguments
 from edfi_paging_test.helpers.output_format import OutputFormat
+from edfi_paging_test.helpers.log_level import LogLevel
 
 
 BASEURL = "http://localhost:54746"
@@ -45,6 +46,51 @@ def _assert_error_message(capsys) -> None:
 
 
 def describe_when_parsing_from_command_line_args() -> None:
+    def describe_given_full_set_of_arguments() -> None:
+        @pytest.fixture()
+        def main_arguments() -> MainArguments:
+            sys.argv = [
+                "pytest",
+                "-b", "http://api.ed-fi.org/v5.1",
+                "-k", "populatedTemplateX",
+                "-s", "populatedSecretX",
+                "-c", "404",
+                "-o", "test_outputX",
+                "-t", str(OutputFormat.CSV),
+                "-r", "academicWeeks", "students",
+                "-p", "42",
+                "-l", "debug",
+            ]
+
+            return parse_main_arguments()
+
+        def it_sets_base_url(main_arguments: MainArguments) -> None:
+            assert main_arguments.baseUrl == "http://api.ed-fi.org/v5.1"
+
+        def it_sets_api_key(main_arguments: MainArguments) -> None:
+            assert main_arguments.key == "populatedTemplateX"
+
+        def it_sets_api_secret(main_arguments: MainArguments) -> None:
+            assert main_arguments.secret == "populatedSecretX"
+
+        def it_sets_connection_limit(main_arguments: MainArguments) -> None:
+            assert main_arguments.connectionLimit == 404
+
+        def it_sets_output_dir(main_arguments: MainArguments) -> None:
+            assert main_arguments.output == "test_outputX"
+
+        def it_sets_content_type(main_arguments: MainArguments) -> None:
+            assert main_arguments.contentType == OutputFormat.CSV
+
+        def it_sets_resource_list(main_arguments: MainArguments) -> None:
+            assert main_arguments.resourceList == ["academicWeeks", "students"]
+
+        def it_sets_page_size(main_arguments: MainArguments) -> None:
+            assert main_arguments.pageSize == 42
+
+        def it_sets_log_level(main_arguments: MainArguments) -> None:
+            assert main_arguments.log_level == LogLevel.DEBUG
+
     def describe_given_arguments_do_not_include_baseUrl() -> None:
         def it_should_show_help(capsys) -> None:
             with pytest.raises(SystemExit):
@@ -93,6 +139,7 @@ def describe_when_parsing_from_env_vars() -> None:
         os.environ["PERF_CONTENT_TYPE"] = str(OutputFormat.JSON)
         os.environ["PERF_RESOURCE_LIST"] = '["a", "b"]'
         os.environ["PERF_API_PAGE_SIZE"] = "402"
+        os.environ["PERF_LOG_LEVEL"] = "WARNing"
 
         sys.argv = ["pytest"]
 
@@ -121,3 +168,6 @@ def describe_when_parsing_from_env_vars() -> None:
 
     def it_sets_page_size(main_arguments: MainArguments) -> None:
         assert main_arguments.pageSize == 402
+
+    def it_sets_log_level(main_arguments: MainArguments) -> None:
+        assert main_arguments.log_level == LogLevel.WARNING

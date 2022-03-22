@@ -38,6 +38,7 @@ Supported arguments:
 | `-t` or `--contentType`     | no (default: csv)  | CSV or JSON                                                                                   |
 | `-r` or `--resourceList`    | no (no default)    | (Optional) List of resources to test  - if not provided, all resources will be retrieved      |
 | `-p` or `--pageSize`        | no (default: 100)  | The page size to request. Max: 500.                                                           |
+| `-l` or `--logLevel`        | no (default: INFO) | Override the console output log level                                                         |
 
 Each argument can also be set by environment variable, or by using as `.env`
 file. See [.env.example](edfi_paging_test/.env.example). Arguments provided at

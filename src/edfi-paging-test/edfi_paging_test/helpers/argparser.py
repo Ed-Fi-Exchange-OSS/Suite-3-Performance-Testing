@@ -8,6 +8,7 @@ from typing import List
 from dataclasses import dataclass
 
 from edfi_paging_test.helpers.output_format import OutputFormat
+from edfi_paging_test.helpers.log_level import LogLevel
 
 
 @dataclass
@@ -24,6 +25,7 @@ class MainArguments:
     contentType: OutputFormat
     resourceList: List[str]
     pageSize: int = 100
+    log_level: LogLevel = LogLevel.INFO
 
 
 def parse_main_arguments() -> MainArguments:
@@ -105,6 +107,15 @@ def parse_main_arguments() -> MainArguments:
         default="100",
         env_var="PERF_API_PAGE_SIZE",
     )
+    parser.add(  # type: ignore
+        "-l",
+        "--logLevel",
+        help="Console log level: DEBUG, INFO, WARN, ERROR",
+        type=LogLevel,
+        choices=list(LogLevel),
+        default=LogLevel.INFO,
+        env_var="PERF_LOG_LEVEL"
+    )
 
     args_parsed = parser.parse_args()
 
@@ -117,6 +128,7 @@ def parse_main_arguments() -> MainArguments:
         args_parsed.contentType,
         args_parsed.resourceList,
         args_parsed.pageSize,
+        args_parsed.logLevel
     )
 
     return arguments
