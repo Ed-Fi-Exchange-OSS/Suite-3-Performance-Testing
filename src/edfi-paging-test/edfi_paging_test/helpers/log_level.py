@@ -14,4 +14,7 @@ class LogLevel(CaseInsensitiveEnum):
     VERBOSE = "VERBOSE"
 
     def __eq__(self, other: object) -> bool:
-        return self.value == LogLevel(other).value
+        try:
+            return self.value == LogLevel(other).value
+        except:  # noqa: E722
+            return False

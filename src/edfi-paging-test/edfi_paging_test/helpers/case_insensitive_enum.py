@@ -4,16 +4,17 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 from enum import Enum
+from typing import Optional
 
 
 class CaseInsensitiveEnum(Enum):
     @classmethod
-    def _missing_(cls, value: object) -> "CaseInsensitiveEnum":
+    def _missing_(cls, value: object) -> Optional["CaseInsensitiveEnum"]:
         for member in cls:
             if member.value == str(value).upper():
                 return member
 
-        raise KeyError(f"{value} is not a valid {type(cls)}")
+        return None
 
     def __str__(self):
         return self.value
