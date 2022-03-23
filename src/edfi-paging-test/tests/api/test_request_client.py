@@ -43,6 +43,7 @@ def describe_testing_RequestClient_class():
             FAKE_KEY,
             FAKE_SECRET,
             "doesn't matter",
+            "description",
             OutputFormat.CSV,
             [],
             PAGE_SIZE,

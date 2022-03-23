@@ -25,7 +25,7 @@ def create_detail_json(df: DataFrame, output_dir: str, run_name: str) -> None:
     df.to_json(file_path, orient="records")  # type: ignore
 
 
-def _calculate_summary(df: DataFrame) -> DataFrame:
+def _calculate_statistics(df: DataFrame) -> DataFrame:
     summary = df.copy()
 
     # Need multiple columns in order to perform three different aggregations
@@ -60,7 +60,7 @@ def create_statistics_csv(df: DataFrame, output_dir: str, run_name: str) -> None
     _create_if_not_exists(run_dir)
 
     file_path = path.join(run_dir, "statistics.csv")
-    _calculate_summary(df).to_csv(file_path, index=False)
+    _calculate_statistics(df).to_csv(file_path, index=False)
 
 
 def create_statistics_json(df: DataFrame, output_dir: str, run_name: str) -> None:
@@ -70,4 +70,16 @@ def create_statistics_json(df: DataFrame, output_dir: str, run_name: str) -> Non
     file_path = path.join(run_dir, "statistics.json")
 
     # Apparently to_json is not in the type stub
-    _calculate_summary(df).to_json(file_path, orient="records")  # type: ignore
+    _calculate_statistics(df).to_json(file_path, orient="records")  # type: ignore
+
+
+def create_summary_json(df: DataFrame, output_dir: str, run_name: str) -> None:
+    run_dir = path.join(output_dir, run_name)
+    _create_if_not_exists(run_dir)
+
+    file_path = path.join(run_dir, "summary.json")
+
+    df.columns = df.columns.str.title().str.replace("_", "")  # type: ignore
+
+    # Apparently to_json is not in the type stub
+    df.to_json(file_path, orient="records")  # type: ignore

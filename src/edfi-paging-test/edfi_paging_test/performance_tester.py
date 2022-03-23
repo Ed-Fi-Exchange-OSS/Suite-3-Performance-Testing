@@ -5,12 +5,15 @@
 
 from datetime import datetime
 import logging
+import socket
 
 from edfi_paging_test.api.request_client import RequestClient
 from edfi_paging_test.reporter import request_logger
 from edfi_paging_test.reporter import reporter
 from edfi_paging_test.helpers.argparser import MainArguments
 from edfi_paging_test.helpers.output_format import OutputFormat
+from pandas import DataFrame
+from edfi_paging_test.reporter.summary import Summary
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +33,17 @@ def _generate_output_reports(args: MainArguments) -> None:
         OutputFormat.JSON: reporter.create_statistics_json
     }
     create_statistics_out[args.contentType](df, args.output, run_name)
+    summary_df = DataFrame(
+        [
+            Summary(
+                key=run_name,
+                machine_name=socket.gethostname(),
+                resources=args.resourceList,
+                description=args.description
+            )
+        ]
+    )
+    reporter.create_summary_json(summary_df, args.output, run_name)
 
 
 def run(args: MainArguments) -> None:

@@ -1,6 +1,7 @@
 import pytest
 from pandas import DataFrame, read_csv, read_json
 from os import path
+from edfi_paging_test.reporter.summary import Summary
 
 from pyfakefs.fake_filesystem import FakeFilesystem, OSType  # type: ignore
 
@@ -9,6 +10,7 @@ from edfi_paging_test.reporter.reporter import (
     create_statistics_csv,
     create_detail_json,
     create_statistics_json,
+    create_summary_json,
 )
 
 
@@ -408,3 +410,42 @@ def describe_when_creating_statistics_json() -> None:
 
             query = file[(file.Resource == "b") & (file.PageSize == 10)][field]
             assert query.iloc[0] == value
+
+
+def describe_when_creating_summary_json() -> None:
+    @pytest.fixture(autouse=True)
+    def init_fs(fs: FakeFilesystem) -> None:
+        # Fake as Linux so that all slashes in these test are forward
+        fs.os = OSType.LINUX
+        fs.path_separator = "/"
+        fs.is_windows_fs = False
+        fs.is_macos = False
+
+    def describe_given_a_valid_DataFrame() -> None:
+        OUTPUT_DIRECTORY = "/output"
+        RUN_NAME = "123"
+        EXPECTED_FILE = "/output/123/summary.json"
+        CONTENTS = '[{"Key":"123","MachineName":"My Machine","Resources":["a","b"],"Description":"Test Run"}]'
+
+        @pytest.fixture(autouse=True)
+        def act():
+            df = DataFrame(
+                [
+                    Summary(
+                        RUN_NAME,
+                        "My Machine",
+                        ["a", "b"],
+                        "Test Run"
+                    )
+                ]
+            )
+            create_summary_json(df, OUTPUT_DIRECTORY, RUN_NAME)
+
+        def it_creates_a_file(fs: FakeFilesystem) -> None:
+            assert path.exists(EXPECTED_FILE)
+
+        def the_file_has_expected_data(fs: FakeFilesystem) -> None:
+            with open(EXPECTED_FILE) as f:
+                actual = f.read()
+
+                assert actual == CONTENTS
