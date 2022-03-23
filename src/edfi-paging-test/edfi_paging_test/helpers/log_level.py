@@ -6,6 +6,15 @@
 from edfi_paging_test.helpers.case_insensitive_enum import CaseInsensitiveEnum
 
 
-class OutputFormat(CaseInsensitiveEnum):
-    JSON = "JSON"
-    CSV = "CSV"
+class LogLevel(CaseInsensitiveEnum):
+    DEBUG = "DEBUG"
+    INFO = "INFO"
+    WARNING = "WARNING"
+    ERROR = "ERROR"
+    VERBOSE = "VERBOSE"
+
+    def __eq__(self, other: object) -> bool:
+        try:
+            return self.value == LogLevel(other).value
+        except:  # noqa: E722
+            return False
