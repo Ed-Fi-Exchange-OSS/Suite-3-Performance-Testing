@@ -22,6 +22,7 @@ class MainArguments:
     key: str
     secret: str
     output: str
+    description: str
     contentType: OutputFormat
     resourceList: List[str]
     pageSize: int = 100
@@ -116,6 +117,14 @@ def parse_main_arguments() -> MainArguments:
         default=LogLevel.INFO,
         env_var="PERF_LOG_LEVEL"
     )
+    parser.add(  # type: ignore
+        "-d",
+        "--description",
+        help="Description for the test run",
+        type=str,
+        default="Paging Volume Test Run",
+        env_var="PERF_DESCRIPTION"
+    )
 
     args_parsed = parser.parse_args()
 
@@ -125,6 +134,7 @@ def parse_main_arguments() -> MainArguments:
         args_parsed.key,
         args_parsed.secret,
         args_parsed.output,
+        args_parsed.description,
         args_parsed.contentType,
         args_parsed.resourceList,
         args_parsed.pageSize,

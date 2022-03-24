@@ -60,6 +60,7 @@ def describe_when_parsing_from_command_line_args() -> None:
                 "-r", "academicWeeks", "students",
                 "-p", "42",
                 "-l", "debug",
+                "-d", "test run"
             ]
 
             return parse_main_arguments()
@@ -90,6 +91,9 @@ def describe_when_parsing_from_command_line_args() -> None:
 
         def it_sets_log_level(main_arguments: MainArguments) -> None:
             assert main_arguments.log_level == LogLevel.DEBUG
+
+        def it_sets_description(main_arguments: MainArguments) -> None:
+            assert main_arguments.description == "test run"
 
     def describe_given_arguments_do_not_include_baseUrl() -> None:
         def it_should_show_help(capsys) -> None:
@@ -140,6 +144,7 @@ def describe_when_parsing_from_env_vars() -> None:
         os.environ["PERF_RESOURCE_LIST"] = '["a", "b"]'
         os.environ["PERF_API_PAGE_SIZE"] = "402"
         os.environ["PERF_LOG_LEVEL"] = "WARNing"
+        os.environ["PERF_DESCRIPTION"] = "page run"
 
         sys.argv = ["pytest"]
 
@@ -171,3 +176,6 @@ def describe_when_parsing_from_env_vars() -> None:
 
     def it_sets_log_level(main_arguments: MainArguments) -> None:
         assert main_arguments.log_level == LogLevel.WARNING
+
+    def it_sets_description(main_arguments: MainArguments) -> None:
+        assert main_arguments.description == "page run"
