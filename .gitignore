@@ -4,6 +4,7 @@
 
 # Generated files
 *.csv
+*.json
 *.pyc
 /artifacts/
 /TestResults/

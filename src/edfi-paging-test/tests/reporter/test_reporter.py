@@ -425,17 +425,17 @@ def describe_when_creating_summary_json() -> None:
         OUTPUT_DIRECTORY = "/output"
         RUN_NAME = "123"
         EXPECTED_FILE = "/output/123/summary.json"
-        CONTENTS = '[{"Key":"123","MachineName":"My Machine","Resources":["a","b"],"Description":"Test Run"}]'
+        CONTENTS = '[{"Key":"123","Description":"Test Run","MachineName":"My Machine","Resources":["a","b"]}]'
 
         @pytest.fixture(autouse=True)
         def act():
             df = DataFrame(
                 [
                     Summary(
-                        RUN_NAME,
-                        "My Machine",
-                        ["a", "b"],
-                        "Test Run"
+                        key=RUN_NAME,
+                        machine_name="My Machine",
+                        resources=["a", "b"],
+                        description="Test Run"
                     )
                 ]
             )

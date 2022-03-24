@@ -5,7 +5,6 @@
 
 from datetime import datetime
 import logging
-import socket
 
 from edfi_paging_test.api.request_client import RequestClient
 from edfi_paging_test.reporter import request_logger
@@ -37,7 +36,6 @@ def _generate_output_reports(args: MainArguments) -> None:
         [
             Summary(
                 key=run_name,
-                machine_name=socket.gethostname(),
                 resources=args.resourceList,
                 description=args.description
             )
