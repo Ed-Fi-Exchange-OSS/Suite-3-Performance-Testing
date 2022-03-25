@@ -117,7 +117,9 @@ def parse_main_arguments() -> MainArguments:
         args_parsed.output,
         args_parsed.description,
         args_parsed.contentType,
-        args_parsed.resourceList,
+        # Temporary hard coding of default resource, until we add code that reads
+        # _all_ resources from Open API metadata in PERF-229.
+        args_parsed.resourceList or ["StudentSectionAttendanceEvents"],
         args_parsed.pageSize,
         args_parsed.logLevel
     )
