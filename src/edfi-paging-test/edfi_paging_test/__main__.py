@@ -36,6 +36,9 @@ def _configure_logging(configuration: MainArguments) -> None:
         level=log_level,
     )
 
+    # These two loggers produce far more than we really want to see in debug
+    # mode. Therefore we'll redefine _their_ debug modes as "verbose" for our
+    # purposes.
     _redefine_debug_as_verbose(configuration, "requests_oauthlib.oauth2_session")
     _redefine_debug_as_verbose(configuration, "urllib3.connectionpool")
 
