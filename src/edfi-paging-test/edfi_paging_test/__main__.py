@@ -9,7 +9,8 @@ import logging
 from dotenv import load_dotenv
 from errorhandler import ErrorHandler
 
-from edfi_paging_test.helpers.argparser import parse_main_arguments, MainArguments
+from edfi_paging_test.helpers.argparser import parse_main_arguments
+from edfi_paging_test.helpers.main_arguments import MainArguments
 from edfi_paging_test.performance_tester import run
 from edfi_paging_test.helpers.log_level import LogLevel
 
@@ -36,6 +37,9 @@ def _configure_logging(configuration: MainArguments) -> None:
         level=log_level,
     )
 
+    # These two loggers produce far more than we really want to see in debug
+    # mode. Therefore we'll redefine _their_ debug modes as "verbose" for our
+    # purposes.
     _redefine_debug_as_verbose(configuration, "requests_oauthlib.oauth2_session")
     _redefine_debug_as_verbose(configuration, "urllib3.connectionpool")
 

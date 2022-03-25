@@ -48,5 +48,5 @@ class PaginatedResult():
         self.status_code = status_code
 
     @property
-    def is_empty(self) -> bool :
-        return len(self.current_page_items) == 0
+    def size(self) -> int:
+        return len(self.current_page_items)

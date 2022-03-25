@@ -4,7 +4,6 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 import logging
-import os
 from typing import Any, Callable, Dict, List, Tuple, TypeVar
 from timeit import default_timer
 
@@ -18,10 +17,8 @@ from edfi_paging_test.api.paginated_result import PaginatedResult
 from edfi_paging_test.helpers.argparser import MainArguments
 from edfi_paging_test.reporter.request_logger import log_request
 
-PERF_RESOURCE_LIST = list(
-    os.environ.get("PERF_RESOURCE_LIST") or ["StudentSectionAttendanceEvents"]
-)
 OAUTH_TOKEN_URL = "/oauth/token/"
+EDFI_DATA_MODEL_NAME = "ed-fi"
 
 T = TypeVar("T")
 
@@ -64,15 +61,16 @@ class RequestClient:
         client = BackendApplicationClient(client_id=args.key)
         self.oauth = OAuth2Session(client=client)
 
-    def _build_url_for_resource(self, resource) -> str:
-        return f"/data/v3/ed-fi/{resource}"
+    def _build_url_for_resource(self, resource: str) -> str:
+        endpoint = resource
+        if "/" not in resource:
+            endpoint = EDFI_DATA_MODEL_NAME + "/" + resource
+
+        return f"/data/v3/{endpoint}"
 
     def _build_query_params_for_page(self, page_index, page_size: int) -> str:
         page_offset = (page_index - 1) * page_size
         return f"offset={page_offset}&limit={page_size}"
-
-    def _build_query_params_for_total_count(self) -> str:
-        return f"offset={0}&limit={0}&totalCount=true"
 
     def _authorize(self) -> None:
         logger.debug("Authenticating to the ODS/API")
@@ -108,28 +106,22 @@ class RequestClient:
 
         response: Response
 
-        def _get() -> Response:
+        def __get() -> Response:
             return self.oauth.get(
                 url=url,
                 auth=self.oauth.auth,
             )
 
         try:
-            response = _get()
+            response = __get()
         except TokenExpiredError:
             self._authorize()
-            response = _get()
+            response = __get()
             # If that fails after authorization, then let it go
 
         return response
 
-    def _get_total(self, relative_url: str) -> int:
-        response = self._get(relative_url)
-
-        total = response.headers["total-count"]
-        return int(total)
-
-    def get_total(self, resource: str = PERF_RESOURCE_LIST[0]) -> int:
+    def get_total(self, resource: str) -> int:
         """
         Get total resource count by sending an HTTP GET request.
 
@@ -149,13 +141,15 @@ class RequestClient:
             If the GET operation is unsuccessful
         """
         logger.info(f"Getting total count for {resource}.")
-        total_count_url = f"{self._build_url_for_resource(resource)}?{self._build_query_params_for_total_count()}"
-        logger.debug(f"GET {total_count_url}")
-        return self._get_total(total_count_url)
+        total_count_url = f"{self._build_url_for_resource(resource)}?offset=0&limit=0&totalCount=true"
 
-    def get_page(
-        self, resource: str = PERF_RESOURCE_LIST[0], page: int = 1
-    ) -> PaginatedResult:
+        logger.debug(f"GET {total_count_url}")
+
+        response = self._get(total_count_url)
+
+        return int(response.headers["total-count"])
+
+    def get_page(self, resource: str, page: int = 1) -> PaginatedResult:
         """Send an HTTP GET request for the next page.
 
         Returns
@@ -191,7 +185,7 @@ class RequestClient:
             status_code=response.status_code,
         )
 
-    def get_all(self, resource: str = PERF_RESOURCE_LIST[0]) -> List[Dict[str, Any]]:
+    def get_all(self, resource: str) -> List[Dict[str, Any]]:
         """
         Send an HTTP GET request for all pages of a resource.
 
@@ -209,15 +203,15 @@ class RequestClient:
         logger.info(f"Retrieving all {resource} records...")
 
         pagination_result = self.get_page(resource, 1)
+        items: List[Any] = pagination_result.current_page_items
 
-        items: List[Any] = []
         while True:
-            items.extend(pagination_result.current_page_items)
             pagination_result = self.get_page(
                 resource, pagination_result.current_page + 1
             )
+            items.extend(pagination_result.current_page_items)
 
-            if pagination_result.is_empty:
+            if pagination_result.size < self.page_size:
                 break
 
         return items

@@ -18,7 +18,7 @@ from edfi_paging_test.helpers.output_format import OutputFormat
 
 FAKE_KEY = "TEST_KEY"
 FAKE_SECRET = "TEST_SECRET"
-FAKE_ENDPOINT = "/ENDPOINT"
+FAKE_ENDPOINT = "ENDPOINT"
 API_BASE_URL = "https://localhost:54746"
 OAUTH_URL = "https://localhost:54746/oauth/token/"
 FAKE_API_RESPONSE_PAGE1 = [{"id": "a"}, {"id": "b"}]
@@ -83,16 +83,6 @@ def describe_testing_RequestClient_class():
                 # Assert
                 assert result == expected_result
 
-            def it_builds_url_correctly_for_total_count(default_request_client):
-                # Arrange
-                expected_result = "offset=0&limit=0&totalCount=true"
-
-                # Act
-                result = default_request_client._build_query_params_for_total_count()
-
-                # Assert
-                assert result == expected_result
-
     def describe_when_getting_results():
         def describe_given_there_is_one_result_page():
             def it_returns_the_page(default_request_client: RequestClient):
@@ -100,22 +90,24 @@ def describe_testing_RequestClient_class():
 
                 # Arrange
                 with requests_mock.Mocker() as m:
-                    expected_url = API_BASE_URL + FAKE_ENDPOINT
+                    expected_url = API_BASE_URL + "/" + FAKE_ENDPOINT
                     m.post(OAUTH_URL, status_code=201, text=json.dumps(TOKEN_RESPONSE))
                     m.get(expected_url, status_code=HTTPStatus.OK, text=CONTENT)
 
                     # Act
-                    result = default_request_client._get(FAKE_ENDPOINT)
+                    relative_url = "/" + FAKE_ENDPOINT
+                    result = default_request_client._get(relative_url)
 
                     # Assert
                     assert result.text == CONTENT
 
     def describe_when_getting_total_count():
         def describe_given_there_is_total_count_in_the_header():
-            def it_returns_the_total_count(default_request_client):
+            def it_returns_the_total_count(default_request_client: RequestClient):
                 # Arrange
                 with requests_mock.Mocker() as m:
-                    expected_url = API_BASE_URL + FAKE_ENDPOINT
+                    expected_url = API_BASE_URL + "/data/v3/ed-fi/" + FAKE_ENDPOINT + "?offset=0&limit=0&totalCount=true"
+
                     m.post(OAUTH_URL, status_code=201, text=json.dumps(TOKEN_RESPONSE))
                     m.get(
                         expected_url,
@@ -123,7 +115,7 @@ def describe_testing_RequestClient_class():
                         headers={"total-count": "2"},
                     )
                     # Act
-                    result = default_request_client._get_total(FAKE_ENDPOINT)
+                    result = default_request_client.get_total(FAKE_ENDPOINT)
 
                     # Assert
                     assert result == 2
@@ -133,17 +125,17 @@ def describe_testing_RequestClient_class():
             with requests_mock.Mocker() as m:
                 m.post(OAUTH_URL, status_code=201, text=json.dumps(TOKEN_RESPONSE))
                 m.get(
-                    "https://localhost:54746/data/v3/ed-fi//ENDPOINT?offset=0&limit=2",
+                    "https://localhost:54746/data/v3/ed-fi/ENDPOINT?offset=0&limit=2",
                     status_code=HTTPStatus.OK,
                     text=json.dumps(FAKE_API_RESPONSE_PAGE1),
                 )
                 m.get(
-                    "https://localhost:54746/data/v3/ed-fi//ENDPOINT?offset=2&limit=2",
+                    "https://localhost:54746/data/v3/ed-fi/ENDPOINT?offset=2&limit=2",
                     status_code=HTTPStatus.OK,
                     text=json.dumps(FAKE_API_RESPONSE_PAGE2),
                 )
                 m.get(
-                    "https://localhost:54746/data/v3/ed-fi//ENDPOINT?offset=4&limit=2",
+                    "https://localhost:54746/data/v3/ed-fi/ENDPOINT?offset=4&limit=2",
                     status_code=HTTPStatus.OK,
                     text="[]",
                 )
@@ -154,7 +146,7 @@ def describe_testing_RequestClient_class():
     def describe_when_get_method_is_called():
         def describe_given_error_occurs():
             def it_continues_normal_operation(default_request_client):
-                expected_url = API_BASE_URL + FAKE_ENDPOINT
+                expected_url = API_BASE_URL + "/" + FAKE_ENDPOINT
 
                 with requests_mock.Mocker() as m:
                     # Arrange
@@ -170,7 +162,8 @@ def describe_testing_RequestClient_class():
                     )
 
                     # Act
-                    response = default_request_client._get(FAKE_ENDPOINT)
+                    relative_url = "/" + FAKE_ENDPOINT
+                    response = default_request_client._get(relative_url)
 
                     # Assert
                     assert response.status_code == HTTPStatus.BAD_REQUEST

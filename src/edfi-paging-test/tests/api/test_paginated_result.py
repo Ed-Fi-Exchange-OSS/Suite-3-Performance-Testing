@@ -33,7 +33,7 @@ def default_paginated_result():
 def empty_paginated_result():
     paginated_result = PaginatedResult(
         page_size=PAGE_SIZE,
-        api_response={},
+        api_response=[],
         resource_name=FAKE_RESOURCE_NAME,
         status_code=STATUS_CODE
     )
@@ -54,15 +54,15 @@ def describe_testing_PaginatedResult_class():
             def it_binds_current_page_items(default_paginated_result):
 
                 # Assert
-                assert len(default_paginated_result.current_page_items) == len(FAKE_API_RESPONSE_PAGE1)
+                assert default_paginated_result.current_page_items[0] == FAKE_API_RESPONSE_PAGE1[0]
 
-            def it_returns_is_empty_as_false(default_paginated_result):
+            def it_returns_correct_size(default_paginated_result):
 
                 # Assert
-                assert default_paginated_result.is_empty is False
+                assert default_paginated_result.size == 2
 
         def describe_given_items_not_present_in_api_response():
-            def it_returns_is_empty_as_true(empty_paginated_result):
+            def it_returns_correct_size(empty_paginated_result):
 
                 # Assert
-                assert empty_paginated_result.is_empty is True
+                assert empty_paginated_result.size == 0
