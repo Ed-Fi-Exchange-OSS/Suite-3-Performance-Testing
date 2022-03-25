@@ -72,9 +72,6 @@ class RequestClient:
         page_offset = (page_index - 1) * page_size
         return f"offset={page_offset}&limit={page_size}"
 
-    def _build_query_params_for_total_count(self) -> str:
-        return f"offset={0}&limit={0}&totalCount=true"
-
     def _authorize(self) -> None:
         logger.debug("Authenticating to the ODS/API")
         self.oauth.fetch_token(self.api_base_url + OAUTH_TOKEN_URL, auth=self.auth)
@@ -109,26 +106,20 @@ class RequestClient:
 
         response: Response
 
-        def _get() -> Response:
+        def __get() -> Response:
             return self.oauth.get(
                 url=url,
                 auth=self.oauth.auth,
             )
 
         try:
-            response = _get()
+            response = __get()
         except TokenExpiredError:
             self._authorize()
-            response = _get()
+            response = __get()
             # If that fails after authorization, then let it go
 
         return response
-
-    def _get_total(self, relative_url: str) -> int:
-        response = self._get(relative_url)
-
-        total = response.headers["total-count"]
-        return int(total)
 
     def get_total(self, resource: str) -> int:
         """
@@ -150,9 +141,13 @@ class RequestClient:
             If the GET operation is unsuccessful
         """
         logger.info(f"Getting total count for {resource}.")
-        total_count_url = f"{self._build_url_for_resource(resource)}?{self._build_query_params_for_total_count()}"
+        total_count_url = f"{self._build_url_for_resource(resource)}?offset=0&limit=0&totalCount=true"
+
         logger.debug(f"GET {total_count_url}")
-        return self._get_total(total_count_url)
+
+        response = self._get(total_count_url)
+
+        return int(response.headers["total-count"])
 
     def get_page(self, resource: str, page: int = 1) -> PaginatedResult:
         """Send an HTTP GET request for the next page.
