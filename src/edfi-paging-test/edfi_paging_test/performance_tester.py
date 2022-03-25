@@ -3,8 +3,12 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import logging
+import time
+from typing import List
 
 from edfi_paging_test.api.request_client import RequestClient
 from edfi_paging_test.reporter import request_logger
@@ -52,16 +56,28 @@ def fetch_resource(request_client: RequestClient, target_resource: str) -> None:
         )
 
 
-def run(args: MainArguments) -> None:
+async def run(args: MainArguments) -> None:
 
     try:
         logger.info("Starting paging volume test...")
+        start = time.time()
         request_client: RequestClient = RequestClient(args)
 
-        for target_resource in args.resourceList:
-            fetch_resource(request_client, target_resource)
+        executor: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=5)
+        loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()
+
+        fetch_resource_calls: List[asyncio.Future] = [
+            loop.run_in_executor(
+                executor, fetch_resource, request_client, target_resource
+            )
+            for target_resource in args.resourceList
+        ]
+
+        await asyncio.wait(fetch_resource_calls)
 
         _generate_output_reports(args)
-        logging.info("Finished with paging volume test.")
+        logger.info(
+            f"Finished with paging volume test in {time.time() - start} seconds."
+        )
     except BaseException as err:
         logger.error(err)

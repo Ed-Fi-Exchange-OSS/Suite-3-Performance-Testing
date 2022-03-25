@@ -3,6 +3,8 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 import sys
 import logging
 
@@ -44,7 +46,7 @@ def _configure_logging(configuration: MainArguments) -> None:
     _redefine_debug_as_verbose(configuration, "urllib3.connectionpool")
 
 
-def main() -> None:
+async def main() -> None:
     load_dotenv()
     configuration = parse_main_arguments()
     _configure_logging(configuration)
@@ -52,7 +54,7 @@ def main() -> None:
     # Important that this comes _after_ the logging configuration
     error_tracker = ErrorHandler()
 
-    run(configuration)
+    await run(configuration)
 
     if error_tracker.fired:
         print(
@@ -64,4 +66,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
