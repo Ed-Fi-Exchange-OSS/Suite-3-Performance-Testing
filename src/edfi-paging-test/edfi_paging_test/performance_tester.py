@@ -23,21 +23,19 @@ def _generate_output_reports(args: MainArguments) -> None:
     run_name = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     create_detail_out = {
         OutputFormat.CSV: reporter.create_detail_csv,
-        OutputFormat.JSON: reporter.create_detail_json
+        OutputFormat.JSON: reporter.create_detail_json,
     }
     create_detail_out[args.contentType](df, args.output, run_name)
 
     create_statistics_out = {
         OutputFormat.CSV: reporter.create_statistics_csv,
-        OutputFormat.JSON: reporter.create_statistics_json
+        OutputFormat.JSON: reporter.create_statistics_json,
     }
     create_statistics_out[args.contentType](df, args.output, run_name)
     summary_df = DataFrame(
         [
             Summary(
-                key=run_name,
-                resources=args.resourceList,
-                description=args.description
+                key=run_name, resources=args.resourceList, description=args.description
             )
         ]
     )
@@ -45,11 +43,13 @@ def _generate_output_reports(args: MainArguments) -> None:
 
 
 def fetch_resource(request_client: RequestClient, target_resource: str) -> None:
-    resources = request_client.get_all()
-    total_count = request_client.get_total()
+    resources = request_client.get_all(target_resource)
+    total_count = request_client.get_total(target_resource)
 
     if len(resources) != total_count:
-        logger.warn(f"{target_resource}: expected {total_count} results, got: {len(resources)}")
+        logger.warn(
+            f"{target_resource}: expected {total_count} results, got: {len(resources)}"
+        )
 
 
 def run(args: MainArguments) -> None:

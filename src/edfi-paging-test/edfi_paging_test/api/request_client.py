@@ -4,7 +4,6 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 import logging
-import os
 from typing import Any, Callable, Dict, List, Tuple, TypeVar
 from timeit import default_timer
 
@@ -18,9 +17,6 @@ from edfi_paging_test.api.paginated_result import PaginatedResult
 from edfi_paging_test.helpers.argparser import MainArguments
 from edfi_paging_test.reporter.request_logger import log_request
 
-PERF_RESOURCE_LIST = list(
-    os.environ.get("PERF_RESOURCE_LIST") or ["StudentSectionAttendanceEvents"]
-)
 OAUTH_TOKEN_URL = "/oauth/token/"
 
 T = TypeVar("T")
@@ -129,7 +125,7 @@ class RequestClient:
         total = response.headers["total-count"]
         return int(total)
 
-    def get_total(self, resource: str = PERF_RESOURCE_LIST[0]) -> int:
+    def get_total(self, resource: str) -> int:
         """
         Get total resource count by sending an HTTP GET request.
 
@@ -153,9 +149,7 @@ class RequestClient:
         logger.debug(f"GET {total_count_url}")
         return self._get_total(total_count_url)
 
-    def get_page(
-        self, resource: str = PERF_RESOURCE_LIST[0], page: int = 1
-    ) -> PaginatedResult:
+    def get_page(self, resource: str, page: int = 1) -> PaginatedResult:
         """Send an HTTP GET request for the next page.
 
         Returns
@@ -191,7 +185,7 @@ class RequestClient:
             status_code=response.status_code,
         )
 
-    def get_all(self, resource: str = PERF_RESOURCE_LIST[0]) -> List[Dict[str, Any]]:
+    def get_all(self, resource: str) -> List[Dict[str, Any]]:
         """
         Send an HTTP GET request for all pages of a resource.
 
@@ -209,15 +203,15 @@ class RequestClient:
         logger.info(f"Retrieving all {resource} records...")
 
         pagination_result = self.get_page(resource, 1)
+        items: List[Any] = pagination_result.current_page_items
 
-        items: List[Any] = []
         while True:
-            items.extend(pagination_result.current_page_items)
             pagination_result = self.get_page(
                 resource, pagination_result.current_page + 1
             )
+            items.extend(pagination_result.current_page_items)
 
-            if pagination_result.is_empty:
+            if pagination_result.size < self.page_size:
                 break
 
         return items
