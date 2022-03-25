@@ -24,9 +24,7 @@ directory:
 poetry run python edfi_paging_test -b "http://localhost:54746" -k "testkey" -s "testsecret" -l "resource1" "resource2"
 ```
 
-## Developer Notes
-
-Supported arguments:
+### Supported arguments:
 
 | Command Line Argument       | Required                             | Description                                                                                   |
 | --------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------- |
@@ -44,6 +42,20 @@ Supported arguments:
 Each argument can also be set by environment variable, or by using as `.env`
 file. See [.env.example](edfi_paging_test/.env.example). Arguments provided at
 the command line override any arguments provided by environment variable.
+
+### Resource List
+
+When no resource list is provided, the tool will query the OpenAPI (Swagger)
+metadata to find all available resources, and then retrieve all of them.
+
+To limit to testing specific resources, simply pass the list of resource names
+to be retrieved. For example, `Students StudentSectionAssociations` will return
+only those two resources. To retrieve a resource from an extension, prefix that
+resource with the extension name and a slash. For example:
+`Students tpdm/Candidates` will retrieve all records from the `/ed-fi/Students` and the
+`tpdm/Candidates` endpoints. Note that this is not case sensitive. When using a .env file,
+the argument is set off as an array, e.g.
+`PERF_RESOURCE_LIST=["students", "StudentSchoolAssociations", "tpdm/candidates"]`
 
 ### Dev Operations
 

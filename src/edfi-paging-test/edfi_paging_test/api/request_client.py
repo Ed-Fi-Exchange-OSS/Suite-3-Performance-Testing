@@ -18,6 +18,7 @@ from edfi_paging_test.helpers.argparser import MainArguments
 from edfi_paging_test.reporter.request_logger import log_request
 
 OAUTH_TOKEN_URL = "/oauth/token/"
+EDFI_DATA_MODEL_NAME = "ed-fi"
 
 T = TypeVar("T")
 
@@ -60,8 +61,12 @@ class RequestClient:
         client = BackendApplicationClient(client_id=args.key)
         self.oauth = OAuth2Session(client=client)
 
-    def _build_url_for_resource(self, resource) -> str:
-        return f"/data/v3/ed-fi/{resource}"
+    def _build_url_for_resource(self, resource: str) -> str:
+        endpoint = resource
+        if "/" not in resource:
+            endpoint = EDFI_DATA_MODEL_NAME + "/" + resource
+
+        return f"/data/v3/{endpoint}"
 
     def _build_query_params_for_page(self, page_index, page_size: int) -> str:
         page_offset = (page_index - 1) * page_size
