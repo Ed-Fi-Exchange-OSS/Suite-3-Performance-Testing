@@ -21,7 +21,7 @@ Sample call using full integrated security, loading from the sample files
 directory:
 
 ```bash
-poetry run python edfi_paging_test -b "http://localhost:54746" -k "testkey" -s "testsecret" -l "resource1" "resource2"
+poetry run python edfi_paging_test -b "http://localhost:54746" -k "testkey" -s "testsecret" -r "resource1" "resource2"
 ```
 
 ### Supported arguments:
