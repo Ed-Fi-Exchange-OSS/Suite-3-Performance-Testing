@@ -9,7 +9,8 @@ import logging
 from dotenv import load_dotenv
 from errorhandler import ErrorHandler
 
-from edfi_paging_test.helpers.argparser import parse_main_arguments, MainArguments
+from edfi_paging_test.helpers.argparser import parse_main_arguments
+from edfi_paging_test.helpers.main_arguments import MainArguments
 from edfi_paging_test.performance_tester import run
 from edfi_paging_test.helpers.log_level import LogLevel
 

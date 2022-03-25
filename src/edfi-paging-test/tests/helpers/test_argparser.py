@@ -9,7 +9,8 @@ import sys
 
 import pytest
 
-from edfi_paging_test.helpers.argparser import MainArguments, parse_main_arguments
+from edfi_paging_test.helpers.argparser import parse_main_arguments
+from edfi_paging_test.helpers.main_arguments import MainArguments
 from edfi_paging_test.helpers.output_format import OutputFormat
 from edfi_paging_test.helpers.log_level import LogLevel
 
