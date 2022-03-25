@@ -9,7 +9,7 @@ import logging
 from edfi_paging_test.api.request_client import RequestClient
 from edfi_paging_test.reporter import request_logger
 from edfi_paging_test.reporter import reporter
-from edfi_paging_test.helpers.argparser import MainArguments
+from edfi_paging_test.helpers.main_arguments import MainArguments
 from edfi_paging_test.helpers.output_format import OutputFormat
 from pandas import DataFrame
 from edfi_paging_test.reporter.summary import Summary
@@ -44,22 +44,22 @@ def _generate_output_reports(args: MainArguments) -> None:
     reporter.create_summary_json(summary_df, args.output, run_name)
 
 
+def fetch_resource(request_client: RequestClient, target_resource: str) -> None:
+    resources = request_client.get_all()
+    total_count = request_client.get_total()
+
+    if len(resources) != total_count:
+        logger.warn(f"{target_resource}: expected {total_count} results, got: {len(resources)}")
+
+
 def run(args: MainArguments) -> None:
 
     try:
         logger.info("Starting paging volume test...")
         request_client: RequestClient = RequestClient(args)
 
-        # TODO: once we are reading multiple requests, we probably want to pass the
-        # endpoint to the calls below. I like the call to get_total. The assert
-        # should become a WARNING log (see new ticket PERF-233 for logging). we
-        # probably want a module that wraps up the calls to get_all(), get_total(),
-        # and the validation.
-        resources = request_client.get_all()
-        total_count = request_client.get_total()
-
-        if len(resources) != total_count:
-            logger.warn(f"Expected {total_count} results, got: {len(resources)}")
+        for target_resource in args.resourceList:
+            fetch_resource(request_client, target_resource)
 
         _generate_output_reports(args)
         logging.info("Finished with paging volume test.")
