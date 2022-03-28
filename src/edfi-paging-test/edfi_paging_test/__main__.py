@@ -4,7 +4,6 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
 import sys
 import logging
 
