@@ -63,7 +63,7 @@ async def run(args: MainArguments) -> None:
         start = time.time()
         request_client: RequestClient = RequestClient(args)
 
-        executor: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=5)
+        executor: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=args.connectionLimit)
         loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()
 
         fetch_resource_calls: List[asyncio.Future] = [

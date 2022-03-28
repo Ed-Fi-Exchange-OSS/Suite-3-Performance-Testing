@@ -31,7 +31,7 @@ poetry run python edfi_paging_test -b "http://localhost:54746" -k "testkey" -s "
 | `-b` or `--baseUrl`         | yes (no default)                     | ​The base url used to derived api, metadata, oauth, and dependency urls (e.g., http://server)  |
 | `-k` or `--key`             | yes (no default)                     | The web API OAuth key                                                                         |
 | `-s` or `--secret`          | yes (no default)                     | The web API OAuth secret                                                                      |
-| `-c` or `--connectionLimit` | no (default: 4)                      | Maximum concurrent connections to api                                                         |
+| `-c` or `--connectionLimit` | no (default: 5)                      | Maximum concurrent connections to api                                                         |
 | `-o` or `--output`          | no (default: out)                    | Directory for writing results                                                                 |
 | `-t` or `--contentType`     | no (default: csv)                    | Output file content type: CSV, JSON                                                           |
 | `-r` or `--resourceList`    | no (no default)                      | (Optional) List of resources to test  - if not provided, all resources will be retrieved      |
