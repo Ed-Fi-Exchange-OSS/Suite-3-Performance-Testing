@@ -4,7 +4,7 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 import logging
-from typing import Any, Callable, Dict, List, Tuple, TypeVar
+from typing import Any, Callable, Dict, List, Tuple, TypeVar, Optional
 from timeit import default_timer
 
 from requests import Response
@@ -14,10 +14,10 @@ from oauthlib.oauth2 import TokenExpiredError
 from requests_oauthlib import OAuth2Session  # type: ignore
 
 from edfi_paging_test.api.paginated_result import PaginatedResult
+from edfi_paging_test.api.api_version_info import VersionInfo
 from edfi_paging_test.helpers.argparser import MainArguments
 from edfi_paging_test.reporter.request_logger import log_request
 
-OAUTH_TOKEN_URL = "/oauth/token/"
 EDFI_DATA_MODEL_NAME = "ed-fi"
 
 T = TypeVar("T")
@@ -60,6 +60,7 @@ class RequestClient:
         self.auth = HTTPBasicAuth(args.key, args.secret)
         client = BackendApplicationClient(client_id=args.key)
         self.oauth = OAuth2Session(client=client)
+        self.version_info : Optional[VersionInfo] = None
 
     def _build_url_for_resource(self, resource: str) -> str:
         endpoint = resource
@@ -72,9 +73,30 @@ class RequestClient:
         page_offset = (page_index - 1) * page_size
         return f"offset={page_offset}&limit={page_size}"
 
+    def _get_version(self) -> VersionInfo:
+        """Send an HTTP GET request for the api version endpoint.
+
+        Returns
+        -------
+        VersionInfo
+        """
+        if self.version_info is None:
+            logger.info("Getting api version information.")
+            response = self.oauth.get(
+                url=self.api_base_url
+            )
+            response = response.json()
+            self.version_info = VersionInfo(
+                version=response["version"],
+                api_mode=response["apiMode"],
+                datamodels=response["dataModels"],
+                urls=response["urls"]
+            )
+        return self.version_info
+
     def _authorize(self) -> None:
         logger.debug("Authenticating to the ODS/API")
-        self.oauth.fetch_token(self.api_base_url + OAUTH_TOKEN_URL, auth=self.auth)
+        self.oauth.fetch_token(self._get_version().oauth_url, auth=self.auth)
 
     def _get(self, relative_url: str) -> Response:
         """
