@@ -54,7 +54,7 @@ def parse_main_arguments() -> MainArguments:
         "--connectionLimit",
         help="Maximum concurrent connections to api",
         type=int,
-        default=4,
+        default=5,
         env_var="PERF_CONNECTION_LIMIT",
     )
     parser.add(  # type: ignore
