@@ -15,8 +15,12 @@ from edfi_paging_test.reporter import request_logger
 from edfi_paging_test.reporter import reporter
 from edfi_paging_test.helpers.main_arguments import MainArguments
 from edfi_paging_test.helpers.output_format import OutputFormat
+from edfi_paging_test.helpers.api_metadata import (
+    get_resources_from_openapi,
+)
 from pandas import DataFrame
 from edfi_paging_test.reporter.summary import Summary
+
 
 logger = logging.getLogger(__name__)
 
@@ -56,14 +60,42 @@ def fetch_resource(request_client: RequestClient, target_resource: str) -> None:
         )
 
 
+def invalid_resources(
+    openapi_resources: List[str], resources_to_check: List[str]
+) -> List[str]:
+    return [r for r in resources_to_check if r.lower() not in openapi_resources]
+
+
 async def run(args: MainArguments) -> None:
 
     try:
         logger.info("Starting paging volume test...")
         start = time.time()
+
+        openapi_resources: List[str] = get_resources_from_openapi(args.baseUrl)
+        normalized_resources: List[str] = list(
+            map(
+                lambda r: r.removeprefix("/").removeprefix("ed-fi/").lower(),
+                openapi_resources,
+            )
+        )
+        if len(args.resourceList) == 0:
+            args.resourceList = normalized_resources
+        else:
+            invalid_env_resources: List[str] = invalid_resources(
+                openapi_resources=normalized_resources,
+                resources_to_check=args.resourceList,
+            )
+            if len(invalid_env_resources) != 0:
+                raise RuntimeError(
+                    f"Invalid resources found: {*invalid_env_resources,}"
+                )
+
         request_client: RequestClient = RequestClient(args)
 
-        executor: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=args.connectionLimit)
+        executor: ThreadPoolExecutor = ThreadPoolExecutor(
+            max_workers=args.connectionLimit
+        )
         loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()
 
         fetch_resource_calls: List[asyncio.Future] = [

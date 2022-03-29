@@ -7,7 +7,7 @@ import logging
 from typing import Any, Callable, Dict, List, Tuple, TypeVar, Optional
 from timeit import default_timer
 
-from requests import Response
+from requests import Response, adapters
 from requests.auth import HTTPBasicAuth
 from oauthlib.oauth2 import BackendApplicationClient
 from oauthlib.oauth2 import TokenExpiredError
@@ -17,6 +17,7 @@ from edfi_paging_test.api.paginated_result import PaginatedResult
 from edfi_paging_test.api.api_info import APIInfo
 from edfi_paging_test.helpers.argparser import MainArguments
 from edfi_paging_test.reporter.request_logger import log_request
+from edfi_paging_test.helpers.api_metadata import get_base_api_response
 
 EDFI_DATA_MODEL_NAME = "ed-fi"
 
@@ -61,6 +62,11 @@ class RequestClient:
         client = BackendApplicationClient(client_id=args.key)
         self.oauth = OAuth2Session(client=client)
         self.api_info : Optional[APIInfo] = None
+        # configure connection pool
+        requests_adapter = adapters.HTTPAdapter(
+            pool_connections=args.connectionLimit, pool_maxsize=args.connectionLimit
+        )
+        self.oauth.mount("https://", requests_adapter)
 
     def _build_url_for_resource(self, resource: str) -> str:
         endpoint = resource
@@ -81,11 +87,7 @@ class RequestClient:
         APIInfo
         """
         if self.api_info is None:
-            logger.info("Getting api metadata from the api root.")
-            response = self.oauth.get(
-                url=self.api_base_url
-            )
-            response = response.json()
+            response = get_base_api_response(self.api_base_url)
             self.api_info = APIInfo(
                 version=response["version"],
                 api_mode=response["apiMode"],
@@ -163,7 +165,9 @@ class RequestClient:
             If the GET operation is unsuccessful
         """
         logger.info(f"Getting total count for {resource}.")
-        total_count_url = f"{self._build_url_for_resource(resource)}?offset=0&limit=0&totalCount=true"
+        total_count_url = (
+            f"{self._build_url_for_resource(resource)}?offset=0&limit=0&totalCount=true"
+        )
 
         logger.debug(f"GET {total_count_url}")
 
@@ -187,7 +191,7 @@ class RequestClient:
         logger.debug(f"GET {next_url}")
         elapsed, response = timeit(lambda: self._get(next_url))
 
-        items = response.json()
+        items = response.json() if len(response.text) > 0 else []
 
         log_request(
             resource,
