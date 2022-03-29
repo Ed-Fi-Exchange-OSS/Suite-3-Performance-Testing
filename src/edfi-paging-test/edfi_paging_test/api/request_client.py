@@ -14,7 +14,7 @@ from oauthlib.oauth2 import TokenExpiredError
 from requests_oauthlib import OAuth2Session  # type: ignore
 
 from edfi_paging_test.api.paginated_result import PaginatedResult
-from edfi_paging_test.api.api_version_info import VersionInfo
+from edfi_paging_test.api.api_info import APIInfo
 from edfi_paging_test.helpers.argparser import MainArguments
 from edfi_paging_test.reporter.request_logger import log_request
 
@@ -60,7 +60,7 @@ class RequestClient:
         self.auth = HTTPBasicAuth(args.key, args.secret)
         client = BackendApplicationClient(client_id=args.key)
         self.oauth = OAuth2Session(client=client)
-        self.version_info : Optional[VersionInfo] = None
+        self.api_info : Optional[APIInfo] = None
 
     def _build_url_for_resource(self, resource: str) -> str:
         endpoint = resource
@@ -73,30 +73,30 @@ class RequestClient:
         page_offset = (page_index - 1) * page_size
         return f"offset={page_offset}&limit={page_size}"
 
-    def _get_version(self) -> VersionInfo:
-        """Send an HTTP GET request for the api version endpoint.
+    def _get_api_info(self) -> APIInfo:
+        """Send an HTTP GET request for the api root to fetch api metadata.
 
         Returns
         -------
-        VersionInfo
+        APIInfo
         """
-        if self.version_info is None:
-            logger.info("Getting api version information.")
+        if self.api_info is None:
+            logger.info("Getting api metadata from the api root.")
             response = self.oauth.get(
                 url=self.api_base_url
             )
             response = response.json()
-            self.version_info = VersionInfo(
+            self.api_info = APIInfo(
                 version=response["version"],
                 api_mode=response["apiMode"],
                 datamodels=response["dataModels"],
                 urls=response["urls"]
             )
-        return self.version_info
+        return self.api_info
 
     def _authorize(self) -> None:
         logger.debug("Authenticating to the ODS/API")
-        self.oauth.fetch_token(self._get_version().oauth_url, auth=self.auth)
+        self.oauth.fetch_token(self._get_api_info().oauth_url, auth=self.auth)
 
     def _get(self, relative_url: str) -> Response:
         """

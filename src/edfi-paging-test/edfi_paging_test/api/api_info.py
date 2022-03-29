@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class VersionInfo:
+class APIInfo:
     """
     Container for holding details from api version endpoint
     """
