@@ -21,6 +21,14 @@ FAKE_SECRET = "TEST_SECRET"
 FAKE_ENDPOINT = "ENDPOINT"
 API_BASE_URL = "https://localhost:54746"
 OAUTH_URL = "https://localhost:54746/oauth/token/"
+VERSION_INFO = {
+     "version": "a",
+     "apiMode": "b",
+     "dataModels": "c",
+     "urls": {
+         "oauth": "https://localhost:54746/oauth/token/"
+     }
+}
 FAKE_API_RESPONSE_PAGE1 = [{"id": "a"}, {"id": "b"}]
 FAKE_API_RESPONSE_PAGE2 = [{"id": "c"}, {"id": "d"}]
 PAGE_SIZE = 2
@@ -93,6 +101,7 @@ def describe_testing_RequestClient_class():
                     expected_url = API_BASE_URL + "/" + FAKE_ENDPOINT
                     m.post(OAUTH_URL, status_code=201, text=json.dumps(TOKEN_RESPONSE))
                     m.get(expected_url, status_code=HTTPStatus.OK, text=CONTENT)
+                    m.get(API_BASE_URL, status_code=HTTPStatus.OK, text=json.dumps(VERSION_INFO))
 
                     # Act
                     relative_url = "/" + FAKE_ENDPOINT
@@ -108,6 +117,7 @@ def describe_testing_RequestClient_class():
                 with requests_mock.Mocker() as m:
                     expected_url = API_BASE_URL + "/data/v3/ed-fi/" + FAKE_ENDPOINT + "?offset=0&limit=0&totalCount=true"
 
+                    m.get(API_BASE_URL, status_code=HTTPStatus.OK, text=json.dumps(VERSION_INFO))
                     m.post(OAUTH_URL, status_code=201, text=json.dumps(TOKEN_RESPONSE))
                     m.get(
                         expected_url,
@@ -123,6 +133,7 @@ def describe_testing_RequestClient_class():
     def describe_when_getting_all_pages():
         def it_should_return_all_available_items(default_request_client: RequestClient):
             with requests_mock.Mocker() as m:
+                m.get(API_BASE_URL, status_code=HTTPStatus.OK, text=json.dumps(VERSION_INFO))
                 m.post(OAUTH_URL, status_code=201, text=json.dumps(TOKEN_RESPONSE))
                 m.get(
                     "https://localhost:54746/data/v3/ed-fi/ENDPOINT?offset=0&limit=2",
@@ -150,6 +161,11 @@ def describe_testing_RequestClient_class():
 
                 with requests_mock.Mocker() as m:
                     # Arrange
+                    m.get(
+                        API_BASE_URL,
+                        status_code=HTTPStatus.OK,
+                        text=json.dumps(VERSION_INFO)
+                        )
                     m.post(
                         OAUTH_URL,
                         status_code=HTTPStatus.CREATED,
