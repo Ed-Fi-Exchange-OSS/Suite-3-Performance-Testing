@@ -6,6 +6,7 @@
 import logging
 from typing import Any, Callable, Dict, List, Tuple, TypeVar, Optional
 from timeit import default_timer
+from http import HTTPStatus
 
 from requests import Response, adapters
 from requests.auth import HTTPBasicAuth
@@ -61,7 +62,7 @@ class RequestClient:
         self.auth = HTTPBasicAuth(args.key, args.secret)
         client = BackendApplicationClient(client_id=args.key)
         self.oauth = OAuth2Session(client=client)
-        self.api_info : Optional[APIInfo] = None
+        self.api_info: Optional[APIInfo] = None
         # configure connection pool
         requests_adapter = adapters.HTTPAdapter(
             pool_connections=args.connectionLimit, pool_maxsize=args.connectionLimit
@@ -74,7 +75,7 @@ class RequestClient:
         if "/" not in resource:
             endpoint = EDFI_DATA_MODEL_NAME + "/" + resource
 
-        return f"/data/v3/{endpoint}"
+        return f"data/v3/{endpoint}"
 
     def _build_query_params_for_page(self, page_index, page_size: int) -> str:
         page_offset = (page_index - 1) * page_size
@@ -93,13 +94,25 @@ class RequestClient:
                 version=response["version"],
                 api_mode=response["apiMode"],
                 datamodels=response["dataModels"],
-                urls=response["urls"]
+                urls=response["urls"],
             )
         return self.api_info
 
     def _authorize(self) -> None:
         logger.debug("Authenticating to the ODS/API")
         self.oauth.fetch_token(self._get_api_info().oauth_url, auth=self.auth)
+
+    def _urljoin(self, base_url: str, relative_url: str) -> str:
+        """
+        Combine base and relative URL, preventing double slashes.
+
+        The native urljoin will strip off any endpoint on the base url. For
+        example, urljoin("http://a/b/", "/c") --> "http://a/c", whereas one
+        wants "http://a/b/c".
+        """
+        relative_url = relative_url[1:] if relative_url.startswith("/") else relative_url
+        base_url = base_url[:len(base_url)-1] if base_url.endswith("/") else base_url
+        return f"{base_url}/{relative_url}"
 
     def _get(self, relative_url: str) -> Response:
         """
@@ -127,7 +140,7 @@ class RequestClient:
         if not self.oauth.authorized:
             self._authorize()
 
-        url = self.api_base_url + relative_url
+        url = self._urljoin(self.api_base_url, relative_url)
 
         response: Response
 
@@ -143,6 +156,12 @@ class RequestClient:
             self._authorize()
             response = __get()
             # If that fails after authorization, then let it go
+
+        if response.status_code != HTTPStatus.OK:
+            message = response.text.replace("\r", "").replace("\n", "")
+            logger.warning(
+                f"Response {response.status_code} to {url} with message: {message}"
+            )
 
         return response
 
@@ -174,7 +193,14 @@ class RequestClient:
 
         response = self._get(total_count_url)
 
-        return int(response.headers["total-count"])
+        total_count = "total-count"
+        if total_count in response.headers:
+            return int(response.headers[total_count])
+
+        logger.warning(
+            "An API error occurred: total-count was not provided in the API response."
+        )
+        return 0
 
     def get_page(self, resource: str, page: int = 1) -> PaginatedResult:
         """Send an HTTP GET request for the next page.

@@ -91,8 +91,8 @@ def get_resource_paths(api_base_url: str) -> List[str]:
     Returns
     -------
     List[str]
-        A list of resource relative paths, including the project/extension prefix.
-        For example: ["/ed-fi/schools", "/tpdm/candidates"]
+        A list of resource relative paths, including the extension prefix if
+        relevant. For example: ["schools", "tpdm/candidates"]
     """
     resource_metadata_response: Dict[
         str, Dict[str, str]
