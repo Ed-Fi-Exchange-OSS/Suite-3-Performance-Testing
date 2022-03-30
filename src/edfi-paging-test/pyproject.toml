@@ -28,6 +28,7 @@ requests-mock = "^1.9.3"
 types-requests = "^2.27.12"
 data-science-types = "^0.2.23"
 pyfakefs = "^4.5.5"
+pook = "^1.0.2"
 
 
 

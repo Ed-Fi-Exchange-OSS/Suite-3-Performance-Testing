@@ -6,8 +6,9 @@
 import logging
 from typing import Any, Callable, Dict, List, Tuple, TypeVar, Optional
 from timeit import default_timer
+from http import HTTPStatus
 
-from requests import Response
+from requests import Response, adapters
 from requests.auth import HTTPBasicAuth
 from oauthlib.oauth2 import BackendApplicationClient
 from oauthlib.oauth2 import TokenExpiredError
@@ -17,6 +18,7 @@ from edfi_paging_test.api.paginated_result import PaginatedResult
 from edfi_paging_test.api.api_info import APIInfo
 from edfi_paging_test.helpers.argparser import MainArguments
 from edfi_paging_test.reporter.request_logger import log_request
+from edfi_paging_test.helpers.api_metadata import get_base_api_response
 
 EDFI_DATA_MODEL_NAME = "ed-fi"
 
@@ -60,14 +62,20 @@ class RequestClient:
         self.auth = HTTPBasicAuth(args.key, args.secret)
         client = BackendApplicationClient(client_id=args.key)
         self.oauth = OAuth2Session(client=client)
-        self.api_info : Optional[APIInfo] = None
+        self.api_info: Optional[APIInfo] = None
+        # configure connection pool
+        requests_adapter = adapters.HTTPAdapter(
+            pool_connections=args.connectionLimit, pool_maxsize=args.connectionLimit
+        )
+        self.oauth.mount("http://", requests_adapter)
+        self.oauth.mount("https://", requests_adapter)
 
     def _build_url_for_resource(self, resource: str) -> str:
         endpoint = resource
         if "/" not in resource:
             endpoint = EDFI_DATA_MODEL_NAME + "/" + resource
 
-        return f"/data/v3/{endpoint}"
+        return f"data/v3/{endpoint}"
 
     def _build_query_params_for_page(self, page_index, page_size: int) -> str:
         page_offset = (page_index - 1) * page_size
@@ -81,22 +89,30 @@ class RequestClient:
         APIInfo
         """
         if self.api_info is None:
-            logger.info("Getting api metadata from the api root.")
-            response = self.oauth.get(
-                url=self.api_base_url
-            )
-            response = response.json()
+            response = get_base_api_response(self.api_base_url)
             self.api_info = APIInfo(
                 version=response["version"],
                 api_mode=response["apiMode"],
                 datamodels=response["dataModels"],
-                urls=response["urls"]
+                urls=response["urls"],
             )
         return self.api_info
 
     def _authorize(self) -> None:
         logger.debug("Authenticating to the ODS/API")
         self.oauth.fetch_token(self._get_api_info().oauth_url, auth=self.auth)
+
+    def _urljoin(self, base_url: str, relative_url: str) -> str:
+        """
+        Combine base and relative URL, preventing double slashes.
+
+        The native urljoin will strip off any endpoint on the base url. For
+        example, urljoin("http://a/b/", "/c") --> "http://a/c", whereas one
+        wants "http://a/b/c".
+        """
+        relative_url = relative_url[1:] if relative_url.startswith("/") else relative_url
+        base_url = base_url[:len(base_url)-1] if base_url.endswith("/") else base_url
+        return f"{base_url}/{relative_url}"
 
     def _get(self, relative_url: str) -> Response:
         """
@@ -124,7 +140,7 @@ class RequestClient:
         if not self.oauth.authorized:
             self._authorize()
 
-        url = self.api_base_url + relative_url
+        url = self._urljoin(self.api_base_url, relative_url)
 
         response: Response
 
@@ -140,6 +156,12 @@ class RequestClient:
             self._authorize()
             response = __get()
             # If that fails after authorization, then let it go
+
+        if response.status_code != HTTPStatus.OK:
+            message = response.text.replace("\r", "").replace("\n", "")
+            logger.warning(
+                f"Response {response.status_code} to {url} with message: {message}"
+            )
 
         return response
 
@@ -163,13 +185,22 @@ class RequestClient:
             If the GET operation is unsuccessful
         """
         logger.info(f"Getting total count for {resource}.")
-        total_count_url = f"{self._build_url_for_resource(resource)}?offset=0&limit=0&totalCount=true"
+        total_count_url = (
+            f"{self._build_url_for_resource(resource)}?offset=0&limit=0&totalCount=true"
+        )
 
         logger.debug(f"GET {total_count_url}")
 
         response = self._get(total_count_url)
 
-        return int(response.headers["total-count"])
+        total_count = "total-count"
+        if total_count in response.headers:
+            return int(response.headers[total_count])
+
+        logger.warning(
+            "An API error occurred: total-count was not provided in the API response."
+        )
+        return 0
 
     def get_page(self, resource: str, page: int = 1) -> PaginatedResult:
         """Send an HTTP GET request for the next page.
@@ -187,7 +218,7 @@ class RequestClient:
         logger.debug(f"GET {next_url}")
         elapsed, response = timeit(lambda: self._get(next_url))
 
-        items = response.json()
+        items = response.json() if len(response.text) > 0 else []
 
         log_request(
             resource,

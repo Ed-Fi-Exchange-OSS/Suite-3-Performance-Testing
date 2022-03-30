@@ -96,7 +96,7 @@ def parse_main_arguments() -> MainArguments:
         type=LogLevel,
         choices=list(LogLevel),
         default=LogLevel.INFO,
-        env_var="PERF_LOG_LEVEL"
+        env_var="PERF_LOG_LEVEL",
     )
     parser.add(  # type: ignore
         "-d",
@@ -104,7 +104,7 @@ def parse_main_arguments() -> MainArguments:
         help="Description for the test run",
         type=str,
         default="Paging Volume Test Run",
-        env_var="PERF_DESCRIPTION"
+        env_var="PERF_DESCRIPTION",
     )
 
     args_parsed = parser.parse_args()
@@ -117,11 +117,9 @@ def parse_main_arguments() -> MainArguments:
         args_parsed.output,
         args_parsed.description,
         args_parsed.contentType,
-        # Temporary hard coding of default resource, until we add code that reads
-        # _all_ resources from Open API metadata in PERF-229.
-        args_parsed.resourceList or ["StudentSectionAttendanceEvents"],
+        args_parsed.resourceList or [],
         args_parsed.pageSize,
-        args_parsed.logLevel
+        args_parsed.logLevel,
     )
 
     return arguments

@@ -1,0 +1,27 @@
+[
+    {
+      "name": "Enrollment",
+      "endpointUri": "https://example.com/v5.3/api/metadata/composites/v1/ed-fi/enrollment/swagger.json",
+      "prefix": "Composites"
+    },
+    {
+      "name": "Change-Queries",
+      "endpointUri": "https://example.com/v5.3/api/metadata/changequeries/v1/swagger.json",
+      "prefix": "Other"
+    },
+    {
+      "name": "Identity",
+      "endpointUri": "https://example.com/v5.3/api/metadata/identity/v2/swagger.json",
+      "prefix": "Other"
+    },
+    {
+      "name": "Descriptors",
+      "endpointUri": "https://example.com/v5.3/api/metadata/data/v3/descriptors/swagger.json",
+      "prefix": ""
+    },
+    {
+      "name": "Resources",
+      "endpointUri": "https://example.com/v5.3/api/metadata/data/v3/resources/swagger.json",
+      "prefix": ""
+    }
+  ]

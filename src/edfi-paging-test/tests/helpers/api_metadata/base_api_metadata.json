@@ -1,0 +1,26 @@
+{
+    "version": "5.3",
+    "informationalVersion": "5.3",
+    "suite": "3",
+    "build": "5.3.1146.0",
+    "apiMode": "Sandbox",
+    "dataModels": [
+      {
+        "name": "Ed-Fi",
+        "version": "3.3.1-b",
+        "informationalVersion": "Latest Ed-Fi Data Model v3.3b"
+      },
+      {
+        "name": "TPDM",
+        "version": "1.1.0",
+        "informationalVersion": "TPDM-Core"
+      }
+    ],
+    "urls": {
+      "dependencies": "https://example.com/v5.3/api/metadata/data/v3/dependencies",
+      "openApiMetadata": "https://example.com/v5.3/api/metadata/",
+      "oauth": "https://example.com/v5.3/api/oauth/token",
+      "dataManagementApi": "https://example.com/v5.3/api/data/v3/",
+      "xsdMetadata": "https://example.com/v5.3/api/metadata/xsd"
+    }
+  }

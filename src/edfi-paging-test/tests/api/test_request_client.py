@@ -20,6 +20,7 @@ FAKE_KEY = "TEST_KEY"
 FAKE_SECRET = "TEST_SECRET"
 FAKE_ENDPOINT = "ENDPOINT"
 API_BASE_URL = "https://localhost:54746"
+API_BASE_URL_WITH_SLASH = "https://localhost:54746/"
 OAUTH_URL = "https://localhost:54746/oauth/token/"
 VERSION_INFO = {
      "version": "a",
@@ -70,7 +71,7 @@ def describe_testing_RequestClient_class():
             def it_builds_url_correctly_for_first_page(default_request_client):
                 # Arrange
                 resource_name = "resource"
-                expected_result = "/data/v3/ed-fi/resource"
+                expected_result = "data/v3/ed-fi/resource"
 
                 # Act
                 result = default_request_client._build_url_for_resource(resource_name)
@@ -125,6 +126,27 @@ def describe_testing_RequestClient_class():
                         headers={"total-count": "2"},
                     )
                     # Act
+                    result = default_request_client.get_total(FAKE_ENDPOINT)
+
+                    # Assert
+                    assert result == 2
+
+    def describe_when_getting_total_count_with_trailing_slash_on_url():
+        def describe_given_there_is_total_count_in_the_header():
+            def it_returns_the_total_count(default_request_client: RequestClient):
+                # Arrange
+                with requests_mock.Mocker() as m:
+                    expected_url = API_BASE_URL + "/data/v3/ed-fi/" + FAKE_ENDPOINT + "?offset=0&limit=0&totalCount=true"
+
+                    m.get(API_BASE_URL, status_code=HTTPStatus.OK, text=json.dumps(VERSION_INFO))
+                    m.post(OAUTH_URL, status_code=201, text=json.dumps(TOKEN_RESPONSE))
+                    m.get(
+                        expected_url,
+                        status_code=HTTPStatus.OK,
+                        headers={"total-count": "2"},
+                    )
+                    # Act
+                    default_request_client.api_base_url = API_BASE_URL_WITH_SLASH
                     result = default_request_client.get_total(FAKE_ENDPOINT)
 
                     # Assert

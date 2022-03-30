@@ -21,10 +21,21 @@ Sample call using full integrated security, loading from the sample files
 directory:
 
 ```bash
-poetry run python edfi_paging_test -b "http://localhost:54746" -k "testkey" -s "testsecret" -r "resource1" "resource2"
+poetry run python edfi_paging_test -b "https://localhost:54746" -k "testkey" -s "testsecret" -r "resource1" "resource2"
 ```
 
-### Supported arguments:
+Tip: to run with an unsecured server, set environment variable
+`OAUTHLIB_INSECURE_TRANSPORT=1` before running the command above:
+
+```bash
+# PowerShell
+$env:OAUTHLIB_INSECURE_TRANSPORT=1
+
+# Bash
+OAUTHLIB_INSECURE_TRANSPORT=1
+```
+
+### Supported arguments
 
 | Command Line Argument       | Required                             | Description                                                                                   |
 | --------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------- |
