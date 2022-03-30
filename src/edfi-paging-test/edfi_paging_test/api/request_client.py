@@ -66,6 +66,7 @@ class RequestClient:
         requests_adapter = adapters.HTTPAdapter(
             pool_connections=args.connectionLimit, pool_maxsize=args.connectionLimit
         )
+        self.oauth.mount("http://", requests_adapter)
         self.oauth.mount("https://", requests_adapter)
 
     def _build_url_for_resource(self, resource: str) -> str:

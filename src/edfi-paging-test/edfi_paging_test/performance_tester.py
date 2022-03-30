@@ -16,7 +16,8 @@ from edfi_paging_test.reporter import reporter
 from edfi_paging_test.helpers.main_arguments import MainArguments
 from edfi_paging_test.helpers.output_format import OutputFormat
 from edfi_paging_test.helpers.api_metadata import (
-    get_resources_from_openapi,
+    get_resource_paths,
+    normalize_resource_paths,
 )
 from pandas import DataFrame
 from edfi_paging_test.reporter.summary import Summary
@@ -72,13 +73,7 @@ async def run(args: MainArguments) -> None:
         logger.info("Starting paging volume test...")
         start = time.time()
 
-        openapi_resources: List[str] = get_resources_from_openapi(args.baseUrl)
-        normalized_resources: List[str] = list(
-            map(
-                lambda r: r.removeprefix("/").removeprefix("ed-fi/").lower(),
-                openapi_resources,
-            )
-        )
+        normalized_resources: List[str] = normalize_resource_paths(get_resource_paths(args.baseUrl))
         if len(args.resourceList) == 0:
             args.resourceList = normalized_resources
         else:
