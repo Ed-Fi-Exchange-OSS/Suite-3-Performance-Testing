@@ -263,11 +263,11 @@ function Invoke-TestRunner($testSuite, $clientCount, $hatchRate, $testType, $bac
     }
 
     if($testSuite -eq 'pagevolume') {
-        Log "Hello from $testSuite"
+        $outputDir = Resolve-Path $testResultsPath
         Push-Location .\src\edfi-paging-test
         $poetryProcess = Start-Process "poetry" -PassThru -NoNewWindow -ArgumentList `
-                                    "run python edfi_paging_test --connectionLimit $clientCount" `
-                                    -RedirectStandardError $testResultsPath\Summary.txt
+                                    "run python edfi_paging_test --connectionLimit $clientCount --output $outputDir" `
+                                    -RedirectStandardOutput $outputDir\Summary.txt
         Wait-Process -Id $poetryProcess.Id
         Pop-Location
         Log "Test runner process complete"
