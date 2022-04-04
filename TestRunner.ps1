@@ -385,7 +385,7 @@ function Invoke-PageVolumeTests {
     Initialize-TestRunner
     Invoke-TestRunner `
         -TestSuite pagevolume `
-        -ClientCount 50 `
+        -ClientCount 5 `
         -TestType pagevolume `
         -BackupFilename $backupFilename
 }
