@@ -13,7 +13,7 @@ def _get_config_file_path():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     current_dir = os.path.join(current_dir, '..')
     current_dir = os.path.join(current_dir, '..')
-    return os.path.join(current_dir, 'locust-config.json')
+    return os.path.join(current_dir, 'test-config.json')
 
 
 def _load_config():

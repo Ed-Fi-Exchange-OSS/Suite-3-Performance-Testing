@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0
 # Licensed to the Ed-Fi Alliance under one or more agreements.
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
@@ -148,10 +148,6 @@ function Reset-OdsDatabase($backupFilename) {
 function Invoke-TestRunner($testSuite, $clientCount, $hatchRate, $testType, $backupFilename, $runTime) {
     Log "Writing to $testResultsPath"
 
-    if (($testSuite -eq "volume") -and ($null -eq $runTime)) {
-        throw "The -RunTime parameter must be provided when running the 'volume' suite of tests, so that the test run can exit gracefully."
-    }
-
     $databaseCredential = Get-CredentialOrDefault $databaseServer
     $webCredential = Get-CredentialOrDefault $webServer
 
@@ -242,6 +238,11 @@ function Invoke-TestRunner($testSuite, $clientCount, $hatchRate, $testType, $bac
         $backgroundJobs.Add($webServer, $collectStatsFromWeb)
     }
 
+
+    if (($testSuite -eq "volume") -and ($null -eq $runTime)) {
+        throw "The -RunTime parameter must be provided when running the 'volume' suite of tests, so that the test run can exit gracefully."
+    }
+
     if($testSuite -eq 'volume') {
         # If the number of clients is too low, locust will quit immediately without running any tests. A safe minimum client count is the count of the total number of
         # volume test classes. This corrects the user's request in the event that the number of volume test classes exceeds the given client count.
@@ -261,11 +262,23 @@ function Invoke-TestRunner($testSuite, $clientCount, $hatchRate, $testType, $bac
         $runTimeArgument = "--run-time $runTime"
     }
 
-    $locustProcess = Start-Process "locust" -PassThru -NoNewWindow -ArgumentList `
+    if($testSuite -eq 'pagevolume') {
+        $outputDir = Resolve-Path $testResultsPath
+        Push-Location .\src\edfi-paging-test
+        $poetryProcess = Start-Process "poetry" -PassThru -NoNewWindow -ArgumentList `
+                                    "run python edfi_paging_test --connectionLimit $clientCount --output $outputDir" `
+                                    -RedirectStandardOutput $outputDir\Summary.txt
+        Wait-Process -Id $poetryProcess.Id
+        Pop-Location
+        Log "Test runner process complete"
+    }
+    else{
+        $locustProcess = Start-Process "locust" -PassThru -NoNewWindow -ArgumentList `
                                    "-f $($testSuite)_tests.py -c $clientCount -r $hatchRate --no-web --csv $testResultsPath\$testType $runTimeArgument --only-summary" `
                                    -RedirectStandardError $testResultsPath\Summary.txt
-    Wait-Process -Id $locustProcess.Id
-    Log "Test runner process complete"
+        Wait-Process -Id $locustProcess.Id
+        Log "Test runner process complete"
+    }
 
     foreach ($serverName in $backgroundJobs.Keys) {
         Log "Stopping background job to fetch metrics from $serverName. Output collected from background job:"
@@ -317,7 +330,7 @@ function Set-GlobalsFromConfig($configJson) {
 }
 
 function Read-TestRunnerConfig {
-    $global:configJson = Get-Content 'locust-config.json' | Out-String
+    $global:configJson = Get-Content 'test-config.json' | Out-String
 }
 
 function Set-ChangeVersionTracker {
@@ -367,6 +380,14 @@ function Initialize-TestRunner {
     $global:testResultsPath = "TestResults"
     Initialize-Folder TestResults
     Log "Writing to TestResults Folder"
+}
+function Invoke-PageVolumeTests {
+    Initialize-TestRunner
+    Invoke-TestRunner `
+        -TestSuite pagevolume `
+        -ClientCount 5 `
+        -TestType pagevolume `
+        -BackupFilename $backupFilename
 }
 
 function Invoke-VolumeTests {

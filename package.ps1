@@ -60,6 +60,6 @@ main {
             --include=edfi_performance/** `
             --include=TestRunner.ps1 `
             --include=run-tests.bat `
-            --include=locust-config.json `
+            --include=test-config.json `
     }
 }

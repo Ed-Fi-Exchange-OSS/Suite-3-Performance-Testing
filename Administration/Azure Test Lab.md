@@ -784,7 +784,7 @@ Steps taken in the Azure Portal:
                 Click "Configure features", unchecking all but "JSON Configuration Variables".
 
                 JSON Configuration Variables:
-                    Target files: edfi_performance\config\locust-config.json
+                    Target files: edfi_performance\config\test-config.json
 
             Step 2:
                 Step Type: Deploy to IIS
