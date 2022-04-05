@@ -44,7 +44,7 @@ For reference, here is a sample resource body that can be POSTed in SwaggerUI to
    sandbox deployment.
 1. [Preparation of a virtual environment](../README.md) for the performance
    testing.
-1. Create a new sandbox called "perfTest". Update `locust-config.json` with the
+1. Create a new sandbox called "perfTest". Update `test-config.json` with the
    new database name, client key (called `client_id` in the config file), and
    client secret. (!) no need to populate with sample data.
 1. (optional) Familiarize yourself with [How to Create Resource
@@ -177,7 +177,7 @@ It creates two files, with suffixes `-distribution` and `-requests`.
 Your results will differ from those shown below based on factors include
 hardware characteristics, what else is running on the server, and the size of
 the database that you run against (if running on something other than the
-sandbox). The response times are in milliseconds (ms). 
+sandbox). The response times are in milliseconds (ms).
 
 ### Pipeclean Requests
 

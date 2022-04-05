@@ -330,7 +330,7 @@ function Set-GlobalsFromConfig($configJson) {
 }
 
 function Read-TestRunnerConfig {
-    $global:configJson = Get-Content 'locust-config.json' | Out-String
+    $global:configJson = Get-Content 'test-config.json' | Out-String
 }
 
 function Set-ChangeVersionTracker {

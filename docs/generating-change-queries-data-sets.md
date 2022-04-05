@@ -110,14 +110,14 @@ GenerateALLSQLBackups function is all that is needed in most circumstances:
           Schema files e.g. "C:\dev\Ed-Fi-Standard\v3.1\Schemas\Bulk" (file path
           acquired in Step 2 above).
     * The optional argument is:
-        * **updateConfig** - If set to $TRUE, the locust-config.json file will
+        * **updateConfig** - If set to $TRUE, the test-config.json file will
           be updated automatically so that the ChangeQuery test can be run
           without needing to update the config file.  Its default value is
           $FALSE.
     * The output from the ApiLoader is saved in individual "DataPeriod" text
       files in the current directory (e.g. Administration).
     * The database backup files are saved in the backup location specified by
-      the locust-config.json file.  Each database backup file is numbered to
+      the test-config.json file.  Each database backup file is numbered to
       match their corresponding Data Period.
 
 2. Sort-XmlFiles
@@ -153,14 +153,14 @@ GenerateALLSQLBackups function is all that is needed in most circumstances:
           run the ApiLoader for a particular range of data periods, this
           argument should be set to the min of the range.  For instance if the
           range is data periods 3 through 7, this argument should be set to 3.
-        * **updateConfig** - If set to $TRUE, the locust-config.json file will
+        * **updateConfig** - If set to $TRUE, the test-config.json file will
           be updated automatically so that the ChangeQuery test can be run
           without needing to update the config file.  Its default value is
           $FALSE.
     * The output from the ApiLoader is saved in individual "DataPeriod" text
       files in the current directory (e.g. Administration).
     * The database backup files are saved in the backup location specified by
-      the locust-config.json file.  Each database backup file is numbered to
+      the test-config.json file.  Each database backup file is numbered to
       match their corresponding Data Period.
 
 4. Create-Backup
@@ -173,7 +173,7 @@ GenerateALLSQLBackups function is all that is needed in most circumstances:
     * The optional arguments are:
         * **sqlBackupPath** - The full file path to the folder where the SQL
           backup file should be stored.  If not set, it defaults to the value
-          provided in the locust-config.json file.
+          provided in the test-config.json file.
         * **databaseName** - The name of the database that the backup is being
           generated for e.g. "EdFi_Ods_Sandbox_minimalSandbox".  If not set, it
           defaults to the database name provided in the ChangeQueryDataSet.json
@@ -206,6 +206,6 @@ GenerateALLSQLBackups function is all that is needed in most circumstances:
 If in Step 6, you ran GenerateAllSQLBackups or Run-ApiClientLoader and you set
 the optional argument UpdateConfig to $TRUE, you can go ahead and run the
 ChangeQuery test without needing to do anything else.  Otherwise, open the
-locust-config.json file, update the change_query_backup_filenames array to list
+test-config.json file, update the change_query_backup_filenames array to list
 the names of the database backup files that you just created and change the
 value of restore_database to "true".

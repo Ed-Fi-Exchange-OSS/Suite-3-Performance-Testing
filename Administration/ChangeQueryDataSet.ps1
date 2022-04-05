@@ -25,7 +25,7 @@ function Get-Config {
 }
 
 function Get-LocustConfig {
-    $configJson = Get-Content '../locust-config.json' | Out-String
+    $configJson = Get-Content '../test-config.json' | Out-String
     $global:locustConfig = $configJson | ConvertFrom-Json
     $locustConfig.change_query_backup_filenames = New-Object System.Collections.ArrayList
     $locustConfig.restore_database = "true"
@@ -33,7 +33,7 @@ function Get-LocustConfig {
 
 function Update-LocustConfig($currentDataPeriod) {
     $locustConfig.change_query_backup_filenames.Add("$($config.databaseName)_DataPeriod_$currentDataPeriod.bak")
-    $locustConfig | ConvertTo-Json | Set-Content -Path '../locust-config.json'
+    $locustConfig | ConvertTo-Json | Set-Content -Path '../test-config.json'
 }
 
 function Create-Backup {
@@ -186,7 +186,7 @@ function Info {
   write-host " Full file path to the folder containing the Ed-Fi Xsd Schema files e.g. 'C:\dev\Ed-Fi-Standard\v3.1\Schemas\Bulk'."
   write-host "Optional Argument:" -fore YELLOW
   write-host "-updateConfig" -fore CYAN -NoNewLine
-  write-host " If set to $TRUE, the locust-config.json file will be updated automatically so that the ChangeQuery test can be run without needing to update the config file. Default value is $FALSE."
+  write-host " If set to $TRUE, the test-config.json file will be updated automatically so that the ChangeQuery test can be run without needing to update the config file. Default value is $FALSE."
   write-host
   write-host "Sort-XmlFiles" -fore GREEN
   write-host "Purpose:" -fore YELLOW -NoNewLine
@@ -213,7 +213,7 @@ function Info {
   write-host "-firstDataPeriod" -fore CYAN -NoNewLine
   write-host " Its default value is 1.  To run the ApiLoader for a particular range of data periods, this argument should be set to the min of the range."
   write-host "-updateConfig" -fore CYAN -NoNewLine
-  write-host " If set to $TRUE, the locust-config.json file will be updated automatically so that the ChangeQuery test can be run without needing to update the config file. Default value is $FALSE."
+  write-host " If set to $TRUE, the test-config.json file will be updated automatically so that the ChangeQuery test can be run without needing to update the config file. Default value is $FALSE."
   write-host
   write-host "Create-Backup" -fore GREEN
   write-host "Purpose:" -fore YELLOW -NoNewLine
@@ -223,7 +223,7 @@ function Info {
   write-host " Integer value used to name the database backup file correctly."
   write-host "Optional Arguments:" -fore YELLOW
   write-host "-sqlBackupPath" -fore CYAN -NoNewLine
-  write-host " Full file path to the folder where the SQL backup file should be stored.  If not set, it defaults to the value provided in the locust-config.json file."
+  write-host " Full file path to the folder where the SQL backup file should be stored.  If not set, it defaults to the value provided in the test-config.json file."
   write-host "-databaseName" -fore CYAN -NoNewLine
   write-host " Name of database that the backup is being generated for e.g. 'EdFi_Ods_Sandbox_minimalSandbox'.  If not set, it defaults to the database name provided in the ChangeQueryDataSet.json file."
   write-host

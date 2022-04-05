@@ -36,7 +36,7 @@ See [Paging Volume Test Getting Started](/src/edfi-paging-test/README.md#Getting
 
 ### Customization
 
-The following settings for local development are in `locust-config.json`:
+The following settings for local development are in `test-config.json`:
 
 * `"database_server"`: this will always be 'localhost' when testing locally
 * `"web_server"`: this will always be 'localhost' when testing locally
