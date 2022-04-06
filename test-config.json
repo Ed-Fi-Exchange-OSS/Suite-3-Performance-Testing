@@ -1,7 +1,7 @@
 {
   "host": "http://localhost:54746",
-  "client_id": "populatedSandbox",
-  "client_secret": "populatedSandboxSecret",
+  "client_id": "5fC0tD8iBoKdbP4k6W92Y",
+  "client_secret": "EW5h3x0rfVHAMzYDbQgL2",
   "delete_resources": "true",
   "fail_deliberately":"false",
   "database_server": "localhost",
@@ -9,7 +9,7 @@
   "log_file_path": "C:\\ProgramData\\Ed-Fi-ODS-API",
   "sql_backup_path": "C:\\Program Files\\Microsoft SQL Server\\MSSQL14.MSSQLSERVER\\MSSQL\\Backup",
   "sql_data_path": "C:\\Program Files\\Microsoft SQL Server\\MSSQL14.MSSQLSERVER\\MSSQL\\DATA",
-  "database_name": "EdFi_Ods_Sandbox_populatedSandbox",
+  "database_name": "EdFi_Ods_Sandbox_5fC0tD8iBoKdbP4k6W92Y",
   "backup_filename": "EdFi_Ods_Northridge.bak",
   "change_query_backup_filenames": [ "EdFi_Ods_Northridge.bak" ],
   "restore_database": "false"
