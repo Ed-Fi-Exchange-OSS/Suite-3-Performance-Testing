@@ -9,7 +9,7 @@
 # the `language` matrix defined below to confirm you have the correct set of
 # supported CodeQL languages.
 #
-name: "CodeQL"
+name: "Security Scan"
 
 on:
   workflow_dispatch:
@@ -91,3 +91,6 @@ jobs:
         
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@0182a2c78c8a55b763909348834ed54d735ab3e2  # v2.1.7
+
+    - name: Dependency Review ("Dependabot on PR")
+      uses: actions/dependency-review-action@3f943b86c9a289f4e632c632695e2e0898d9d67d  # v1
