@@ -71,7 +71,7 @@ the argument is set off as an array, e.g.
 ### Dev Operations
 
 1. Style check: `poetry run flake8`
-1. Static typing check: `poetry run mypy .`
-1. Run unit tests: `poetry run pytest`
-1. Run unit tests with code coverage: `poetry run coverage run -m pytest tests`
-1. View code coverage: `poetry run coverage report`
+2. Static typing check: `poetry run mypy .`
+3. Run unit tests: `poetry run pytest`
+4. Run unit tests with code coverage: `poetry run coverage run -m pytest tests`
+5. View code coverage: `poetry run coverage report`
