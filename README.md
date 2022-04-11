@@ -1,4 +1,4 @@
-# Ed-Fi-X-ODS-Performance
+# Suite-3-Performance-Testing
 
 Performance testing framework for the Ed-Fi ODS technical suite 3
 
@@ -28,7 +28,7 @@ component `performance-testing`.
 
 ## Legal Information
 
-Copyright (c) 2020 Ed-Fi Alliance, LLC and contributors.
+Copyright (c) 2022 Ed-Fi Alliance, LLC and contributors.
 
 Licensed under the [Apache License, Version 2.0](LICENSE) (the "License").
 
