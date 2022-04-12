@@ -1,16 +1,17 @@
 {
-  "host": "http://localhost:54746",
-  "client_id": "populatedSandbox",
-  "client_secret": "populatedSandboxSecret",
-  "delete_resources": "true",
-  "fail_deliberately":"false",
-  "database_server": "localhost",
-  "web_server": "localhost",
-  "log_file_path": "C:\\ProgramData\\Ed-Fi-ODS-API",
-  "sql_backup_path": "C:\\Program Files\\Microsoft SQL Server\\MSSQL14.MSSQLSERVER\\MSSQL\\Backup",
-  "sql_data_path": "C:\\Program Files\\Microsoft SQL Server\\MSSQL14.MSSQLSERVER\\MSSQL\\DATA",
-  "database_name": "EdFi_Ods_Sandbox_populatedSandbox",
-  "backup_filename": "EdFi_Ods_Northridge.bak",
-  "change_query_backup_filenames": [ "EdFi_Ods_Northridge.bak" ],
-  "restore_database": "false"
-}
+    "host": "http://localhost:54746",
+    "database_server": "localhost",
+    "web_server": "localhost",
+    "log_file_path": "C:\\ed-fi\\ed-fi-ods-implementation\\Application\\EdFi.Ods.WebApi\\bin\\Debug\\netcoreapp3.1",
+    "restore_database": "false",
+    "database_name": "EdFi_Ods_Sandbox_O0j9CAqSopHev2dJE1Q5r",
+    "backup_filename": "EdFi_Ods_Northridge_v53.bak",
+    "sql_backup_path": "C:\\MSSQL\\Backup",
+    "TODO_restore_in_2.1_release": {
+      "delete_resources": "true",
+      "fail_deliberately":"false",
+      "change_query_backup_filenames": [ "EdFi_Ods_Northridge.bak" ],
+      "client_id": "populatedSandbox",
+      "client_secret": "populatedSandboxSecret"
+    }
+  }
