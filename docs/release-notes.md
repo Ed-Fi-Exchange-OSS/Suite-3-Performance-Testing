@@ -4,7 +4,11 @@
 
 April, 2022
 
-* Supports volume testing of _paging_ get requests
+* Supports volume testing of _paging_ get requests.
+* The script process using `run-tests.ps1` supports SQL Server only. The Python
+  tool [src/edfi-paging-test](../src/edfi-paging-test/README.md) does not
+  connect to the database, and therefore can run without the PowerShell script
+  for PostgreSQL installations.
 * Temporarily deprecates the 1.x SIS Certification-related volume, load, and soak tests
   * Contains outdated and insecure libraries
   * Will be restored with 2.1 release
@@ -16,7 +20,7 @@ For more information on the Paging Volume Tests, see:
 
 * [User Guide](user-guide.md) - full install and execution instructions (high
   level)
-* [src/edfi-paging-test](../src/edfi-paging-test/) - instructions for direct
+* [src/edfi-paging-test](../src/edfi-paging-test/README.md) - instructions for direct
   execution of the test kit (low level)
 
 ## Performance Testing 1.2.0 Release Notes
