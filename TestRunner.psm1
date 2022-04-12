@@ -44,7 +44,7 @@ function Duplicate-OdsLogs {
     $destination = (Join-Path $logFilePath "OdsLogs")
     Get-ChildItem -Path $destination -Recurse | Remove-Item -Recurse
     if (!(Test-Path $destination)) { New-Item -ItemType Directory -Force -Path $destination | Out-Null}
-    $logFiles = Get-ChildItem -Path $logFilePath -Recurse -Include *.txt* -File
+    $logFiles = Get-ChildItem -Path $logFilePath -Recurse -Include *.log -File
     foreach ($file in $logFiles) {
         $filePath = $file.ToString().Replace($logFilePath, $destination)
         $fileDirectory = Split-Path -parent $filePath
@@ -54,12 +54,12 @@ function Duplicate-OdsLogs {
 }
 
 function Invoke-RemoteCommand($server, [PSCredential] $credential, $argumentList, [ScriptBlock] $scriptBlock) {
-    if ($server -eq 'localhost') {
+    if ($server.substring(0,9) -eq "localhost" -or $server.substring(0,9) -eq "(local)") {
         return Invoke-Command -ArgumentList $argumentList -ScriptBlock $scriptBlock
     }
 
     $thisFolder = $PSScriptRoot
-    $commonFunctions = (Get-Command $thisFolder\TestRunner.ps1).ScriptContents
+    $commonFunctions = (Get-Command $thisFolder\TestRunner.psm1).ScriptContents
 
     try {
         $sessionOptions = New-PSSessionOption -SkipCACheck -SkipCNCheck
@@ -81,84 +81,218 @@ function Invoke-RemoteCommand($server, [PSCredential] $credential, $argumentList
     }
 }
 
-function Log($message) {
+function Write-Log {
+    param(
+        [Parameter(Mandatory=$True)]
+        [string]
+        $Message,
+
+        [Parameter(Mandatory=$True)]
+        [ValidateSet("ERROR", "INFO", "DEBUG")]
+        [string]
+        $Level
+    )
+
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss,fff"
-    $output = "[$timestamp] $message"
-    Write-Host $output
+    $output = "[$timestamp] $Level $Message"
+
+    if ($Level -in ("ERROR", "WARNING")) {
+        Write-Error $output
+    } else {
+        Write-Host $output
+    }
+
     $output | Out-File -Encoding UTF8 $testResultsPath\PerformanceTesterLog.txt -Append
 }
 
-function Reset-OdsDatabase($backupFilename) {
-    Import-Module SQLPS
+function Write-ErrorLog {
+    param(
+        [Parameter(Mandatory=$True)]
+        [string]
+        $Message
+    )
 
-    Invoke-SqlCmd -Database "master" `
-                  -Query "DECLARE @mdf as VARCHAR(255), @ldf as VARCHAR(255)
+    Write-Log -Message $Message -Level "ERROR"
+}
 
-                  SELECT @mdf = [name] from [$databaseName].sys.database_files where physical_name like '%.mdf'
-                  SELECT @ldf = [name] from [$databaseName].sys.database_files where physical_name like '%.ldf'
-                  
-                  ALTER DATABASE [$databaseName] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-                  
-                  RESTORE DATABASE [$databaseName] FROM DISK = '$sqlBackupPath\$backupFilename'
-                  WITH
-                      MOVE @mdf TO '$sqlDataPath\$($databaseName).mdf',
-                      MOVE @ldf TO '$sqlDataPath\$($databaseName)_log.ldf',
-                      REPLACE;
-                  
-                  ALTER DATABASE [$databaseName] SET MULTI_USER;" -QueryTimeout 0
+function Write-InfoLog {
+    param(
+        [Parameter(Mandatory=$True)]
+        [string]
+        $Message
+    )
 
-    Invoke-SqlCmd -Database $databaseName -Query "
-        DECLARE @ReorganizeOrRebuildCommand NVARCHAR(MAX);
-        DECLARE reorganizeOrRebuildCommands_cursor CURSOR
-            FOR
-                SELECT
-                    CASE
-                        WHEN pst.avg_fragmentation_in_percent > 30 THEN
-                            'ALTER INDEX ['+idx.Name+'] ON ['+DB_NAME()+'].['+SCHEMA_NAME (tbl.schema_id)+'].['+tbl.name+'] REBUILD WITH (FILLFACTOR = 90, SORT_IN_TEMPDB = ON, STATISTICS_NORECOMPUTE = OFF);'
-                        WHEN pst.avg_fragmentation_in_percent > 5 AND pst.avg_fragmentation_in_percent <= 30 THEN
-                            'ALTER INDEX ['+idx.Name+'] ON ['+DB_NAME()+'].['+SCHEMA_NAME (tbl.schema_id)+'].['+tbl.name+'] REORGANIZE;'
-                        ELSE
-                            NULL
-                    END
-                FROM sys.dm_db_index_physical_stats(DB_ID(), NULL, NULL, NULL , 'SAMPLED') as pst
-                INNER JOIN sys.tables as tbl ON pst.object_id = tbl.object_id
-                INNER JOIN sys.indexes idx ON pst.object_id = idx.object_id AND pst.index_id = idx.index_id
-                WHERE pst.index_id != 0
-                AND pst.alloc_unit_type_desc IN ( N'IN_ROW_DATA', N'ROW_OVERFLOW_DATA')
-                AND pst.avg_fragmentation_in_percent >= 15;
+    Write-Log -Message $Message -Level "INFO"
+}
 
-        OPEN reorganizeOrRebuildCommands_cursor;
+function Write-DebugLog {
+    param(
+        [Parameter(Mandatory=$True)]
+        [string]
+        $Message
+    )
+
+    if ("DEBUG" -eq $env:PERF_LOG_LEVEL) {
+        Write-Log -Message $Message -Level "DEBUG"
+    }
+}
+
+function Reset-OdsDatabase {
+    param(
+        [Parameter(Mandatory=$True)]
+        [string]
+        $BackupFilename,
+
+        [Parameter(Mandatory=$True)]
+        [string]
+        $DatabaseName
+    )
+    # This import needs to be here, not at the top, so that this function can be
+    # executed on a remote server.
+    Import-Module SqlServer
+
+    $command = @"
+DECLARE @statement NVARCHAR(1000) = N'ALTER DATABASE ' + QUOTENAME(N'$DatabaseName') + N' SET SINGLE_USER';
+EXEC sys.sp_executesql @statement;
+"@
+
+    Write-DebugLog $command
+    Invoke-SqlCmd -Database "master" -Query $command -QueryTimeout 0
+
+    $command = @"
+DECLARE @BackupFilename NVARCHAR(128) = N'$BackupFilename';
+DECLARE @DatabaseName NVARCHAR(128) = N'$DatabaseName';
+DECLARE @statement NVARCHAR(1000);
+
+DECLARE @MdfPath NVARCHAR(256), @LdfPath NVARCHAR(256);
+SELECT @MdfPath = CAST(SERVERPROPERTY('InstanceDefaultDataPath') as NVARCHAR(256)),
+        @LdfPath = CAST(SERVERPROPERTY('InstanceDefaultLogPath') as NVARCHAR(256));
+
+-- Table definition below based on documentation at
+-- https://docs.microsoft.com/en-us/sql/t-sql/statements/restore-statements-filelistonly-transact-sql
+DECLARE @bak_files TABLE (
+    LogicalName nvarchar(128),
+    PhysicalName nvarchar(260),
+    [Type] char(1),
+    FileGroupName nvarchar(128),
+    Size numeric(20,0),
+    MaxSize numeric(20,0),
+    FileID bigint,
+    CreateLSN numeric(25,0),
+    DropLSN numeric(25,0),
+    UniqueID uniqueidentifier,
+    ReadOnlyLSN numeric(25,0),
+    ReadWriteLSN numeric(25,0),
+    BackupSizeInBytes bigint,
+    SourceBlockSize int,
+    FileGroupID int,
+    LogGroupGUID uniqueidentifier,
+    DifferentialBaseLSN numeric(25,0),
+    DifferentialBaseGUID uniqueidentifier,
+    IsReadOnly bit,
+    IsPresent bit,
+    TDEThumbprint varbinary(32),
+    SnapshotURL nvarchar(360)
+);
+
+SET @statement = N'RESTORE FILELISTONLY FROM DISK = @file';
+
+INSERT INTO @bak_files
+EXEC sys.sp_executesql @statement, N'@file NVARCHAR(128)', @file = @BackupFilename;
+
+SET @statement = 'RESTORE DATABASE @db FROM DISK = @disk WITH '
+SELECT @statement = @statement + 'MOVE N''' + LogicalName + ''' TO N''' +
+    CASE [Type] WHEN 'D' THEN @MdfPath + LogicalName +'.mdf'', '
+                WHEN 'L' THEN @LdfPath + LogicalName + '.ldf'', '
+    END
+FROM @bak_files;
+
+SET @statement = @statement + ' NOUNLOAD, REPLACE, STATS=5';
+
+EXEC sys.sp_executesql @statement, N'@db NVARCHAR(128), @disk NVARCHAR(128)', @db = @DatabaseName, @disk = @BackupFilename;
+"@
+
+    Write-DebugLog $command
+    Invoke-SqlCmd -Database "master" -Query $command -QueryTimeout 0
+
+    $command = @"
+DECLARE @statement NVARCHAR(1000) = N'ALTER DATABASE ' + QUOTENAME(N'$DatabaseName') + N' SET MULTI_USER';
+EXEC sys.sp_executesql @statement;
+"@
+
+    Write-DebugLog $command
+    Invoke-SqlCmd -Database "master" -Query $command -QueryTimeout 0
+
+    $command = @"
+DECLARE @ReorganizeOrRebuildCommand NVARCHAR(MAX);
+DECLARE reorganizeOrRebuildCommands_cursor CURSOR
+    FOR
+        SELECT
+            CASE
+                WHEN pst.avg_fragmentation_in_percent > 30 THEN
+                    'ALTER INDEX ['+idx.Name+'] ON ['+DB_NAME()+'].['+SCHEMA_NAME (tbl.schema_id)+'].['+tbl.name+'] REBUILD WITH (FILLFACTOR = 90, SORT_IN_TEMPDB = ON, STATISTICS_NORECOMPUTE = OFF);'
+                WHEN pst.avg_fragmentation_in_percent > 5 AND pst.avg_fragmentation_in_percent <= 30 THEN
+                    'ALTER INDEX ['+idx.Name+'] ON ['+DB_NAME()+'].['+SCHEMA_NAME (tbl.schema_id)+'].['+tbl.name+'] REORGANIZE;'
+                ELSE
+                    NULL
+            END
+        FROM sys.dm_db_index_physical_stats(DB_ID(), NULL, NULL, NULL , 'SAMPLED') as pst
+        INNER JOIN sys.tables as tbl ON pst.object_id = tbl.object_id
+        INNER JOIN sys.indexes idx ON pst.object_id = idx.object_id AND pst.index_id = idx.index_id
+        WHERE pst.index_id != 0
+        AND pst.alloc_unit_type_desc IN ( N'IN_ROW_DATA', N'ROW_OVERFLOW_DATA')
+        AND pst.avg_fragmentation_in_percent >= 15;
+
+OPEN reorganizeOrRebuildCommands_cursor;
+FETCH NEXT FROM reorganizeOrRebuildCommands_cursor INTO @ReorganizeOrRebuildCommand;
+WHILE @@fetch_status = 0
+    BEGIN
+        IF @ReorganizeOrRebuildCommand IS NOT NULL
+        BEGIN
+            PRINT @ReorganizeOrRebuildCommand
+            EXEC (@ReorganizeOrRebuildCommand);
+        END
         FETCH NEXT FROM reorganizeOrRebuildCommands_cursor INTO @ReorganizeOrRebuildCommand;
-        WHILE @@fetch_status = 0
-            BEGIN
-                IF @ReorganizeOrRebuildCommand IS NOT NULL
-                BEGIN
-                    PRINT @ReorganizeOrRebuildCommand
-                    EXEC (@ReorganizeOrRebuildCommand);
-                END
-                FETCH NEXT FROM reorganizeOrRebuildCommands_cursor INTO @ReorganizeOrRebuildCommand;
-            END;
-        CLOSE reorganizeOrRebuildCommands_cursor;
-        DEALLOCATE reorganizeOrRebuildCommands_cursor;" -QueryTimeout 0
+    END;
+CLOSE reorganizeOrRebuildCommands_cursor;
+DEALLOCATE reorganizeOrRebuildCommands_cursor;
+"@
 
-    Invoke-SqlCmd -Database $databaseName -Query "EXEC sp_updatestats;" -QueryTimeout 0
+    Write-DebugLog $command
+    Invoke-SqlCmd -Database $databaseName -Query $command -QueryTimeout 0
+
+    $command = "EXEC sp_updatestats;"
+    Write-DebugLog $command
+    Invoke-SqlCmd -Database $databaseName -Query $command -QueryTimeout 0
 }
 
 # Runs the specified test suite for the specified run time.
 function Invoke-TestRunner($testSuite, $clientCount, $hatchRate, $testType, $backupFilename, $runTime) {
-    Log "Writing to $testResultsPath"
+    Write-InfoLog "Writing to $testResultsPath"
 
     $databaseCredential = Get-CredentialOrDefault $databaseServer
     $webCredential = Get-CredentialOrDefault $webServer
 
     if($restoreDatabase) {
-        Log "Restoring $databaseName from $sqlBackupPath\$backupFilename"
-        Invoke-RemoteCommand $databaseServer $databaseCredential -ArgumentList @($backupFilename) -ScriptBlock { param($backupFilename) Reset-OdsDatabase $backupFilename }
+        Write-InfoLog "Restoring $databaseName from $sqlBackupPath\$backupFilename"
+
+        Invoke-RemoteCommand $databaseServer $databaseCredential -ArgumentList @($backupFilename, $databaseName) -ScriptBlock {
+            param(
+                [Parameter(Mandatory=$True)]
+                [string]
+                $BackupFilename,
+
+                [Parameter(Mandatory=$True)]
+                [string]
+                $DatabaseName
+            )
+            Reset-OdsDatabase -BackupFilename $BackupFilename -DatabaseName $DatabaseName
+        }
     } else {
-        Log "Skipping Database Restore"
+        Write-InfoLog "Skipping Database Restore"
     }
 
-    Log "Verifying ODS API is running"
+    Write-InfoLog "Verifying ODS API is running"
     $url = ($configJson | ConvertFrom-Json).host
     $webClient = New-Object System.Net.WebClient
     try {
@@ -176,7 +310,7 @@ function Invoke-TestRunner($testSuite, $clientCount, $hatchRate, $testType, $bac
     $serverMetricsBackgroundScript = {
         param($server, [PSCredential] $credential, $getMetricsBlock, $expectedPerformanceCounters)
 
-        $commonFunctions = (Get-Command $Using:thisFolder\TestRunner.ps1).ScriptContents
+        $commonFunctions = (Get-Command $Using:thisFolder\TestRunner.psm1).ScriptContents
 
         $currentTestResultsFolder = $Using:testResultsPath
 
@@ -228,12 +362,12 @@ function Invoke-TestRunner($testSuite, $clientCount, $hatchRate, $testType, $bac
 
     $backgroundJobs = @{}
 
-    Log "Starting background job to fetch metrics from $databaseServer"
+    Write-InfoLog "Starting background job to fetch metrics from $databaseServer"
     $collectStatsFromDb = Start-Job -ArgumentList @($databaseServer, $databaseCredential, ${function:Get-ServerMetrics}, $expectedPerformanceCounters) -ScriptBlock $serverMetricsBackgroundScript
     $backgroundJobs.Add($databaseServer, $collectStatsFromDb)
 
     if ($webServer -ne 'localhost') {
-        Log "Starting background job to fetch metrics from $webServer"
+        Write-InfoLog "Starting background job to fetch metrics from $webServer"
         $collectStatsFromWeb = Start-Job -ArgumentList @($webServer, $webCredential, ${function:Get-ServerMetrics}, $expectedPerformanceCounters) -ScriptBlock $serverMetricsBackgroundScript
         $backgroundJobs.Add($webServer, $collectStatsFromWeb)
     }
@@ -249,16 +383,16 @@ function Invoke-TestRunner($testSuite, $clientCount, $hatchRate, $testType, $bac
         $command = & cmd /c "locust -f volume_tests.py --list 2>&1"
         $minimumCount = $command.length-1
         if($clientCount -lt $minimumCount) {
-            Log "An inadequate number of clients was provided. Changing client count from $clientCount to $minimumCount"
+            Write-InfoLog "An inadequate number of clients was provided. Changing client count from $clientCount to $minimumCount"
             $clientCount = $minimumCount
         }
     }
 
     $runTimeArgument = ""
     if ($null -eq $runTime) {
-        Log "Running $testSuite tests with $clientCount clients..."
+        Write-InfoLog "Running $testSuite tests with $clientCount clients..."
     } else {
-        Log "Running $testSuite tests with $clientCount clients for $runTime..."
+        Write-InfoLog "Running $testSuite tests with $clientCount clients for $runTime..."
         $runTimeArgument = "--run-time $runTime"
     }
 
@@ -270,18 +404,18 @@ function Invoke-TestRunner($testSuite, $clientCount, $hatchRate, $testType, $bac
                                     -RedirectStandardOutput $outputDir\Summary.txt
         Wait-Process -Id $poetryProcess.Id
         Pop-Location
-        Log "Test runner process complete"
+        Write-InfoLog "Test runner process complete"
     }
     else{
         $locustProcess = Start-Process "locust" -PassThru -NoNewWindow -ArgumentList `
                                    "-f $($testSuite)_tests.py -c $clientCount -r $hatchRate --no-web --csv $testResultsPath\$testType $runTimeArgument --only-summary" `
                                    -RedirectStandardError $testResultsPath\Summary.txt
         Wait-Process -Id $locustProcess.Id
-        Log "Test runner process complete"
+        Write-InfoLog "Test runner process complete"
     }
 
     foreach ($serverName in $backgroundJobs.Keys) {
-        Log "Stopping background job to fetch metrics from $serverName. Output collected from background job:"
+        Write-InfoLog "Stopping background job to fetch metrics from $serverName. Output collected from background job:"
         $backgroundJob = $backgroundJobs.Item($serverName)
         try{
             Stop-Job -Job $backgroundJob
@@ -289,8 +423,8 @@ function Invoke-TestRunner($testSuite, $clientCount, $hatchRate, $testType, $bac
             Remove-Job -Job $backgroundJob
         }
         catch{
-            Log "Failed to stop job for $($serverName):"
-            Log $_.Exception.Message
+            Write-InfoLog "Failed to stop job for $($serverName):"
+            Write-InfoLog $_.Exception.Message
             $formatstring = "{0} : {1}`n{2}`n" +
                 "    + CategoryInfo          : {3}`n" +
                 "    + FullyQualifiedErrorId : {4}`n"
@@ -299,11 +433,11 @@ function Invoke-TestRunner($testSuite, $clientCount, $hatchRate, $testType, $bac
                     $_.InvocationInfo.PositionMessage,
                     $_.CategoryInfo.ToString(),
                     $_.FullyQualifiedErrorId
-            Log ($formatstring -f $fields)
+            Write-InfoLog ($formatstring -f $fields)
         }
     }
 
-    Log "Fetching new ODS log file content from $webServer"
+    Write-InfoLog "Fetching new ODS log file content from $webServer"
     Invoke-RemoteCommand $webServer $webCredential -ScriptBlock { Duplicate-OdsLogs }
 
     $logFiles = (Join-Path $logFilePath "OdsLogs")
@@ -322,7 +456,6 @@ function Set-GlobalsFromConfig($configJson) {
     $global:webServer = $configValues.web_server
     $global:logFilePath = $configValues.log_file_path
     $global:sqlBackupPath = $configValues.sql_backup_path
-    $global:sqlDataPath = $configValues.sql_data_path
     $global:databaseName = $configValues.database_name
     $global:backupFilename = $configValues.backup_filename
     $global:changeQueryBackupFilenames = $configValues.change_query_backup_filenames
@@ -357,7 +490,7 @@ function Get-CredentialOrDefault($server) {
         if (Test-Path $path) {
             return Import-CliXml -Path $path
         } else {
-            Log "Requesting credentials for $server interactively"
+            Write-InfoLog "Requesting credentials for $server interactively"
             return (Get-Credential -Message "Credentials for $server")
         }
     }
@@ -379,7 +512,7 @@ function Initialize-TestRunner {
     # underneath TestResults.
     $global:testResultsPath = "TestResults"
     Initialize-Folder TestResults
-    Log "Writing to TestResults Folder"
+    Write-InfoLog "Writing to TestResults Folder"
 }
 function Invoke-PageVolumeTests {
     Initialize-TestRunner
@@ -390,68 +523,71 @@ function Invoke-PageVolumeTests {
         -BackupFilename $backupFilename
 }
 
-function Invoke-VolumeTests {
-    Initialize-TestRunner
-    Invoke-TestRunner `
-        -TestSuite volume `
-        -ClientCount 50 `
-        -HatchRate 1 `
-        -RunTime 30m `
-        -TestType volume `
-        -BackupFilename $backupFilename
-}
+# Removed in version 2.0 release, will be restored in the future
+# function Invoke-VolumeTests {
+#     Initialize-TestRunner
+#     Invoke-TestRunner `
+#         -TestSuite volume `
+#         -ClientCount 50 `
+#         -HatchRate 1 `
+#         -RunTime 30m `
+#         -TestType volume `
+#         -BackupFilename $backupFilename
+# }
 
-function Invoke-PipecleanTests {
-    Initialize-TestRunner
-    Invoke-TestRunner `
-        -TestSuite pipeclean `
-        -ClientCount 1 `
-        -HatchRate 1 `
-        -TestType pipeclean `
-        -BackupFilename $backupFilename
-}
+# function Invoke-PipecleanTests {
+#     Initialize-TestRunner
+#     Invoke-TestRunner `
+#         -TestSuite pipeclean `
+#         -ClientCount 1 `
+#         -HatchRate 1 `
+#         -TestType pipeclean `
+#         -BackupFilename $backupFilename
+# }
 
-function Invoke-StressTests {
-    Initialize-TestRunner
-    Invoke-TestRunner `
-        -TestSuite volume `
-        -ClientCount 1000 `
-        -HatchRate 25 `
-        -RunTime 30m `
-        -TestType stress `
-        -BackupFilename $backupFilename
-}
+# function Invoke-StressTests {
+#     Initialize-TestRunner
+#     Invoke-TestRunner `
+#         -TestSuite volume `
+#         -ClientCount 1000 `
+#         -HatchRate 25 `
+#         -RunTime 30m `
+#         -TestType stress `
+#         -BackupFilename $backupFilename
+# }
 
-function Invoke-SoakTests {
-    Initialize-TestRunner
-    Invoke-TestRunner `
-        -TestSuite volume `
-        -ClientCount 500 `
-        -HatchRate 1 `
-        -RunTime 48h `
-        -TestType soak `
-        -BackupFilename $backupFilename
-}
+# function Invoke-SoakTests {
+#     Initialize-TestRunner
+#     Invoke-TestRunner `
+#         -TestSuite volume `
+#         -ClientCount 500 `
+#         -HatchRate 1 `
+#         -RunTime 48h `
+#         -TestType soak `
+#         -BackupFilename $backupFilename
+# }
 
-function Invoke-ChangeQueryTests {
-    Initialize-TestRunner
+# function Invoke-ChangeQueryTests {
+#     Initialize-TestRunner
 
-    Set-ChangeVersionTracker
+#     Set-ChangeVersionTracker
 
-    $iteration = 1
-    foreach ($changeQueryBackupFilename in $changeQueryBackupFilenames){
-        $global:testResultsPath = "TestResults\TestResult_$iteration"
-        $iteration = $iteration + 1
+#     $iteration = 1
+#     foreach ($changeQueryBackupFilename in $changeQueryBackupFilenames){
+#         $global:testResultsPath = "TestResults\TestResult_$iteration"
+#         $iteration = $iteration + 1
 
-        Initialize-Folder $testResultsPath
+#         Initialize-Folder $testResultsPath
 
-        Invoke-TestRunner `
-            -TestSuite change_query `
-            -ClientCount 1 `
-            -HatchRate 1 `
-            -TestType change_query `
-            -BackupFilename $changeQueryBackupFilename
+#         Invoke-TestRunner `
+#             -TestSuite change_query `
+#             -ClientCount 1 `
+#             -HatchRate 1 `
+#             -TestType change_query `
+#             -BackupFilename $changeQueryBackupFilename
 
-        Duplicate-ChangeVersionTracker
-    }
-}
+#         Duplicate-ChangeVersionTracker
+#     }
+# }
+
+Export-ModuleMember -Function Invoke-PageVolumeTests
