@@ -22,9 +22,9 @@ Not included:
     module](https://www.powershellgallery.com/packages/Sqlserver)
 * The user running the tests must be able to connect to the Web Server and the
   Database Server with Windows authentication, with sys admin permissions in SQL
-  Server. _This only applies when using `run-tests.ps1`, which needs the user
-  account for collecting metrics and (optionally) performing a database
-  restore_.
+  Server. You will be prompted to enter your credentials. _This only applies
+  when using `run-tests.ps1`, which needs the user account for collecting
+  metrics and (optionally) performing a database restore_.
 
 ## Getting Started
 
