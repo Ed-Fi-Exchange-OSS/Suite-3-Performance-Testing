@@ -2,7 +2,8 @@
 
 ## Scope
 
-This document covers:
+This document covers execution of the following tests in a Windows / SQL Server
+environment:
 
 * Paging Volume Tests
 

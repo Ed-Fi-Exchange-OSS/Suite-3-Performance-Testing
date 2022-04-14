@@ -20,10 +20,11 @@ April, 2022
 
 For more information on the Paging Volume Tests, see:
 
-* [User Guide](docs/user-guide.md) - full install and execution instructions (high
-  level)
+* [User Guide](docs/user-guide.md) - full install and instructions for scripted
+  execution in a Windows / SQL Server environment (not suitable for Linux or
+  Docker).
 * [src/edfi-paging-test](src/edfi-paging-test/README.md) - instructions for direct
-  execution of the test kit (low level)
+  execution of the test kit (suitable for any platform).
 
 ## Support
 
