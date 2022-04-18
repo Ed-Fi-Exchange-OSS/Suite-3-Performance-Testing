@@ -19,7 +19,6 @@ from edfi_paging_test.helpers.api_metadata import (
     get_resource_paths,
     normalize_resource_paths,
 )
-from pandas import DataFrame
 from edfi_paging_test.reporter.summary import Summary
 
 
@@ -41,14 +40,10 @@ def _generate_output_reports(args: MainArguments) -> None:
         OutputFormat.JSON: reporter.create_statistics_json,
     }
     create_statistics_out[args.contentType](df, args.output, run_name)
-    summary_df = DataFrame(
-        [
-            Summary(
-                key=run_name, resources=args.resourceList, description=args.description
+    summary = Summary(
+                run_name=run_name, run_configration=args
             )
-        ]
-    )
-    reporter.create_summary_json(summary_df, args.output, run_name)
+    reporter.create_summary_json(summary.get_DataFrame(), args.output, run_name)
 
 
 def fetch_resource(request_client: RequestClient, target_resource: str) -> None:

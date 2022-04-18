@@ -79,7 +79,5 @@ def create_summary_json(df: DataFrame, output_dir: str, run_name: str) -> None:
 
     file_path = path.join(run_dir, "summary.json")
 
-    df.columns = df.columns.str.title().str.replace("_", "")  # type: ignore
-
     # Apparently to_json is not in the type stub
     df.to_json(file_path, orient="records")  # type: ignore

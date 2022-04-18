@@ -1,8 +1,11 @@
 import pytest
+import re
 from pandas import DataFrame, read_csv, read_json
 from os import path
 from edfi_paging_test.reporter.summary import Summary
-
+from edfi_paging_test.helpers.main_arguments import MainArguments
+from edfi_paging_test.helpers.log_level import LogLevel
+from edfi_paging_test.helpers.output_format import OutputFormat
 from pyfakefs.fake_filesystem import FakeFilesystem, OSType  # type: ignore
 
 from edfi_paging_test.reporter.reporter import (
@@ -425,20 +428,41 @@ def describe_when_creating_summary_json() -> None:
         OUTPUT_DIRECTORY = "/output"
         RUN_NAME = "123"
         EXPECTED_FILE = "/output/123/summary.json"
-        CONTENTS = '[{"Key":"123","Description":"Test Run","MachineName":"My Machine","Resources":["a","b"]}]'
+        CONTENTS = """[{
+            "RunName":"123",
+            "MachineName":"MyMachine",
+            "RunConfigration.Baseurl":"testhost",
+            "RunConfigration.Connectionlimit":4,
+            "RunConfigration.Key":"populatedTemplateX",
+            "RunConfigration.Secret":"populatedSecretX",
+            "RunConfigration.Output":"test_outputX",
+            "RunConfigration.Description":"test",
+            "RunConfigration.Contenttype":"CSV",
+            "RunConfigration.Resourcelist":["a","b"],
+            "RunConfigration.Pagesize":100,
+            "RunConfigration.LogLevel":"DEBUG"
+            }]"""
 
         @pytest.fixture(autouse=True)
         def act():
-            df = DataFrame(
-                [
-                    Summary(
-                        key=RUN_NAME,
-                        machine_name="My Machine",
-                        resources=["a", "b"],
-                        description="Test Run"
-                    )
-                ]
+
+            summary = Summary(
+                run_name=RUN_NAME,
+                machine_name="MyMachine",
+                run_configration=MainArguments(
+                    "testhost",
+                    4,
+                    "populatedTemplateX",
+                    "populatedSecretX",
+                    "test_outputX",
+                    "test",
+                    OutputFormat.CSV,
+                    ["a", "b"],
+                    100,
+                    LogLevel.DEBUG,
+                )
             )
+            df = summary.get_DataFrame()
             create_summary_json(df, OUTPUT_DIRECTORY, RUN_NAME)
 
         def it_creates_a_file(fs: FakeFilesystem) -> None:
@@ -448,4 +472,4 @@ def describe_when_creating_summary_json() -> None:
             with open(EXPECTED_FILE) as f:
                 actual = f.read()
 
-                assert actual == CONTENTS
+                assert actual == re.sub('\\s+', '', CONTENTS)
