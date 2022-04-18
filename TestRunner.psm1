@@ -54,7 +54,9 @@ function Duplicate-OdsLogs {
 }
 
 function Invoke-RemoteCommand($server, [PSCredential] $credential, $argumentList, [ScriptBlock] $scriptBlock) {
-    if ($server.substring(0,9) -eq "localhost" -or $server.substring(0,9) -eq "(local)") {
+    # When running on localhost, no need to execute a remote command. Substring check
+    # in the next line supports use of named instances.
+    if ($server.substring(0,9) -eq "localhost" -or $server.substring(0,7) -eq "(local)") {
         return Invoke-Command -ArgumentList $argumentList -ScriptBlock $scriptBlock
     }
 
