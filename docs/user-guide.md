@@ -1,53 +1,80 @@
-# Ed-Fi-X-ODS-Performance
+# User Guide for the Suite 3 Performance Test Kit
 
-Performance testing framework for the Ed-Fi ODS technical suite 3
+## Scope
 
-## Installation
+This document covers execution of the following tests in a Windows / SQL Server
+environment:
 
-1. If you don't already have [Git for Windows](https://gitforwindows.org/) on
-   your system, install it.
-1. Choose a parent directory (e.g., `C:\dev`) to house this repository and
-   either clone this repository there (`cd` to that directory and run `git clone
-   https://github.com/Ed-Fi-Exchange-OSS/Suite-3-Performance-Testing.git`), or use the "Clone
-   or Download" link above to download a ZIP file and unzip it into that
-   directory.  Either method will create an `Suite-3-Performance-Testing` directory
-   containing the repository.
-1. Checkout the right tag for the version you wish to test against, e.g.
-   `git checkout 3.0.0` or `git checkout 3.1.0`.
+* Paging Volume Tests
 
-### Installing Test Runner Prerequisites
+Not included:
 
-See [Paging Volume Test Getting Started](/src/edfi-paging-test/README.md#Getting%20Started) for setup details.
+* "SIS Certification" pipeclean, volume, load, change query, and soak tests.
+  These are temporarily deprecated due to out-of-date libraries and Python
+  version.
 
-## Usage
+## Pre-requisites
 
-### Running a test with performance metrics and logs (Recommended)
+* [Python](https://www.python.org/) 3.9+ (tested with 3.9.4)
+* [Poetry](https://python-poetry.org/)
+* PowerShell 5.0+ to use the full toolkit, including metric collection from
+  Windows, IIS, and SQL Server.
+  * Be sure to install the latest [SqlServer
+    module](https://www.powershellgallery.com/packages/Sqlserver)
+* The user running the tests must be able to connect to the Web Server and the
+  Database Server with Windows authentication, with sys admin permissions in SQL
+  Server. You will be prompted to enter your credentials. _This only applies
+  when using `run-tests.ps1`, which needs the user account for collecting
+  metrics and (optionally) performing a database restore_.
 
-1. Start the local Ed-Fi ODS API.  (See
-   [here](https://techdocs.ed-fi.org/display/ODSAPIS3V53/Getting+Started+-+Source+Code+Installation)
-   for installation and invocation instructions.)
-1. Open a command prompt window and cd to the root to the repository. (`cd
-   C:\dev\Suite-3-Performance-Testing`)
-1. Run the following command to run the standard volume test: `run-tests pagevolume`
-1. Volume, pipeclean, soak, stress and change query test are not available at this time. They will be restored in a future release, see [PERF-230](https://tracker.ed-fi.org/browse/PERF-238).
-1. Once the test finishes, you can look inside the TestResults directory, which
-   will be located at the root of the repository to see log entries, performance
-   metrics, and test results.
+## Getting Started
 
-### Customization
+* Clone [this
+  repository](https://github.com/Ed-Fi-Exchange-OSS/Suite-3-Performance-Testing)
+  using Git or download a Zip file for the [2.0 Paging Volume
+  Tests](https://github.com/Ed-Fi-Exchange-OSS/Suite-3-Performance-Testing/releases)
+  release.
+* Install all application dependencies:
 
-The following settings for local development are in `test-config.json`:
+  ```bash
+  cd src/edfi-paging-test
+  poetry install
+  ```
 
-* `"database_server"`: this will always be 'localhost' when testing locally
-* `"web_server"`: this will always be 'localhost' when testing locally
-* `"log_file_path"`: this path points to the folder where the ODS API logs are
-  stored.
-* `"sql_backup_path"`: this path points to the folder where the SQL Server .BAK
-  files are stored
-* `"sql_data_path"`: this path points to the folder where the .ldf and .mdf
-  files are written to when the database is restored
-* `"database_name"`: this is the name of the database that is being overwritten
-  and restored on
-* `"backup_filename"`: this is the .BAK file that is going to be restored
-* `"restore_database"`: change this to "true" if you would like the database to
-  be restored when testing. This is "false" by default
+* Create a `.env` file in `src/edfi-paging-test` (can start with
+  `.env.example`). Customize for your installation and testing requirements.
+  * To test _all_ resources, comment out the `PERF_RESOURCE_LIST` entry.
+  * For more information on the settings, see the [edfi-paging-test
+    README](../src/edfi-paging-test/README.md)
+* Customize the `test-config.json` file using the same information input to the
+  `.env` file (in the future these will be merged).
+  * When `"restore_database": true` is used, the toolkit will try to restore the
+    database to a known good state using the specified backup file. The two SQL
+    file paths in the file must be on the SQL Server. If SQL Server is running
+    on another machine, then use UNC paths or drive mappings to access the
+    proper paths.
+
+## Running the Paging Volume Tests
+
+From the root folder, simply call the `run-tests.ps1` file.
+
+```bash
+./run-tests.ps1
+```
+
+Server metrics will be output to the `./TestResults` directory. Paging test
+results will found in whatever directory was specified in the `.env` file.
+
+## Troubleshooting
+
+* Double-check settings in the `.env` and `test-config.json` files
+* Make sure the API is running and can be accessed from the machine running
+  these tests.
+* Make sure that the database is running, can be accessed from the machine
+  running these tests, and supports integrated security.
+* Confirm that the database backup conforms to the features and extensions in
+  the ODS/API code. For example, if the backup file was created from a database
+  that did not include change queries, then make sure the change queries feature
+  is disabled in the API project's `appsettings.json` file. Similarly, check
+  that any extensions used by the API are actually installed in the database
+  backup.
