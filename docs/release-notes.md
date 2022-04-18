@@ -29,7 +29,7 @@ For more information on the Paging Volume Tests, see:
 * Updates to the Assessment API due to changes in the data standard.
 * Pipeclean testing for composites.
 * Refactoring of API client dependency handling, described in [How To Create
-  Tests](how-to-create-tests.md#complex-clients-1-dependencies).
+  Tests](old/how-to-create-tests.md#complex-clients-1-dependencies).
 * Query for database logical name when restoring from backup, instead of
   hard-coding to the populated template name.
 * Dates now need to be in format `YYYY-mm-dd` and should be formatted using the
