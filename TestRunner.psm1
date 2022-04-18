@@ -63,10 +63,21 @@ function Copy-ApiLogs {
     }
 }
 
+function Test-IsLocalhost{
+    param(
+        [Parameter(Mandatory=$True)]
+        [string]
+        $server
+    )
+
+    # When running on localhost, no need to execute a remote command. Substring
+    # check supports use of named instances.
+    return $server.substring(0,9) -eq "localhost" -or $server.substring(0,7) -eq "(local)"
+}
+
 function Invoke-RemoteCommand($server, [PSCredential] $credential, $argumentList, [ScriptBlock] $scriptBlock) {
-    # When running on localhost, no need to execute a remote command. Substring check
-    # in the next line supports use of named instances.
-    if ($server.substring(0,9) -eq "localhost" -or $server.substring(0,7) -eq "(local)") {
+
+    if (Test-IsLocalhost $server) {
         return Invoke-Command -ArgumentList $argumentList -ScriptBlock $scriptBlock
     }
 
@@ -369,7 +380,7 @@ function Invoke-TestRunner {
             try {
                 $csvPath = "$TestResultsPath/$TestType.$server.csv"
 
-                if ($server -eq 'localhost') {
+                if (Test-IsLocalhost $server) {
                     $actualPerformanceCounters = Compare-Object (typeperf -q) $expectedPerformanceCounters -PassThru -IncludeEqual -ExcludeDifferent
                 }
                 else {
@@ -395,7 +406,7 @@ function Invoke-TestRunner {
                 }
 
                 while ($true) {
-                    if ($server -eq 'localhost') {
+                    if (Test-IsLocalhost $server) {
                         $record = Invoke-Command -ScriptBlock $getMetricsBlock
                     } else {
                         $record = Invoke-Command -Session $psSession -ScriptBlock $getMetricsBlock
@@ -516,7 +527,7 @@ function Invoke-TestRunner {
 
         # Retreive API log files from the web server
         $logFiles = (Join-Path $logFilePath "OdsLogs")
-        if ($webServer -eq 'localhost') {
+        if (Test-IsLocalhost $webServer) {
             Copy-Item $logFiles -Destination $testResultsPath -Recurse
         } else {
             $sessionOptions = New-PSSessionOption -SkipCACheck -SkipCNCheck
@@ -608,7 +619,7 @@ function Duplicate-ChangeVersionTracker {
 }
 
 function Get-CredentialOrDefault($server) {
-    if ($server -eq 'localhost') {
+    if (Test-IsLocalhost $server) {
         return $null
     } else {
         # First, attempt to load credentials previously registered with Register-Credentials.
