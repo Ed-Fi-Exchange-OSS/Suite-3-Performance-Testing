@@ -35,6 +35,6 @@ class Summary:
 
         df = DataFrame(data=[self])
         json_summary = json.loads(df.to_json(orient="records"))  # type: ignore
-        df = pd.io.json.json_normalize(json_summary)  # type: ignore
+        df = pd.json_normalize(json_summary)  # type: ignore
         df.columns = df.columns.str.title().str.replace("_", "")  # type: ignore
         return df
