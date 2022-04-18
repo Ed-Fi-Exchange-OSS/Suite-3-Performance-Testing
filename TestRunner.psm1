@@ -40,11 +40,21 @@ function Get-ServerMetrics {
     $result
 }
 
-function Duplicate-OdsLogs {
-    $destination = (Join-Path $logFilePath "OdsLogs")
+function Copy-ApiLogs {
+    param(
+        [Parameter(Mandatory=$True)]
+        [string]
+        $LogFilePath
+    )
+
+    $destination = (Join-Path $LogFilePath "OdsLogs")
+
+    # Clear out the existing directory if needed
     Get-ChildItem -Path $destination -Recurse | Remove-Item -Recurse
     if (!(Test-Path $destination)) { New-Item -ItemType Directory -Force -Path $destination | Out-Null}
-    $logFiles = Get-ChildItem -Path $logFilePath -Recurse -Include *.log -File
+
+    # Copy all log files into the temporary OdsLogs irectory
+    $logFiles = Get-ChildItem -Path $logFilePath -Recurse -Include *.log* -File
     foreach ($file in $logFiles) {
         $filePath = $file.ToString().Replace($logFilePath, $destination)
         $fileDirectory = Split-Path -parent $filePath
@@ -103,8 +113,6 @@ function Write-Log {
     } else {
         Write-Host $output
     }
-
-    $output | Out-File -Encoding UTF8 $testResultsPath\PerformanceTesterLog.txt -Append
 }
 
 function Write-ErrorLog {
@@ -269,203 +277,323 @@ DEALLOCATE reorganizeOrRebuildCommands_cursor;
 }
 
 # Runs the specified test suite for the specified run time.
-function Invoke-TestRunner($testSuite, $clientCount, $hatchRate, $testType, $backupFilename, $runTime) {
-    Write-InfoLog "Writing to $testResultsPath"
+function Invoke-TestRunner {
+    param (
+        $testSuite,
+        $clientCount,
+        $hatchRate,
+        $testType,
+        $runTime,
+        $Config
+    )
 
-    $databaseCredential = Get-CredentialOrDefault $databaseServer
-    $webCredential = Get-CredentialOrDefault $webServer
+    $testResultsPath = Get-RunnerOutputDir -Config $Config
 
-    if($restoreDatabase) {
-        Write-InfoLog "Restoring $databaseName from $sqlBackupPath\$backupFilename"
-
-        Invoke-RemoteCommand $databaseServer $databaseCredential -ArgumentList @($backupFilename, $databaseName) -ScriptBlock {
-            param(
-                [Parameter(Mandatory=$True)]
-                [string]
-                $BackupFilename,
-
-                [Parameter(Mandatory=$True)]
-                [string]
-                $DatabaseName
-            )
-            Reset-OdsDatabase -BackupFilename $BackupFilename -DatabaseName $DatabaseName
-        }
-    } else {
-        Write-InfoLog "Skipping Database Restore"
-    }
-
-    Write-InfoLog "Verifying ODS API is running"
-    $url = ($configJson | ConvertFrom-Json).host
-    $webClient = New-Object System.Net.WebClient
-    try {
-        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
-        $content = $webClient.DownloadString($url)
-        Write-Host $content
-    }
-    finally {
-        $webClient.Dispose()
-        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $null
-    }
-
-    $thisFolder = $PSScriptRoot
-
-    $serverMetricsBackgroundScript = {
-        param($server, [PSCredential] $credential, $getMetricsBlock, $expectedPerformanceCounters)
-
-        $commonFunctions = (Get-Command $Using:thisFolder\TestRunner.psm1).ScriptContents
-
-        $currentTestResultsFolder = $Using:testResultsPath
-
-        try {
-            $csvPath = "$Using:thisFolder\$currentTestResultsFolder\$Using:testType.$server.csv"
-
-            if ($server -eq 'localhost') {
-                $actualPerformanceCounters = Compare-Object (typeperf -q) $expectedPerformanceCounters -PassThru -IncludeEqual -ExcludeDifferent
-            }
-            else {
-                $sessionOptions = New-PSSessionOption -SkipCACheck -SkipCNCheck
-                $psSession = New-PSSession -ComputerName $server -Credential $credential -UseSSL -SessionOption $sessionOptions -ErrorAction Stop
-
-                # Prepare the remote session with the contents of this file.
-                Invoke-Command -Session $psSession -ArgumentList @($commonFunctions, $Using:configJson) -ScriptBlock {
-                    param($commonFunctions, $configJson)
-                    Invoke-Expression $commonFunctions
-                    Set-GlobalsFromConfig $configJson
-                }
-
-                Invoke-Command -Session $psSession -ScriptBlock {
-                    $actualPerformanceCounters = Compare-Object (typeperf -q) $expectedPerformanceCounters -PassThru -IncludeEqual -ExcludeDifferent
-                }
-            }
-            $getMetricsBlock = [scriptblock]::Create($getMetricsBlock)
-
-            if ($Using:testType -eq 'soak'){
-                $sleepTime = 25
-            } else {
-                $sleepTime = 5
-            }
-
-            while ($true) {
-                if ($server -eq 'localhost') {
-                    $record = Invoke-Command -ScriptBlock $getMetricsBlock
-                } else {
-                    $record = Invoke-Command -Session $psSession -ScriptBlock $getMetricsBlock
-                }
-                $record | Select-Object * -ExcludeProperty PSComputerName,RunspaceId,PSShowComputerName | Export-Csv -Path $csvPath -Append -NoTypeInformation
-                Start-Sleep -Seconds $sleepTime
-            }
-        }
-        finally {
-            if ($psSession -ne $null) {
-                $psSession | Remove-PSSession
-            }
-        }
-    }
-
-    $backgroundJobs = @{}
-
-    Write-InfoLog "Starting background job to fetch metrics from $databaseServer"
-    $collectStatsFromDb = Start-Job -ArgumentList @($databaseServer, $databaseCredential, ${function:Get-ServerMetrics}, $expectedPerformanceCounters) -ScriptBlock $serverMetricsBackgroundScript
-    $backgroundJobs.Add($databaseServer, $collectStatsFromDb)
-
-    if ($webServer -ne 'localhost') {
-        Write-InfoLog "Starting background job to fetch metrics from $webServer"
-        $collectStatsFromWeb = Start-Job -ArgumentList @($webServer, $webCredential, ${function:Get-ServerMetrics}, $expectedPerformanceCounters) -ScriptBlock $serverMetricsBackgroundScript
-        $backgroundJobs.Add($webServer, $collectStatsFromWeb)
-    }
-
+    Start-Transcript -Path $testResultsPath/performance-test.log
 
     if (($testSuite -eq "volume") -and ($null -eq $runTime)) {
         throw "The -RunTime parameter must be provided when running the 'volume' suite of tests, so that the test run can exit gracefully."
     }
 
-    if($testSuite -eq 'volume') {
-        # If the number of clients is too low, locust will quit immediately without running any tests. A safe minimum client count is the count of the total number of
-        # volume test classes. This corrects the user's request in the event that the number of volume test classes exceeds the given client count.
-        $command = & cmd /c "locust -f volume_tests.py --list 2>&1"
-        $minimumCount = $command.length-1
-        if($clientCount -lt $minimumCount) {
-            Write-InfoLog "An inadequate number of clients was provided. Changing client count from $clientCount to $minimumCount"
-            $clientCount = $minimumCount
+    try {
+
+        Write-InfoLog "Writing to $testResultsPath"
+
+        $databaseServer = Get-ConfigValue -Config $Config -Key "PERF_DB_SERVER"
+        $webServer = Get-ConfigValue -Config $Config -Key "PERF_WEB_SERVER"
+        $sqlBackupFile = Get-ConfigValue -Config $Config -Key "PERF_SQL_BACKUP_FILE"
+        $restoreDatabase = $false
+        try {
+            $restoreDatabase = [System.Convert]::ToBoolean($(Get-ConfigValue -Config $Config -Key "PERF_DB_RESTORE"))
+        } catch {
+            raise "Invalid configuration value for PERF_DB_RESTORE, should be a boolean"
+        }
+        $url = Get-ConfigValue -Config $Config -Key "PERF_API_URL"
+
+        $databaseCredential = Get-CredentialOrDefault $databaseServer
+        $webCredential = Get-CredentialOrDefault $webServer
+
+        if ($restoreDatabase) {
+            Write-InfoLog "Restoring $databaseName from sqlBackupFile"
+
+            Invoke-RemoteCommand $databaseServer $databaseCredential -ArgumentList @($sqlBackupFile, $databaseName) -ScriptBlock {
+                param(
+                    [Parameter(Mandatory=$True)]
+                    [string]
+                    $BackupFilename,
+
+                    [Parameter(Mandatory=$True)]
+                    [string]
+                    $DatabaseName
+                )
+                Reset-OdsDatabase -BackupFilename $BackupFilename -DatabaseName $DatabaseName
+            }
+        } else {
+            Write-DebugLog "Skipping Database Restore"
+        }
+
+        Write-InfoLog "Verifying ODS API is running"
+        $webClient = New-Object System.Net.WebClient
+        try {
+
+            # qqq
+            [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+            $content = $webClient.DownloadString($url)
+            Write-Host $content
+        }
+        finally {
+            $webClient.Dispose()
+            [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $null
+        }
+
+        $serverMetricsBackgroundScript = {
+            param(
+                $server,
+
+                [PSCredential]
+                $credential,
+
+                $getMetricsBlock,
+
+                $expectedPerformanceCounters,
+
+                $TestResultsPath,
+
+                $TestType,
+
+                $TestRunnerModulePath
+            )
+
+            $commonFunctions = (Get-Command $TestRunnerModulePath).ScriptContents
+
+            try {
+                $csvPath = "$TestResultsPath/$TestType.$server.csv"
+
+                if ($server -eq 'localhost') {
+                    $actualPerformanceCounters = Compare-Object (typeperf -q) $expectedPerformanceCounters -PassThru -IncludeEqual -ExcludeDifferent
+                }
+                else {
+                    $sessionOptions = New-PSSessionOption -SkipCACheck -SkipCNCheck
+                    $psSession = New-PSSession -ComputerName $server -Credential $credential -UseSSL -SessionOption $sessionOptions -ErrorAction Stop
+
+                    # Prepare the remote session with the contents of this file.
+                    Invoke-Command -Session $psSession -ArgumentList @($commonFunctions, $Using:configJson) -ScriptBlock {
+                        param($commonFunctions, $configJson)
+                        Invoke-Expression $commonFunctions
+                    }
+
+                    Invoke-Command -Session $psSession -ScriptBlock {
+                        $actualPerformanceCounters = Compare-Object (typeperf -q) $expectedPerformanceCounters -PassThru -IncludeEqual -ExcludeDifferent
+                    }
+                }
+                $getMetricsBlock = [scriptblock]::Create($getMetricsBlock)
+
+                if ($Using:testType -eq 'soak'){
+                    $sleepTime = 25
+                } else {
+                    $sleepTime = 5
+                }
+
+                while ($true) {
+                    if ($server -eq 'localhost') {
+                        $record = Invoke-Command -ScriptBlock $getMetricsBlock
+                    } else {
+                        $record = Invoke-Command -Session $psSession -ScriptBlock $getMetricsBlock
+                    }
+                    $record | Select-Object * -ExcludeProperty PSComputerName,RunspaceId,PSShowComputerName | Export-Csv -Path $csvPath -Append -NoTypeInformation
+                    Start-Sleep -Seconds $sleepTime
+                }
+            }
+            finally {
+                if ($null -ne $psSession) {
+                    $psSession | Remove-PSSession
+                }
+            }
+        }
+
+        $backgroundJobs = @{}
+
+        Write-InfoLog "Starting background job to fetch metrics from $databaseServer"
+
+        $parms = @(
+            server = $databaseServer
+            credential = $databaseCredential
+            getMetricsBlock = ${function:Get-ServerMetrics}
+            expectedPerformanceCounters = $expectedPerformanceCounters
+            TestResultsPath = $testResultsPath
+            TestType = $testType
+            TestRunnerModulePath = (Split-Path -Path $MyInvocation.MyCommand.Path -Parent)/TestRunner.psm1
+        )
+        $collectStatsFromDb = Start-Job -ArgumentList $parms -ScriptBlock $serverMetricsBackgroundScript
+        $backgroundJobs.Add($databaseServer, $collectStatsFromDb)
+
+        if ($webServer -eq $databaseServer) {
+            # If database and web are on the same server, there is no reason to
+            # collect the same metrics twice.
+            Write-InfoLog "Starting background job to fetch metrics from $webServer"
+
+            $parms.server = $webServer
+            $parms.credential = $webCredential
+            $collectStatsFromWeb = Start-Job -ArgumentList $parms -ScriptBlock $serverMetricsBackgroundScript
+            $backgroundJobs.Add($webServer, $collectStatsFromWeb)
+        }
+
+        if($testSuite -eq 'volume') {
+            # If the number of clients is too low, locust will quit immediately
+            # without running any tests. A safe minimum client count is the count of
+            # the total number of volume test classes. This corrects the user's
+            # request in the event that the number of volume test classes exceeds
+            # the given client count.
+
+            # TODO: change this to use Start-Process instead of "cmd /c"
+            $command = & cmd /c "locust -f volume_tests.py --list 2>&1"
+            $minimumCount = $command.length-1
+            if($clientCount -lt $minimumCount) {
+                Write-InfoLog "An inadequate number of clients was provided. Changing client count from $clientCount to $minimumCount"
+                $clientCount = $minimumCount
+            }
+        }
+
+        $runTimeArgument = ""
+        if ($null -eq $runTime) {
+            Write-InfoLog "Running $testSuite tests with $clientCount clients..."
+        } else {
+            Write-InfoLog "Running $testSuite tests with $clientCount clients for $runTime..."
+            $runTimeArgument = "--run-time $runTime"
+        }
+
+        if($testSuite -eq 'pagevolume') {
+            $outputDir = Resolve-Path $testResultsPath
+            Push-Location .\src\edfi-paging-test
+            $poetryProcess = Start-Process "poetry" -PassThru -NoNewWindow -ArgumentList `
+                                        "run python edfi_paging_test --connectionLimit $clientCount --output $outputDir" `
+                                        -RedirectStandardOutput $outputDir\Summary.txt
+            Wait-Process -Id $poetryProcess.Id
+            Pop-Location
+            Write-InfoLog "Test runner process complete"
+        }
+        else{
+            $locustProcess = Start-Process "locust" -PassThru -NoNewWindow -ArgumentList `
+                                    "-f $($testSuite)_tests.py -c $clientCount -r $hatchRate --no-web --csv $testResultsPath\$testType $runTimeArgument --only-summary" `
+                                    -RedirectStandardError $testResultsPath\Summary.txt
+            Wait-Process -Id $locustProcess.Id
+            Write-InfoLog "Test runner process complete"
+        }
+
+        foreach ($serverName in $backgroundJobs.Keys) {
+            Write-InfoLog "Stopping background job to fetch metrics from $serverName. Output collected from background job:"
+            $backgroundJob = $backgroundJobs.Item($serverName)
+            try{
+                Stop-Job -Job $backgroundJob
+                Receive-Job -Job $backgroundJob
+                Remove-Job -Job $backgroundJob
+            }
+            catch{
+                Write-InfoLog "Failed to stop job for $($serverName):"
+                Write-InfoLog $_.Exception.Message
+                $formatstring = "{0} : {1}`n{2}`n" +
+                    "    + CategoryInfo          : {3}`n" +
+                    "    + FullyQualifiedErrorId : {4}`n"
+                $fields = $_.InvocationInfo.MyCommand.Name,
+                        $_.ErrorDetails.Message,
+                        $_.InvocationInfo.PositionMessage,
+                        $_.CategoryInfo.ToString(),
+                        $_.FullyQualifiedErrorId
+                Write-InfoLog ($formatstring -f $fields)
+            }
+        }
+
+        Write-InfoLog "Fetching new ODS log file content from $webServer"
+        $logFilePath = Get-ConfigValue -Config $config -Key "PERF_API_LOG_FILE_PATH"
+        Invoke-RemoteCommand $webServer $webCredential -argumentList @(LogFilePath=$logFilePath) -ScriptBlock {
+            param(
+                [Parameter(Mandatory=$true)]
+                [string]
+                $LogFilePath
+            )
+            Copy-ApiLogs
+        }
+
+        # Retreive API log files from the web server
+        $logFiles = (Join-Path $logFilePath "OdsLogs")
+        if ($webServer -eq 'localhost') {
+            Copy-Item $logFiles -Destination $testResultsPath -Recurse
+        } else {
+            $sessionOptions = New-PSSessionOption -SkipCACheck -SkipCNCheck
+            $psSession = New-PSSession -ComputerName $webServer -Credential $webCredential -UseSSL -SessionOption $sessionOptions -ErrorAction Stop
+            Copy-Item $logFiles -Destination $testResultsPath -FromSession $psSession -Recurse
         }
     }
-
-    $runTimeArgument = ""
-    if ($null -eq $runTime) {
-        Write-InfoLog "Running $testSuite tests with $clientCount clients..."
-    } else {
-        Write-InfoLog "Running $testSuite tests with $clientCount clients for $runTime..."
-        $runTimeArgument = "--run-time $runTime"
-    }
-
-    if($testSuite -eq 'pagevolume') {
-        $outputDir = Resolve-Path $testResultsPath
-        Push-Location .\src\edfi-paging-test
-        $poetryProcess = Start-Process "poetry" -PassThru -NoNewWindow -ArgumentList `
-                                    "run python edfi_paging_test --connectionLimit $clientCount --output $outputDir" `
-                                    -RedirectStandardOutput $outputDir\Summary.txt
-        Wait-Process -Id $poetryProcess.Id
-        Pop-Location
-        Write-InfoLog "Test runner process complete"
-    }
-    else{
-        $locustProcess = Start-Process "locust" -PassThru -NoNewWindow -ArgumentList `
-                                   "-f $($testSuite)_tests.py -c $clientCount -r $hatchRate --no-web --csv $testResultsPath\$testType $runTimeArgument --only-summary" `
-                                   -RedirectStandardError $testResultsPath\Summary.txt
-        Wait-Process -Id $locustProcess.Id
-        Write-InfoLog "Test runner process complete"
-    }
-
-    foreach ($serverName in $backgroundJobs.Keys) {
-        Write-InfoLog "Stopping background job to fetch metrics from $serverName. Output collected from background job:"
-        $backgroundJob = $backgroundJobs.Item($serverName)
-        try{
-            Stop-Job -Job $backgroundJob
-            Receive-Job -Job $backgroundJob
-            Remove-Job -Job $backgroundJob
-        }
-        catch{
-            Write-InfoLog "Failed to stop job for $($serverName):"
-            Write-InfoLog $_.Exception.Message
-            $formatstring = "{0} : {1}`n{2}`n" +
-                "    + CategoryInfo          : {3}`n" +
-                "    + FullyQualifiedErrorId : {4}`n"
-            $fields = $_.InvocationInfo.MyCommand.Name,
-                    $_.ErrorDetails.Message,
-                    $_.InvocationInfo.PositionMessage,
-                    $_.CategoryInfo.ToString(),
-                    $_.FullyQualifiedErrorId
-            Write-InfoLog ($formatstring -f $fields)
-        }
-    }
-
-    Write-InfoLog "Fetching new ODS log file content from $webServer"
-    Invoke-RemoteCommand $webServer $webCredential -ScriptBlock { Duplicate-OdsLogs }
-
-    $logFiles = (Join-Path $logFilePath "OdsLogs")
-    if ($webServer -eq 'localhost') {
-        Copy-Item $logFiles -Destination $testResultsPath -Recurse
-    } else {
-        $sessionOptions = New-PSSessionOption -SkipCACheck -SkipCNCheck
-        $psSession = New-PSSession -ComputerName $webServer -Credential $webCredential -UseSSL -SessionOption $sessionOptions -ErrorAction Stop
-        Copy-Item $logFiles -Destination $testResultsPath -FromSession $psSession -Recurse
+    finally {
+        Stop-Transcript
     }
 }
 
-function Set-GlobalsFromConfig($configJson) {
-    $configValues = $configJson | ConvertFrom-Json
-    $global:databaseServer = $configValues.database_server
-    $global:webServer = $configValues.web_server
-    $global:logFilePath = $configValues.log_file_path
-    $global:sqlBackupPath = $configValues.sql_backup_path
-    $global:databaseName = $configValues.database_name
-    $global:backupFilename = $configValues.backup_filename
-    $global:changeQueryBackupFilenames = $configValues.change_query_backup_filenames
-    $global:restoreDatabase = [Bool]::Parse($configValues.restore_database)
+function Get-ConfigValue {
+    param (
+        [Parameter(Mandatory=$True)]
+        [hashtable]
+        $Config,
+
+        [Parameter(Mandatory=$True)]
+        [string]
+        $Key,
+
+        [switch]
+        $Optional
+    )
+
+    if ($Config.ContainsKey($Key)) {
+        return $Config[$Key]
+    }
+
+    if (-not $Optional) {
+        throw ".Env file is missing the required key $Key"
+    }
+
+    return $null
 }
 
-function Read-TestRunnerConfig {
-    $global:configJson = Get-Content 'test-config.json' | Out-String
+function Get-ConfigIgnoreTlsCertificate {
+    param(
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $config
+    )
+
+    $insecure = Get-ConfigValue -Config $config -Key "IGNORE_TLS_CERTIFICATE" -Optional
+
+    # TODO: boolean parsing
+    if ($insecure) { return $insecure }
+
+    $false
+}
+
+function Get-Configuration {
+    $envFile = "$PSScriptRoot/.env"
+
+    if (Test-Path $envFile) {
+        $config = @{}
+        Get-Content $envFile | ForEach-Object {
+            $parts = $_ -split "="
+
+            if (2 -eq $parts.Length) {
+                # Be sure to ignore commented out lines
+                if ("#" -ne $parts[0][0]) {
+                    $config[$parts[0]] = $parts[1]
+                }
+            }
+        }
+
+        # Allow the testing process to access the API over HTTP instead of HTTPS ?
+        $insecure = Get-ConfigValue -Config $config -Key "IGNORE_TLS_CERTIFICATE" -Optional
+        $env:OAUTHLIB_INSECURE_TRANSPORT = if ($insecure) { $insecure } else { 0 }
+
+        $config
+    }
+    else {
+        throw "No configuration found. Please create a .env file. See .env.example for more information."
+    }
 }
 
 function Set-ChangeVersionTracker {
@@ -498,84 +626,102 @@ function Get-CredentialOrDefault($server) {
     }
 }
 
-function Initialize-Folder($path) {
-    Get-ChildItem -Path $path -Recurse | Remove-Item -Recurse
-    if (!(Test-Path $path)) {
-        New-Item -ItemType Directory -Force -Path $path | Out-Null
-    }
+function Get-OutputDir {
+    param(
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $Config
+    )
+
+    $directory = Get-ConfigValue -Config $Config -Key "PERF_OUTPUT_DIR"
+
+    # Adjust relative path
+    $directory.Replace("./", "$PSScriptRoot/")
+}
+
+function Get-RunnerOutputDir {
+    param(
+        [Parameter(Mandatory=$true)]
+        [hashtable]
+        $Config
+    )
+    $outputDir = Get-OutputDir -Config $Config
+    $runnerDir = Join-Path -Path $outputDir -ChildPath "runner"
+    $runnerDir
 }
 
 function Initialize-TestRunner {
-    Read-TestRunnerConfig
-    Set-GlobalsFromConfig $configJson
+    $config = Get-Configuration
 
-    # Default to a single TestResults folder. This may be overridden,
-    # such as for Change Query tests, which write to multiple subfolders
-    # underneath TestResults.
-    $global:testResultsPath = "TestResults"
-    Initialize-Folder TestResults
-    Write-InfoLog "Writing to TestResults Folder"
+    $runnerDir = Get-RunnerOutputDir -Config $config
+    New-Item -ItemType Directory -Force -Path $runnerDir | Out-Null
+
+    Write-InfoLog "Writing to $runnerDir"
+    $config
 }
+
 function Invoke-PageVolumeTests {
-    Initialize-TestRunner
+    $config = Initialize-TestRunner
+
     Invoke-TestRunner `
         -TestSuite pagevolume `
         -ClientCount 5 `
         -TestType pagevolume `
-        -BackupFilename $backupFilename
+        -Config $config
 }
 
 # Removed in version 2.0 release, will be restored in the future
 # function Invoke-VolumeTests {
-#     Initialize-TestRunner
+#     $config = Initialize-TestRunner
 #     Invoke-TestRunner `
 #         -TestSuite volume `
 #         -ClientCount 50 `
 #         -HatchRate 1 `
 #         -RunTime 30m `
 #         -TestType volume `
-#         -BackupFilename $backupFilename
+#         -Config $config
 # }
 
 # function Invoke-PipecleanTests {
-#     Initialize-TestRunner
+#     $config = Initialize-TestRunner
 #     Invoke-TestRunner `
 #         -TestSuite pipeclean `
 #         -ClientCount 1 `
 #         -HatchRate 1 `
 #         -TestType pipeclean `
-#         -BackupFilename $backupFilename
+#         -Config $config
 # }
 
 # function Invoke-StressTests {
-#     Initialize-TestRunner
+#     $config = Initialize-TestRunner
 #     Invoke-TestRunner `
 #         -TestSuite volume `
 #         -ClientCount 1000 `
 #         -HatchRate 25 `
 #         -RunTime 30m `
 #         -TestType stress `
-#         -BackupFilename $backupFilename
+#         -Config $config
 # }
 
 # function Invoke-SoakTests {
-#     Initialize-TestRunner
+#     $config = Initialize-TestRunner
 #     Invoke-TestRunner `
 #         -TestSuite volume `
 #         -ClientCount 500 `
 #         -HatchRate 1 `
 #         -RunTime 48h `
 #         -TestType soak `
-#         -BackupFilename $backupFilename
+#         -Config $config
 # }
 
 # function Invoke-ChangeQueryTests {
-#     Initialize-TestRunner
+#     $config = Initialize-TestRunner
 
 #     Set-ChangeVersionTracker
 
 #     $iteration = 1
 #     foreach ($changeQueryBackupFilename in $changeQueryBackupFilenames){
+#         # TODO: fix this path to use value from .env config file, instead of being hard-coded
 #         $global:testResultsPath = "TestResults\TestResult_$iteration"
 #         $iteration = $iteration + 1
 
@@ -586,8 +732,7 @@ function Invoke-PageVolumeTests {
 #             -ClientCount 1 `
 #             -HatchRate 1 `
 #             -TestType change_query `
-#             -BackupFilename $changeQueryBackupFilename
-
+#             -Config $config
 #         Duplicate-ChangeVersionTracker
 #     }
 # }
