@@ -9,6 +9,12 @@
 
 $ErrorActionPreference = "Stop"
 
+function Update-Path {
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") +
+                ";" +
+                [System.Environment]::GetEnvironmentVariable("Path","User")
+}
+
 # Install Chocolatey if not already installed
 if (! (Get-Command choco.exe -ErrorAction SilentlyContinue )) {
     Set-ExecutionPolicy Bypass -Scope Process -Force
@@ -18,19 +24,13 @@ if (! (Get-Command choco.exe -ErrorAction SilentlyContinue )) {
     refreshenv
 }
 
-# Install Python 3.6.7
-# Note: This places both c:\Python36 and c:\Python36\Scripts into the system PATH variable.
-#$pyversion = cmd /c python --version '2>&1'
-#if ($pyversion -ne "Python 3.6.7") {
- #   choco install python3 -y --version 3.6.7 --params '"/InstallDir:C:\Python36"'
-  #  refreshenv
-#}
-
-#Install
+#Install Pyenv
 $pyenvVersion = cmd /c pyenv --version
-if($pyenvVersion -notlike 'pyenv 2.*'){
+if(!$pyenvVersion -or $pyenvVersion -notlike 'pyenv 2.*'){
     choco install pyenv-win -y
     refreshenv
+    #refreshenv doesn't appear to be sufficient to recognize user environment variable changes
+    Update-Path
 }
 
 #install python
@@ -55,6 +55,6 @@ $value = "$value;$addition"
 [Environment]::SetEnvironmentVariable("PATH", $value, "Machine")
 refreshenv
 
-Push-Location .\src\edfi-paging-test
+Push-Location ..\src\edfi-paging-test
 poetry install
 Pop-Location
