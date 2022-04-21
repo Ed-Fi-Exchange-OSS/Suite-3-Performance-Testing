@@ -80,7 +80,7 @@ the values are correct for your setup and tests that you are trying to run.
 
 ### 6. Run the ChangeQueryDataSet PowerShell script and associated function(s)
 
-In PowerShell navigate to the Administration folder and run:
+In PowerShell navigate to the eng\old folder and run:
 
 ```powershell
 . .\ChangeQueryDataSet.ps1
@@ -115,7 +115,7 @@ GenerateALLSQLBackups function is all that is needed in most circumstances:
           without needing to update the config file.  Its default value is
           $FALSE.
     * The output from the ApiLoader is saved in individual "DataPeriod" text
-      files in the current directory (e.g. Administration).
+      files in the current directory (e.g. eng\old).
     * The database backup files are saved in the backup location specified by
       the test-config.json file.  Each database backup file is numbered to
       match their corresponding Data Period.
@@ -158,7 +158,7 @@ GenerateALLSQLBackups function is all that is needed in most circumstances:
           without needing to update the config file.  Its default value is
           $FALSE.
     * The output from the ApiLoader is saved in individual "DataPeriod" text
-      files in the current directory (e.g. Administration).
+      files in the current directory (e.g. eng\old).
     * The database backup files are saved in the backup location specified by
       the test-config.json file.  Each database backup file is numbered to
       match their corresponding Data Period.
@@ -199,7 +199,7 @@ GenerateALLSQLBackups function is all that is needed in most circumstances:
           Schema files e.g. "C:\dev\Ed-Fi-Standard\v3.1\Schemas\Bulk" (file path
           acquired in Step 2 above).
     * The output from the ApiLoader is saved in individual "DataPeriod" text
-      files in the current directory (e.g. Administration).
+      files in the current directory (e.g. eng\old).
 
 ## Using the Generated Data Sets
 

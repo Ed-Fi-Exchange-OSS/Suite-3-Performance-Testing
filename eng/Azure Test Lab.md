@@ -595,7 +595,7 @@ Steps taken in the Azure Portal:
                 Edition: Desktop
                 Script: source code
                 Script source:
-                    . .\Administration\AzureTestLab.ps1
+                    . .\eng\AzureTestLab.ps1
                     Start-AzureManagementSession
                     Start-AzureVmsInParallel
 
@@ -608,7 +608,7 @@ Steps taken in the Azure Portal:
                 Edition: Desktop
                 Script: source code
                 Script source:
-                    . .\Administration\AzureTestLab.ps1
+                    . .\eng\AzureTestLab.ps1
                     Invoke-TestRunnerFromTeamCity pipeclean
 
             Step 3:
@@ -621,7 +621,7 @@ Steps taken in the Azure Portal:
                 Edition: Desktop
                 Script: source code
                 Script source:
-                    . .\Administration\AzureTestLab.ps1
+                    . .\eng\AzureTestLab.ps1
                     Start-AzureManagementSession
                     Stop-AzureVmsInParallel
 
@@ -652,7 +652,7 @@ Steps taken in the Azure Portal:
                 Edition: Desktop
                 Script: source code
                 Script source:
-                    . .\Administration\AzureTestLab.ps1
+                    . .\eng\AzureTestLab.ps1
                     Start-AzureManagementSession
                     Start-AzureVmsInParallel
 
@@ -665,7 +665,7 @@ Steps taken in the Azure Portal:
                 Edition: Desktop
                 Script: source code
                 Script source:
-                    . .\Administration\AzureTestLab.ps1
+                    . .\eng\AzureTestLab.ps1
                     Invoke-TestRunnerFromTeamCity volume
 
             Step 3:
@@ -678,7 +678,7 @@ Steps taken in the Azure Portal:
                 Edition: Desktop
                 Script: source code
                 Script source:
-                    . .\Administration\AzureTestLab.ps1
+                    . .\eng\AzureTestLab.ps1
                     Start-AzureManagementSession
                     Stop-AzureVmsInParallel
 
