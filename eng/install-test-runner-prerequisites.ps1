@@ -7,54 +7,65 @@
 # This script should be run should be run once for environments that do not
 # already have these prerequisites set up.
 
-$ErrorActionPreference = "Stop"
-
 function Update-Path {
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") +
                 ";" +
                 [System.Environment]::GetEnvironmentVariable("Path","User")
 }
 
-# Install Chocolatey if not already installed
-if (! (Get-Command choco.exe -ErrorAction SilentlyContinue )) {
-    Set-ExecutionPolicy Bypass -Scope Process -Force
-    Invoke-WebRequest https://chocolatey.org/install.ps1 -UseBasicParsing | Invoke-Expression
-    $env:ChocolateyInstall = Convert-Path "$((Get-Command choco).path)\..\.."
-    Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
-    refreshenv
+function Install-Chocolatey {
+    if (! (Get-Command choco.exe -ErrorAction SilentlyContinue )) {
+        Set-ExecutionPolicy Bypass -Scope Process -Force
+        Invoke-WebRequest https://chocolatey.org/install.ps1 -UseBasicParsing | Invoke-Expression
+        $env:ChocolateyInstall = Convert-Path "$((Get-Command choco).path)\..\.."
+        Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+        refreshenv
+    }
+
 }
 
-#Install Pyenv
-$pyenvVersion = cmd /c pyenv --version
-if(!$pyenvVersion -or $pyenvVersion -notlike 'pyenv 2.*'){
-    choco install pyenv-win -y
-    refreshenv
-    #refreshenv doesn't appear to be sufficient to recognize user environment variable changes
-    Update-Path
+function Install-Pyenv {
+    $pyenvVersion = cmd /c pyenv --version
+    if(!$pyenvVersion -or $pyenvVersion -notlike 'pyenv 2.*'){
+        choco install pyenv-win -y
+        refreshenv
+        # refreshenv doesn't appear to be sufficient to recognize user environment variable changes
+        Update-Path
+    }
 }
 
-#install python
-pyenv install 3.9.4
-pyenv rehash
-pyenv local 3.9.4
+function Install-Python {
+    pyenv install 3.9.4
+    pyenv rehash
+    pyenv local 3.9.4
+}
 
-# Ensure pip is on the latest version
-python -m pip install --upgrade pip
+function Install-Poetry {
+    # Ensure pip is on the latest version
+    python -m pip install --upgrade pip
 
-# Install poetry
-# Poetry's native installation process encounters SSL errors
-# in some environments. `pip install` is a reasonable alternative
-# that has been shown to work in our situation.
-pip install --user poetry
-# Update local and global PATH variables
-$addition = "$env:APPDATA\Python\Python39\Scripts\"
-$env:PATH="$env:PATH;$addition"
+    # Install poetry
+    # Poetry's native installation process encounters SSL errors
+    # in some environments. `pip install` is a reasonable alternative
+    # that has been shown to work in our situation.
+    pip install --user poetry
+    # Update local and global PATH variables
+    $addition = "$env:APPDATA\Python\Python39\Scripts\"
+    $env:PATH="$env:PATH;$addition"
 
-$value = [Environment]::GetEnvironmentVariable("PATH", "Machine")
-$value = "$value;$addition"
-[Environment]::SetEnvironmentVariable("PATH", $value, "Machine")
-refreshenv
+    $value = [Environment]::GetEnvironmentVariable("PATH", "Machine")
+    $value = "$value;$addition"
+    [Environment]::SetEnvironmentVariable("PATH", $value, "Machine")
+    refreshenv
 
-Push-Location ..\src\edfi-paging-test
-poetry install
-Pop-Location
+    Push-Location ..\src\edfi-paging-test
+    poetry install
+    Pop-Location
+}
+
+
+$ErrorActionPreference = "Stop"
+Install-Chocolatey
+Install-Pyenv
+Install-Python
+Install-Poetry
