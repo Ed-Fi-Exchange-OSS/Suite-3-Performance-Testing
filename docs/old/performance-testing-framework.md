@@ -106,7 +106,7 @@ behavior. Even though it is free, Locust offers the following out of the box:
 ### Project Structure
 
 * Root directory: execution scripts
-  * Administration: automation scripts
+  * eng\old: automation scripts
   * docs: markdown documentation
   * edfi_performance: python source code
     * api
