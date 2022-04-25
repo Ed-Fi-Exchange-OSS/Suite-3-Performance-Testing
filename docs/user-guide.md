@@ -19,13 +19,19 @@ Not included:
 * [Poetry](https://python-poetry.org/)
 * PowerShell 5.0+ to use the full toolkit, including metric collection from
   Windows, IIS, and SQL Server.
-  * Be sure to install the latest [SqlServer
-    module](https://www.powershellgallery.com/packages/Sqlserver)
+  * Install the latest
+    [SqlServer](https://www.powershellgallery.com/packages/Sqlserver) and the
+    [Credential
+    Manager](https://www.powershellgallery.com/packages/CredentialManager/2.0)
+    modules
 * The user running the tests must be able to connect to the Web Server and the
   Database Server with Windows authentication, with sys admin permissions in SQL
   Server. You will be prompted to enter your credentials. _This only applies
   when using `run-tests.ps1`, which needs the user account for collecting
   metrics and (optionally) performing a database restore_.
+* You may need to change your PowerShell security to allow running downloaded
+  scripts, for example with this command: `Set-ExecutionPolicy bypass -Scope
+  CurrentUser -Force`.
 
 ## Getting Started
 

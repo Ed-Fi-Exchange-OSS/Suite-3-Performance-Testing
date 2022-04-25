@@ -40,30 +40,7 @@ function Get-ServerMetrics {
     $result
 }
 
-function Copy-ApiLogs {
-    param(
-        [Parameter(Mandatory=$True)]
-        [string]
-        $LogFilePath
-    )
-
-    $destination = (Join-Path $LogFilePath "OdsLogs")
-
-    # Clear out the existing directory if needed
-    Get-ChildItem -Path $destination -Recurse | Remove-Item -Recurse
-    if (!(Test-Path $destination)) { New-Item -ItemType Directory -Force -Path $destination | Out-Null}
-
-    # Copy all log files into the temporary OdsLogs irectory
-    $logFiles = Get-ChildItem -Path $logFilePath -Recurse -Include *.log* -File
-    foreach ($file in $logFiles) {
-        $filePath = $file.ToString().Replace($logFilePath, $destination)
-        $fileDirectory = Split-Path -parent $filePath
-        if (!(Test-Path $fileDirectory)) { New-Item -ItemType Directory -Force -Path $fileDirectory | Out-Null}
-        $file | Copy-Item -Destination $filePath
-    }
-}
-
-function Test-IsLocalhost{
+function Test-IsLocalhost {
     param(
         [Parameter(Mandatory=$True)]
         [string]
@@ -72,13 +49,34 @@ function Test-IsLocalhost{
 
     # When running on localhost, no need to execute a remote command. Substring
     # check supports use of named instances.
-    return $server.substring(0,9) -eq "localhost" -or $server.substring(0,7) -eq "(local)"
+    return ($server.IndexOf("localhost") -gt -1) `
+        -or ($server.IndexOf("(local)") -gt -1) `
+        -or ($server.IndexOf(".") -eq 0)
 }
 
-function Invoke-RemoteCommand($server, [PSCredential] $credential, $argumentList, [ScriptBlock] $scriptBlock) {
+function Get-DatabaseServerName {
+    # For handling named instances
+    param(
+        [Parameter(Mandatory=$True)]
+        [string]
+        $server
+    )
+
+    if ($server.Index("\") -gt -1) {
+        return ($server -split "\")[0]
+    }
+
+    return $server
+}
+
+function Invoke-RemoteCommand {
+    param (
+        $server, [PSCredential] $credential, $argumentList, [ScriptBlock] $scriptBlock
+    )
 
     if (Test-IsLocalhost $server) {
-        return Invoke-Command -ArgumentList $argumentList -ScriptBlock $scriptBlock
+        throw "Should not invoke remote command on localhost"
+        # return Invoke-Command -ArgumentList $argumentList -ScriptBlock $scriptBlock
     }
 
     $thisFolder = $PSScriptRoot
@@ -312,32 +310,48 @@ function Invoke-TestRunner {
 
         $databaseServer = Get-ConfigValue -Config $Config -Key "PERF_DB_SERVER"
         $webServer = Get-ConfigValue -Config $Config -Key "PERF_WEB_SERVER"
-        $sqlBackupFile = Get-ConfigValue -Config $Config -Key "PERF_SQL_BACKUP_FILE"
+        $sqlBackupFile = ""
         $restoreDatabase = $false
         try {
             $restoreDatabase = [System.Convert]::ToBoolean($(Get-ConfigValue -Config $Config -Key "PERF_DB_RESTORE"))
         } catch {
-            raise "Invalid configuration value for PERF_DB_RESTORE, should be a boolean"
+            throw "Invalid configuration value for PERF_DB_RESTORE, should be a boolean"
         }
-        $url = Get-ConfigValue -Config $Config -Key "PERF_API_URL"
+        if ($restoreDatabase) {
+            $sqlBackupFile = Get-ConfigValue -Config $Config -Key "PERF_SQL_BACKUP_FILE"
+        }
 
-        $databaseCredential = Get-CredentialOrDefault $databaseServer
-        $webCredential = Get-CredentialOrDefault $webServer
+        $url = Get-ConfigValue -Config $Config -Key "PERF_API_BASEURL"
+        $key = Get-ConfigValue -Config $Config -Key "PERF_API_KEY"
+        $secret = Get-ConfigValue -Config $Config -Key "PERF_API_SECRET"
+        $clientCount = Get-ConfigValue -Config $Config -Key "PERF_CONNECTION_LIMIT" -Optional
+        if ($null -eq $clientCount) { $clientCount = 5 }
+        $contentType = Get-ConfigValue -Config $Config -Key "PERF_CONTENT_TYPE" -Optional
+        $resourceList = Get-ConfigValue -Config $Config -Key "PERF_RESOURCE_LIST" -Optional
+        $pageSize = Get-ConfigValue -Config $Config -Key "PERF_API_PAGE_SIZE" -Optional
+        $logLevel = Get-ConfigValue -Config $Config -Key "PERF_LOG_LEVEL" -Optional
+        $description =Get-ConfigValue -Config $Config -Key "PERF_DESCRIPTION" -Optional
 
         if ($restoreDatabase) {
             Write-InfoLog "Restoring $databaseName from sqlBackupFile"
 
-            Invoke-RemoteCommand $databaseServer $databaseCredential -ArgumentList @($sqlBackupFile, $databaseName) -ScriptBlock {
-                param(
-                    [Parameter(Mandatory=$True)]
-                    [string]
-                    $BackupFilename,
-
-                    [Parameter(Mandatory=$True)]
-                    [string]
-                    $DatabaseName
-                )
+            if (Test-IsLocalhost $databaseServer) {
                 Reset-OdsDatabase -BackupFilename $BackupFilename -DatabaseName $DatabaseName
+            }
+            else {
+                Invoke-RemoteCommand $databaseServer (Get-CredentialOrDefault $databaseServer) `
+                    -ArgumentList @($sqlBackupFile, $databaseName) -ScriptBlock {
+                        param(
+                            [Parameter(Mandatory=$True)]
+                            [string]
+                            $BackupFilename,
+
+                            [Parameter(Mandatory=$True)]
+                            [string]
+                            $DatabaseName
+                        )
+                        Reset-OdsDatabase -BackupFilename $BackupFilename -DatabaseName $DatabaseName
+                    }
             }
         } else {
             Write-DebugLog "Skipping Database Restore"
@@ -361,9 +375,6 @@ function Invoke-TestRunner {
             param(
                 $server,
 
-                [PSCredential]
-                $credential,
-
                 $getMetricsBlock,
 
                 $expectedPerformanceCounters,
@@ -372,7 +383,11 @@ function Invoke-TestRunner {
 
                 $TestType,
 
-                $TestRunnerModulePath
+                $TestRunnerModulePath,
+
+                [Parameter(Mandatory=$false)]
+                [PSCredential]
+                $credential = $null
             )
 
             $commonFunctions = (Get-Command $TestRunnerModulePath).ScriptContents
@@ -380,7 +395,12 @@ function Invoke-TestRunner {
             try {
                 $csvPath = "$TestResultsPath/$TestType.$server.csv"
 
-                if (Test-IsLocalhost $server) {
+                # The Test-IsLocalhost function is not loading properly in the backgroun task
+                $isLocalhost = ($server.IndexOf("(local)") -gt -1) `
+                    -or ($server.IndexOf("localhost") -gt -1) `
+                    -or ($server.IndexOf(".") -eq 0)
+
+                if ($isLocalhost) {
                     $actualPerformanceCounters = Compare-Object (typeperf -q) $expectedPerformanceCounters -PassThru -IncludeEqual -ExcludeDifferent
                 }
                 else {
@@ -388,8 +408,8 @@ function Invoke-TestRunner {
                     $psSession = New-PSSession -ComputerName $server -Credential $credential -UseSSL -SessionOption $sessionOptions -ErrorAction Stop
 
                     # Prepare the remote session with the contents of this file.
-                    Invoke-Command -Session $psSession -ArgumentList @($commonFunctions, $Using:configJson) -ScriptBlock {
-                        param($commonFunctions, $configJson)
+                    Invoke-Command -Session $psSession -ArgumentList @($commonFunctions) -ScriptBlock {
+                        param($commonFunctions)
                         Invoke-Expression $commonFunctions
                     }
 
@@ -406,7 +426,7 @@ function Invoke-TestRunner {
                 }
 
                 while ($true) {
-                    if (Test-IsLocalhost $server) {
+                    if ($isLocalhost) {
                         $record = Invoke-Command -ScriptBlock $getMetricsBlock
                     } else {
                         $record = Invoke-Command -Session $psSession -ScriptBlock $getMetricsBlock
@@ -427,24 +447,32 @@ function Invoke-TestRunner {
         Write-InfoLog "Starting background job to fetch metrics from $databaseServer"
 
         $parms = @(
-            server = $databaseServer
-            credential = $databaseCredential
-            getMetricsBlock = ${function:Get-ServerMetrics}
-            expectedPerformanceCounters = $expectedPerformanceCounters
-            TestResultsPath = $testResultsPath
-            TestType = $testType
-            TestRunnerModulePath = (Split-Path -Path $MyInvocation.MyCommand.Path -Parent)/TestRunner.psm1
+            $databaseServer,
+            ${function:Get-ServerMetrics},
+            $expectedPerformanceCounters,
+            $testResultsPath,
+            $testType,
+            "$PSScriptRoot/TestRunner.psm1"
         )
+        if (-not (Test-IsLocalhost $databaseServer)) { $parms += (Get-CredentialOrDefault $databaseServer) }
+
         $collectStatsFromDb = Start-Job -ArgumentList $parms -ScriptBlock $serverMetricsBackgroundScript
         $backgroundJobs.Add($databaseServer, $collectStatsFromDb)
 
-        if ($webServer -eq $databaseServer) {
+        if ($webServer -ne $databaseServer) {
             # If database and web are on the same server, there is no reason to
             # collect the same metrics twice.
             Write-InfoLog "Starting background job to fetch metrics from $webServer"
 
-            $parms.server = $webServer
-            $parms.credential = $webCredential
+            $parms = @(
+                $webServer,
+                ${function:Get-ServerMetrics},
+                $expectedPerformanceCounters,
+                $testResultsPath,
+                $testType,
+                "$PSScriptRoot/TestRunner.psm1"
+            )
+            if (-not (Test-IsLocalhost $webServer)) { $parms += (Get-CredentialOrDefault $webServer) }
             $collectStatsFromWeb = Start-Job -ArgumentList $parms -ScriptBlock $serverMetricsBackgroundScript
             $backgroundJobs.Add($webServer, $collectStatsFromWeb)
         }
@@ -476,9 +504,38 @@ function Invoke-TestRunner {
         if($testSuite -eq 'pagevolume') {
             $outputDir = Resolve-Path $testResultsPath
             Push-Location .\src\edfi-paging-test
-            $poetryProcess = Start-Process "poetry" -PassThru -NoNewWindow -ArgumentList `
-                                        "run python edfi_paging_test --connectionLimit $clientCount --output $outputDir" `
-                                        -RedirectStandardOutput $outputDir\Summary.txt
+
+            $params = @(
+                "run",
+                "python",
+                "edfi_paging_test",
+                "--baseUrl", $url,
+                "--key", $key,
+                "--secret", $secret,
+                "--output", $outputDir
+            )
+            if ($clientCount) {
+                $params += @("--connectionLimit", $clientCount)
+            }
+            if ($contentType) {
+                $params += @("--contentType", $contentType)
+            }
+            if ($resourceList) {
+                $params += @("--resourceList", $resourceList)
+            }
+            if ($pageSize) {
+                $params += @("--pageSize", $pageSize)
+            }
+            if ($logLevel) {
+                $params += @("--logLevel", $logLevel)
+            }
+            if ($description) {
+                $params += @("--description", $description)
+            }
+
+            $poetryProcess = Start-Process "poetry" -PassThru -NoNewWindow `
+                                    -ArgumentList $params `
+                                    -RedirectStandardOutput $outputDir\Summary.txt
             Wait-Process -Id $poetryProcess.Id
             Pop-Location
             Write-InfoLog "Test runner process complete"
@@ -515,24 +572,16 @@ function Invoke-TestRunner {
         }
 
         Write-InfoLog "Fetching new ODS log file content from $webServer"
-        $logFilePath = Get-ConfigValue -Config $config -Key "PERF_API_LOG_FILE_PATH"
-        Invoke-RemoteCommand $webServer $webCredential -argumentList @(LogFilePath=$logFilePath) -ScriptBlock {
-            param(
-                [Parameter(Mandatory=$true)]
-                [string]
-                $LogFilePath
-            )
-            Copy-ApiLogs
-        }
+        $logFile = Get-ConfigValue -Config $config -Key "PERF_API_LOG_FILE_PATH"
 
-        # Retreive API log files from the web server
-        $logFiles = (Join-Path $logFilePath "OdsLogs")
+        # Retreive API log file from the web server
         if (Test-IsLocalhost $webServer) {
-            Copy-Item $logFiles -Destination $testResultsPath -Recurse
+            Copy-Item $logFile -Destination $testResultsPath -Recurse
         } else {
             $sessionOptions = New-PSSessionOption -SkipCACheck -SkipCNCheck
+            $webCredential = Get-CredentialOrDefault -Server $webServer
             $psSession = New-PSSession -ComputerName $webServer -Credential $webCredential -UseSSL -SessionOption $sessionOptions -ErrorAction Stop
-            Copy-Item $logFiles -Destination $testResultsPath -FromSession $psSession -Recurse
+            Copy-Item $logFile -Destination $testResultsPath -FromSession $psSession -Recurse
         }
     }
     finally {
@@ -618,22 +667,27 @@ function Duplicate-ChangeVersionTracker {
     Copy-Item 'change_version_tracker.json' -Destination $testResultsPath
 }
 
-function Get-CredentialOrDefault($server) {
-    if (Test-IsLocalhost $server) {
+function Get-CredentialOrDefault {
+    param (
+        [Parameter(Mandatory=$True)]
+        [string]
+        $Server
+    )
+
+    if (Test-IsLocalhost $Server) {
+        throw "This shouldn't happen" + (Get-PSCallStack)
         return $null
     } else {
-        # First, attempt to load credentials previously registered with Register-Credentials.
-        # If there is no such registered credential, asks the user for credentials interactively.
+        $credentials = Get-StoredCredential -Target $server
 
-        $folderPath = (Join-Path $env:LOCALAPPDATA "Suite-3-Performance-Testing")
-        $path = Join-Path $folderPath "credentials-$server.xml"
-
-        if (Test-Path $path) {
-            return Import-CliXml -Path $path
-        } else {
-            Write-InfoLog "Requesting credentials for $server interactively"
-            return (Get-Credential -Message "Credentials for $server")
+        if ($credentials) {
+            return $credentials
         }
+
+        $credentials = Get-Credential -Message "Please enter credentials for $server"
+        New-StoredCredential -Target $server -Credentials $credentials | Out-Null
+
+        return $credentials
     }
 }
 
@@ -676,7 +730,6 @@ function Invoke-PageVolumeTests {
 
     Invoke-TestRunner `
         -TestSuite pagevolume `
-        -ClientCount 5 `
         -TestType pagevolume `
         -Config $config
 }
