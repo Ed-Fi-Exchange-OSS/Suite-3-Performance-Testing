@@ -448,9 +448,9 @@ function Invoke-TestRunner {
         $collectStatsFromDb = Start-Job -ArgumentList $parms -ScriptBlock $serverMetricsBackgroundScript
         $backgroundJobs.Add($databaseServer, $collectStatsFromDb)
 
+        # If database and web are on the same server, there is no reason to
+        # collect the same metrics twice.
         if ($webServer -ne $databaseServer) {
-            # If database and web are on the same server, there is no reason to
-            # collect the same metrics twice.
             Write-InfoLog "Starting background job to fetch metrics from $webServer"
 
             $parms = @(
@@ -597,6 +597,7 @@ function Get-ConfigValue {
     }
 
     if (-not $Optional) {
+        $Config | Out-String | Out-Host
         throw ".Env file is missing the required key $Key"
     }
 
@@ -612,10 +613,12 @@ function Get-ConfigIgnoreTlsCertificate {
 
     $insecure = Get-ConfigValue -Config $config -Key "IGNORE_TLS_CERTIFICATE" -Optional
 
-    # TODO: boolean parsing
-    if ($insecure) { return $insecure }
-
-    $false
+    try {
+        return [System.Convert]::ToBoolean($(Get-ConfigValue -Config $insecure -Key "PERF_DB_RESTORE"))
+    } catch {
+        Write-InfoLog "Invalid value for IGNORE_TLS_CERTIFICATE; therefore use False by default."
+        return $false
+    }
 }
 
 function Get-Configuration {
@@ -628,15 +631,16 @@ function Get-Configuration {
 
             if (2 -eq $parts.Length) {
                 # Be sure to ignore commented out lines
-                if ("#" -ne $parts[0][0]) {
+                if (-not ($parts[0][0] -in ("#", ";"))) {
                     $config[$parts[0]] = $parts[1]
                 }
             }
         }
+        $config | Out-String | Out-Host
 
         # Allow the testing process to access the API over HTTP instead of HTTPS ?
         $insecure = Get-ConfigValue -Config $config -Key "IGNORE_TLS_CERTIFICATE" -Optional
-        $env:OAUTHLIB_INSECURE_TRANSPORT = if ($insecure) { $insecure } else { 0 }
+        $env:OAUTHLIB_INSECURE_TRANSPORT = if ($insecure) { $insecure } else { $null }
 
         $config
     }
