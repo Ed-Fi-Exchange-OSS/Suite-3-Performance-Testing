@@ -29,8 +29,8 @@ def get_base_api_response(api_base_url: str) -> Dict[str, Any]:
     logger.debug("Getting metadata from the api root.")
     try:
         return requests.get(api_base_url).json()
-    except Exception:
-        raise RuntimeError(f"Invalid API base url: {api_base_url}")
+    except Exception as e:
+        raise RuntimeError(f"Invalid API base url or untrusted certificate: {api_base_url}") from e
 
 
 @cache
