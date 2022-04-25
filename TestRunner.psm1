@@ -62,7 +62,7 @@ function Get-DatabaseServerName {
         $server
     )
 
-    if ($server.Index("\") -gt -1) {
+    if ($server.IndexOf("\") -gt -1) {
         return ($server -split "\")[0]
     }
 
@@ -76,7 +76,6 @@ function Invoke-RemoteCommand {
 
     if (Test-IsLocalhost $server) {
         throw "Should not invoke remote command on localhost"
-        # return Invoke-Command -ArgumentList $argumentList -ScriptBlock $scriptBlock
     }
 
     $thisFolder = $PSScriptRoot
@@ -122,16 +121,6 @@ function Write-Log {
     } else {
         Write-Host $output
     }
-}
-
-function Write-ErrorLog {
-    param(
-        [Parameter(Mandatory=$True)]
-        [string]
-        $Message
-    )
-
-    Write-Log -Message $Message -Level "ERROR"
 }
 
 function Write-InfoLog {
@@ -308,7 +297,9 @@ function Invoke-TestRunner {
 
         Write-InfoLog "Writing to $testResultsPath"
 
-        $databaseServer = Get-ConfigValue -Config $Config -Key "PERF_DB_SERVER"
+        $databaseInstance = Get-ConfigValue -Config $Config -Key "PERF_DB_SERVER"
+        $databaseServer = Get-DatabaseServerName $databaseInstance
+
         $webServer = Get-ConfigValue -Config $Config -Key "PERF_WEB_SERVER"
         $sqlBackupFile = ""
         $restoreDatabase = $false
@@ -336,11 +327,11 @@ function Invoke-TestRunner {
             Write-InfoLog "Restoring $databaseName from sqlBackupFile"
 
             if (Test-IsLocalhost $databaseServer) {
-                Reset-OdsDatabase -BackupFilename $BackupFilename -DatabaseName $DatabaseName
+                Reset-OdsDatabase -BackupFilename $BackupFilename -DatabaseName $databaseInstance
             }
             else {
                 Invoke-RemoteCommand $databaseServer (Get-CredentialOrDefault $databaseServer) `
-                    -ArgumentList @($sqlBackupFile, $databaseName) -ScriptBlock {
+                    -ArgumentList @($sqlBackupFile, $databaseInstance) -ScriptBlock {
                         param(
                             [Parameter(Mandatory=$True)]
                             [string]
@@ -360,8 +351,6 @@ function Invoke-TestRunner {
         Write-InfoLog "Verifying ODS API is running"
         $webClient = New-Object System.Net.WebClient
         try {
-
-            # qqq
             [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
             $content = $webClient.DownloadString($url)
             Write-Host $content
