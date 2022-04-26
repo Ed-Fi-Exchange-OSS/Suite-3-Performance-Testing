@@ -328,7 +328,7 @@ function Invoke-TestRunner {
             Write-InfoLog "Restoring $databaseName from $sqlBackupFile"
 
             if (Test-IsLocalhost $databaseServer) {
-                Reset-OdsDatabase -BackupFilename $BackupFilename -DatabaseName $databaseInstance
+                Reset-OdsDatabase -BackupFilename $sqlBackupFile -DatabaseName $databaseInstance
             }
             else {
                 Invoke-RemoteCommand $databaseServer (Get-CredentialOrDefault $databaseServer) `
