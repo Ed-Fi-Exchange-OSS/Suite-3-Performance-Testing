@@ -30,7 +30,7 @@ def get_base_api_response(api_base_url: str) -> Dict[str, Any]:
     try:
         return requests.get(api_base_url).json()
     except Exception as e:
-        raise RuntimeError(f"Invalid API base url or untrusted certificate: {api_base_url}") from e
+        raise RuntimeError(f"Error fetching: {api_base_url}") from e
 
 
 @cache
