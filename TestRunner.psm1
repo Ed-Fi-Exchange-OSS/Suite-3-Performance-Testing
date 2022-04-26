@@ -325,7 +325,7 @@ function Invoke-TestRunner {
         $description =Get-ConfigValue -Config $Config -Key "PERF_DESCRIPTION" -Optional
 
         if ($restoreDatabase) {
-            Write-InfoLog "Restoring $databaseName from sqlBackupFile"
+            Write-InfoLog "Restoring $databaseName from $sqlBackupFile"
 
             if (Test-IsLocalhost $databaseServer) {
                 Reset-OdsDatabase -BackupFilename $BackupFilename -DatabaseName $databaseInstance
