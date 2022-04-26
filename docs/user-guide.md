@@ -52,7 +52,7 @@ Not included:
   * To test _all_ resources, comment out the `PERF_RESOURCE_LIST` entry.
   * For more information on the settings, see the [edfi-paging-test
     README](../src/edfi-paging-test/README.md)
-  * When `"restore_database": true` is used, the toolkit will try to restore the
+  * When `PERF_DB_RESTORE: True` is used, the toolkit will try to restore the
     database to a known good state using the specified backup file. The backup
     file path in the `.env` file must be on the SQL Server.
 
