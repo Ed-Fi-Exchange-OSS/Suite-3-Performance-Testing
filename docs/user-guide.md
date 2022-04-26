@@ -47,18 +47,14 @@ Not included:
   poetry install
   ```
 
-* Create a `.env` file in `src/edfi-paging-test` (can start with
-  `.env.example`). Customize for your installation and testing requirements.
+* Create a `.env` file in the root directory, based on `.env.example`. Customize
+  for your installation and testing requirements.
   * To test _all_ resources, comment out the `PERF_RESOURCE_LIST` entry.
   * For more information on the settings, see the [edfi-paging-test
     README](../src/edfi-paging-test/README.md)
-* Customize the `test-config.json` file using the same information input to the
-  `.env` file (in the future these will be merged).
   * When `"restore_database": true` is used, the toolkit will try to restore the
-    database to a known good state using the specified backup file. The two SQL
-    file paths in the file must be on the SQL Server. If SQL Server is running
-    on another machine, then use UNC paths or drive mappings to access the
-    proper paths.
+    database to a known good state using the specified backup file. The backup
+    file path in the `.env` file must be on the SQL Server.
 
 ## Running the Paging Volume Tests
 
@@ -69,7 +65,8 @@ From the root folder, simply call the `run-tests.ps1` file.
 ```
 
 Server metrics will be output to the `./TestResults` directory. Paging test
-results will found in whatever directory was specified in the `.env` file.
+results will be in a dated sub-directory, e.g.
+`./TestResults/YYYY-mm-dd-HH-MM-SS`.
 
 ## Troubleshooting
 
