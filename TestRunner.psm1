@@ -51,7 +51,8 @@ function Test-IsLocalhost {
     # check supports use of named instances.
     return ($server.IndexOf("localhost") -gt -1) `
         -or ($server.IndexOf("(local)") -gt -1) `
-        -or ($server.IndexOf(".") -eq 0)
+        -or ($server.IndexOf(".") -eq 0) `
+        -or ($server.IndexOf($env:ComputerName) -gt -1)
 }
 
 function Get-DatabaseServerName {
@@ -387,7 +388,8 @@ function Invoke-TestRunner {
                 # The Test-IsLocalhost function is not loading properly in the backgroun task
                 $isLocalhost = ($server.IndexOf("(local)") -gt -1) `
                     -or ($server.IndexOf("localhost") -gt -1) `
-                    -or ($server.IndexOf(".") -eq 0)
+                    -or ($server.IndexOf(".") -eq 0) `
+                    -or ($server.IndexOf($env:ComputerName) -gt -1)
 
                 if ($isLocalhost) {
                     $actualPerformanceCounters = Compare-Object (typeperf -q) $expectedPerformanceCounters -PassThru -IncludeEqual -ExcludeDifferent
