@@ -15,23 +15,28 @@ Not included:
 
 ## Pre-requisites
 
+The Python, Poetry, and Powershell requirements below can be installed
+with the help of the scripts in the [eng directory](../eng).
+
 * [Python](https://www.python.org/) 3.9+ (tested with 3.9.4)
 * [Poetry](https://python-poetry.org/)
 * PowerShell 5.0+ to use the full toolkit, including metric collection from
   Windows, IIS, and SQL Server.
-  * Install the latest
-    [SqlServer](https://www.powershellgallery.com/packages/Sqlserver) and the
-    [Credential
-    Manager](https://www.powershellgallery.com/packages/CredentialManager/2.0)
-    modules
+  * You may need to change your PowerShell security to allow running downloaded
+    scripts, for example with this command: `Set-ExecutionPolicy bypass -Scope
+    CurrentUser -Force`.
+  * Install the latest [SqlServer
+    module](https://www.powershellgallery.com/packages/Sqlserver) on the
+    test host and the database server
+  * Install the [Credential Manager
+    module](https://www.powershellgallery.com/packages/CredentialManager/2.0)
+    module on the test host.
+  * You might also need to configure TLS 1.2.
 * The user running the tests must be able to connect to the Web Server and the
   Database Server with Windows authentication, with sys admin permissions in SQL
   Server. You will be prompted to enter your credentials. _This only applies
   when using `run-tests.ps1`, which needs the user account for collecting
   metrics and (optionally) performing a database restore_.
-* You may need to change your PowerShell security to allow running downloaded
-  scripts, for example with this command: `Set-ExecutionPolicy bypass -Scope
-  CurrentUser -Force`.
 
 ## Getting Started
 
