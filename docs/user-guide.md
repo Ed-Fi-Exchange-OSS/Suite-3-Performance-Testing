@@ -19,13 +19,19 @@ Not included:
 * [Poetry](https://python-poetry.org/)
 * PowerShell 5.0+ to use the full toolkit, including metric collection from
   Windows, IIS, and SQL Server.
-  * Be sure to install the latest [SqlServer
-    module](https://www.powershellgallery.com/packages/Sqlserver)
+  * Install the latest
+    [SqlServer](https://www.powershellgallery.com/packages/Sqlserver) and the
+    [Credential
+    Manager](https://www.powershellgallery.com/packages/CredentialManager/2.0)
+    modules
 * The user running the tests must be able to connect to the Web Server and the
   Database Server with Windows authentication, with sys admin permissions in SQL
   Server. You will be prompted to enter your credentials. _This only applies
   when using `run-tests.ps1`, which needs the user account for collecting
   metrics and (optionally) performing a database restore_.
+* You may need to change your PowerShell security to allow running downloaded
+  scripts, for example with this command: `Set-ExecutionPolicy bypass -Scope
+  CurrentUser -Force`.
 
 ## Getting Started
 
@@ -41,18 +47,14 @@ Not included:
   poetry install
   ```
 
-* Create a `.env` file in `src/edfi-paging-test` (can start with
-  `.env.example`). Customize for your installation and testing requirements.
+* Create a `.env` file in the root directory, based on `.env.example`. Customize
+  for your installation and testing requirements.
   * To test _all_ resources, comment out the `PERF_RESOURCE_LIST` entry.
   * For more information on the settings, see the [edfi-paging-test
     README](../src/edfi-paging-test/README.md)
-* Customize the `test-config.json` file using the same information input to the
-  `.env` file (in the future these will be merged).
-  * When `"restore_database": true` is used, the toolkit will try to restore the
-    database to a known good state using the specified backup file. The two SQL
-    file paths in the file must be on the SQL Server. If SQL Server is running
-    on another machine, then use UNC paths or drive mappings to access the
-    proper paths.
+  * When `PERF_DB_RESTORE: True` is used, the toolkit will try to restore the
+    database to a known good state using the specified backup file. The backup
+    file path in the `.env` file must be on the SQL Server.
 
 ## Running the Paging Volume Tests
 
@@ -63,7 +65,8 @@ From the root folder, simply call the `run-tests.ps1` file.
 ```
 
 Server metrics will be output to the `./TestResults` directory. Paging test
-results will found in whatever directory was specified in the `.env` file.
+results will be in a dated sub-directory, e.g.
+`./TestResults/YYYY-mm-dd-HH-MM-SS`.
 
 ## Troubleshooting
 
