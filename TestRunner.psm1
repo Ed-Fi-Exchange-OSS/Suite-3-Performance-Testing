@@ -80,7 +80,7 @@ function Invoke-RemoteCommand {
     }
 
     $thisFolder = $PSScriptRoot
-    $commonFunctions = (Get-Command $thisFolder\TestRunner.psm1).ScriptContents
+    $commonFunctions = (Get-Command $thisFolder/TestRunner.psm1).ScriptContents
 
     try {
         $sessionOptions = New-PSSessionOption -SkipCACheck -SkipCNCheck
@@ -286,9 +286,10 @@ function Invoke-TestRunner {
         $Config
     )
 
-    $testResultsPath = Get-RunnerOutputDir -Config $Config
+    $runnerOutputPath = Get-RunnerOutputDir -Config $Config
+    $testKitOutputPath = Get-OutputDir -Config $Config
 
-    Start-Transcript -Path $testResultsPath/performance-test.log
+    Start-Transcript -Path $runnerOutputPath/performance-test.log
 
     if (($testSuite -eq "volume") -and ($null -eq $runTime)) {
         throw "The -RunTime parameter must be provided when running the 'volume' suite of tests, so that the test run can exit gracefully."
@@ -296,7 +297,7 @@ function Invoke-TestRunner {
 
     try {
 
-        Write-InfoLog "Writing to $testResultsPath"
+        Write-InfoLog "Writing to $runnerOutputPath"
 
         $databaseInstance = Get-ConfigValue -Config $Config -Key "PERF_DB_SERVER"
         $databaseServer = Get-DatabaseServerName $databaseInstance
@@ -304,6 +305,7 @@ function Invoke-TestRunner {
         $webServer = Get-ConfigValue -Config $Config -Key "PERF_WEB_SERVER"
         $sqlBackupFile = ""
         $restoreDatabase = $false
+        $databaseName = ""
         try {
             $restoreDatabase = [System.Convert]::ToBoolean($(Get-ConfigValue -Config $Config -Key "PERF_DB_RESTORE"))
         } catch {
@@ -311,6 +313,7 @@ function Invoke-TestRunner {
         }
         if ($restoreDatabase) {
             $sqlBackupFile = Get-ConfigValue -Config $Config -Key "PERF_SQL_BACKUP_FILE"
+            $databaseName = Get-ConfigValue -Config $config -Key "PERF_DB_NAME"
         }
 
         $url = Get-ConfigValue -Config $Config -Key "PERF_API_BASEURL"
@@ -328,11 +331,11 @@ function Invoke-TestRunner {
             Write-InfoLog "Restoring $databaseName from $sqlBackupFile"
 
             if (Test-IsLocalhost $databaseServer) {
-                Reset-OdsDatabase -BackupFilename $sqlBackupFile -DatabaseName $databaseInstance
+                Reset-OdsDatabase -BackupFilename $sqlBackupFile -DatabaseName $databaseName
             }
             else {
                 Invoke-RemoteCommand $databaseServer (Get-CredentialOrDefault $databaseServer) `
-                    -ArgumentList @($sqlBackupFile, $databaseInstance) -ScriptBlock {
+                    -ArgumentList @($sqlBackupFile, $databaseName) -ScriptBlock {
                         param(
                             [Parameter(Mandatory=$True)]
                             [string]
@@ -369,7 +372,7 @@ function Invoke-TestRunner {
 
                 $expectedPerformanceCounters,
 
-                $TestResultsPath,
+                $runnerOutputPath,
 
                 $TestType,
 
@@ -383,7 +386,7 @@ function Invoke-TestRunner {
             $commonFunctions = (Get-Command $TestRunnerModulePath).ScriptContents
 
             try {
-                $csvPath = "$TestResultsPath/$TestType.$server.csv"
+                $csvPath = "$runnerOutputPath/$TestType.$server.csv"
 
                 # The Test-IsLocalhost function is not loading properly in the backgroun task
                 $isLocalhost = ($server.IndexOf("(local)") -gt -1) `
@@ -441,7 +444,7 @@ function Invoke-TestRunner {
             $databaseServer,
             ${function:Get-ServerMetrics},
             $expectedPerformanceCounters,
-            $testResultsPath,
+            $runnerOutputPath,
             $testType,
             "$PSScriptRoot/TestRunner.psm1"
         )
@@ -459,7 +462,7 @@ function Invoke-TestRunner {
                 $webServer,
                 ${function:Get-ServerMetrics},
                 $expectedPerformanceCounters,
-                $testResultsPath,
+                $runnerOutputPath,
                 $testType,
                 "$PSScriptRoot/TestRunner.psm1"
             )
@@ -493,8 +496,8 @@ function Invoke-TestRunner {
         }
 
         if($testSuite -eq 'pagevolume') {
-            $outputDir = Resolve-Path $testResultsPath
-            Push-Location .\src\edfi-paging-test
+            $outputDir = Resolve-Path $testKitOutputPath
+            Push-Location ./src/edfi-paging-test
 
             $params = @(
                 "run",
@@ -526,15 +529,15 @@ function Invoke-TestRunner {
 
             $poetryProcess = Start-Process "poetry" -PassThru -NoNewWindow `
                                     -ArgumentList $params `
-                                    -RedirectStandardOutput $outputDir\Summary.txt
+                                    -RedirectStandardOutput $runnerOutputPath/Summary.txt
             Wait-Process -Id $poetryProcess.Id
             Pop-Location
             Write-InfoLog "Test runner process complete"
         }
         else{
             $locustProcess = Start-Process "locust" -PassThru -NoNewWindow -ArgumentList `
-                                    "-f $($testSuite)_tests.py -c $clientCount -r $hatchRate --no-web --csv $testResultsPath\$testType $runTimeArgument --only-summary" `
-                                    -RedirectStandardError $testResultsPath\Summary.txt
+                                    "-f $($testSuite)_tests.py -c $clientCount -r $hatchRate --no-web --csv $runnerOutputPath/$testType $runTimeArgument --only-summary" `
+                                    -RedirectStandardError $runnerOutputPath/Summary.txt
             Wait-Process -Id $locustProcess.Id
             Write-InfoLog "Test runner process complete"
         }
@@ -567,12 +570,12 @@ function Invoke-TestRunner {
 
         # Retreive API log file from the web server
         if (Test-IsLocalhost $webServer) {
-            Copy-Item $logFile -Destination $testResultsPath -Recurse
+            Copy-Item $logFile -Destination $runnerOutputPath -Recurse
         } else {
             $sessionOptions = New-PSSessionOption -SkipCACheck -SkipCNCheck
             $webCredential = Get-CredentialOrDefault -Server $webServer
             $psSession = New-PSSession -ComputerName $webServer -Credential $webCredential -UseSSL -SessionOption $sessionOptions -ErrorAction Stop
-            Copy-Item $logFile -Destination $testResultsPath -FromSession $psSession -Recurse
+            Copy-Item $logFile -Destination $runnerOutputPath -FromSession $psSession -Recurse
         }
     }
     finally {
@@ -659,7 +662,7 @@ function Set-ChangeVersionTracker {
 }
 
 function Duplicate-ChangeVersionTracker {
-    Copy-Item 'change_version_tracker.json' -Destination $testResultsPath
+    Copy-Item 'change_version_tracker.json' -Destination $runnerOutputPath
 }
 
 function Get-CredentialOrDefault {
@@ -781,10 +784,10 @@ function Invoke-PageVolumeTests {
 #     $iteration = 1
 #     foreach ($changeQueryBackupFilename in $changeQueryBackupFilenames){
 #         # TODO: fix this path to use value from .env config file, instead of being hard-coded
-#         $global:testResultsPath = "TestResults\TestResult_$iteration"
+#         $global:testResultsPath = "TestResults/TestResult_$iteration"
 #         $iteration = $iteration + 1
 
-#         Initialize-Folder $testResultsPath
+#         Initialize-Folder $runnerOutputPath
 
 #         Invoke-TestRunner `
 #             -TestSuite change_query `
