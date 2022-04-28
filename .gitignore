@@ -6,8 +6,9 @@
 *.csv
 *.json
 *.pyc
-/artifacts/
-/TestResults/
+artifacts/
+TestResults/
+testResults/
 *.pdf
 change_version_tracker.json
 node_modules/

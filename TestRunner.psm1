@@ -79,19 +79,9 @@ function Invoke-RemoteCommand {
         throw "Should not invoke remote command on localhost"
     }
 
-    $thisFolder = $PSScriptRoot
-    $commonFunctions = (Get-Command $thisFolder/TestRunner.psm1).ScriptContents
-
     try {
         $sessionOptions = New-PSSessionOption -SkipCACheck -SkipCNCheck
         $psSession = New-PSSession -ComputerName $server -Credential $credential -UseSSL -SessionOption $sessionOptions -ErrorAction Stop
-
-        # Prepare the remote session with the contents of this file.
-        Invoke-Command -Session $psSession -ArgumentList @($commonFunctions, $configJson) -ScriptBlock {
-            param($commonFunctions, $configJson)
-            Invoke-Expression $commonFunctions
-            Set-GlobalsFromConfig $configJson
-        }
 
         return Invoke-Command -Session $psSession -ArgumentList $argumentList -ScriptBlock $scriptBlock
     }
@@ -115,13 +105,15 @@ function Write-Log {
     )
 
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss,fff"
-    $output = "[$timestamp] $Level $Message"
+    $output = "$timestamp - $Level - TestRunner - $Message"
 
-    if ($Level -in ("ERROR", "WARNING")) {
-        Write-Error $output
-    } else {
-        Write-Host $output
+    $color = (get-host).ui.rawui.ForegroundColor
+    switch ($Level) {
+        "ERROR" { $color = "Red" }
+        "DEBUG" { $color = "Yellow" }
     }
+
+    Write-Host $output -ForegroundColor $color
 }
 
 function Write-InfoLog {
@@ -134,14 +126,27 @@ function Write-InfoLog {
     Write-Log -Message $Message -Level "INFO"
 }
 
-function Write-DebugLog {
+function Write-ErrorLog {
     param(
         [Parameter(Mandatory=$True)]
         [string]
         $Message
     )
 
-    if ("DEBUG" -eq $env:PERF_LOG_LEVEL) {
+    Write-Log -Message $Message -Level "ERROR"
+}
+
+function Write-DebugLog {
+    param(
+        [Parameter(Mandatory=$True)]
+        [string]
+        $Message,
+
+        [string]
+        $LogLevel = $null
+    )
+
+    if ("DEBUG" -eq $LogLevel) {
         Write-Log -Message $Message -Level "DEBUG"
     }
 }
@@ -154,8 +159,28 @@ function Reset-OdsDatabase {
 
         [Parameter(Mandatory=$True)]
         [string]
-        $DatabaseName
+        $DatabaseName,
+
+        [boolean]
+        $WriteDebugMessages
     )
+
+
+    function Write-DebugLog {
+        param(
+            [Parameter(Mandatory=$True)]
+            [string]
+            $Message
+        )
+
+        if ($WriteDebugMessages) {
+            $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss,fff"
+            $output = "[$timestamp] DEBUG $Message"
+            Write-Host -Message $output
+        }
+    }
+
+
     # This import needs to be here, not at the top, so that this function can be
     # executed on a remote server.
     Import-Module SqlServer
@@ -335,21 +360,11 @@ function Invoke-TestRunner {
             }
             else {
                 Invoke-RemoteCommand $databaseServer (Get-CredentialOrDefault $databaseServer) `
-                    -ArgumentList @($sqlBackupFile, $databaseName) -ScriptBlock {
-                        param(
-                            [Parameter(Mandatory=$True)]
-                            [string]
-                            $BackupFilename,
-
-                            [Parameter(Mandatory=$True)]
-                            [string]
-                            $DatabaseName
-                        )
-                        Reset-OdsDatabase -BackupFilename $BackupFilename -DatabaseName $DatabaseName
-                    }
+                    -ArgumentList @($sqlBackupFile, $databaseName, ("DEBUG" -eq $env:PERF_LOG_LEVEL)) `
+                    -ScriptBlock ${function:Reset-OdsDatabase}
             }
         } else {
-            Write-DebugLog "Skipping Database Restore"
+            Write-InfoLog "Skipping Database Restore"
         }
 
         Write-InfoLog "Verifying ODS API is running"
@@ -376,41 +391,22 @@ function Invoke-TestRunner {
 
                 $TestType,
 
-                $TestRunnerModulePath,
-
                 [Parameter(Mandatory=$false)]
                 [PSCredential]
                 $credential = $null
             )
 
-            $commonFunctions = (Get-Command $TestRunnerModulePath).ScriptContents
-
             try {
                 $csvPath = "$runnerOutputPath/$TestType.$server.csv"
+                # Start with a fresh file
+                Remove-Item -Path $runnerOutputPath  -Include "$TestType.$server.csv" -Force  | Out-Null
 
-                # The Test-IsLocalhost function is not loading properly in the backgroun task
+                # The Test-IsLocalhost function is not loading properly in the background task
                 $isLocalhost = ($server.IndexOf("(local)") -gt -1) `
                     -or ($server.IndexOf("localhost") -gt -1) `
                     -or ($server.IndexOf(".") -eq 0) `
                     -or ($server.IndexOf($env:ComputerName) -gt -1)
 
-                if ($isLocalhost) {
-                    $actualPerformanceCounters = Compare-Object (typeperf -q) $expectedPerformanceCounters -PassThru -IncludeEqual -ExcludeDifferent
-                }
-                else {
-                    $sessionOptions = New-PSSessionOption -SkipCACheck -SkipCNCheck
-                    $psSession = New-PSSession -ComputerName $server -Credential $credential -UseSSL -SessionOption $sessionOptions -ErrorAction Stop
-
-                    # Prepare the remote session with the contents of this file.
-                    Invoke-Command -Session $psSession -ArgumentList @($commonFunctions) -ScriptBlock {
-                        param($commonFunctions)
-                        Invoke-Expression $commonFunctions
-                    }
-
-                    Invoke-Command -Session $psSession -ScriptBlock {
-                        $actualPerformanceCounters = Compare-Object (typeperf -q) $expectedPerformanceCounters -PassThru -IncludeEqual -ExcludeDifferent
-                    }
-                }
                 $getMetricsBlock = [scriptblock]::Create($getMetricsBlock)
 
                 if ($Using:testType -eq 'soak'){
@@ -423,9 +419,13 @@ function Invoke-TestRunner {
                     if ($isLocalhost) {
                         $record = Invoke-Command -ScriptBlock $getMetricsBlock
                     } else {
+                        $sessionOptions = New-PSSessionOption -SkipCACheck -SkipCNCheck
+                        $psSession = New-PSSession -ComputerName $server -Credential $credential -UseSSL -SessionOption $sessionOptions -ErrorAction Stop
+
                         $record = Invoke-Command -Session $psSession -ScriptBlock $getMetricsBlock
                     }
-                    $record | Select-Object * -ExcludeProperty PSComputerName,RunspaceId,PSShowComputerName | Export-Csv -Path $csvPath -Append -NoTypeInformation
+                    $record | Select-Object * -ExcludeProperty PSComputerName,RunspaceId,PSShowComputerName `
+                            | Export-Csv -Path $csvPath -Append -NoTypeInformation
                     Start-Sleep -Seconds $sleepTime
                 }
             }
@@ -445,8 +445,7 @@ function Invoke-TestRunner {
             ${function:Get-ServerMetrics},
             $expectedPerformanceCounters,
             $runnerOutputPath,
-            $testType,
-            "$PSScriptRoot/TestRunner.psm1"
+            $testType
         )
         if (-not (Test-IsLocalhost $databaseServer)) { $parms += (Get-CredentialOrDefault $databaseServer) }
 
@@ -463,8 +462,7 @@ function Invoke-TestRunner {
                 ${function:Get-ServerMetrics},
                 $expectedPerformanceCounters,
                 $runnerOutputPath,
-                $testType,
-                "$PSScriptRoot/TestRunner.psm1"
+                $testType
             )
             if (-not (Test-IsLocalhost $webServer)) { $parms += (Get-CredentialOrDefault $webServer) }
             $collectStatsFromWeb = Start-Job -ArgumentList $parms -ScriptBlock $serverMetricsBackgroundScript
@@ -499,48 +497,55 @@ function Invoke-TestRunner {
             $outputDir = Resolve-Path $testKitOutputPath
             Push-Location ./src/edfi-paging-test
 
-            $params = @(
-                "run",
-                "python",
-                "edfi_paging_test",
-                "--baseUrl", $url,
-                "--key", $key,
-                "--secret", $secret,
-                "--output", $outputDir
-            )
-            if ($clientCount) {
-                $params += @("--connectionLimit", $clientCount)
-            }
-            if ($contentType) {
-                $params += @("--contentType", $contentType)
-            }
-            if ($resourceList) {
-                $params += @("--resourceList", $resourceList)
-            }
-            if ($pageSize) {
-                $params += @("--pageSize", $pageSize)
-            }
-            if ($logLevel) {
-                $params += @("--logLevel", $logLevel)
-            }
-            if ($description) {
-                $params += @("--description", $description)
-            }
+            try {
+                Write-DebugLog "Executing: poetry install" -LogLevel $logLevel
+                &poetry install
 
-            $poetryProcess = Start-Process "poetry" -PassThru -NoNewWindow `
-                                    -ArgumentList $params `
-                                    -RedirectStandardOutput $runnerOutputPath/Summary.txt
-            Wait-Process -Id $poetryProcess.Id
-            Pop-Location
-            Write-InfoLog "Test runner process complete"
+                $command = "poetry run python edfi_paging_test --baseUrl $url --key  $key --secret $secret --output $outputDir"
+                if ($clientCount) {
+                    $command += " --connectionLimit  $clientCount"
+                }
+                if ($contentType) {
+                    $command += " --contentType  $contentType"
+                }
+                if ($resourceList) {
+                    $command += " --resourceList $resourceList"
+                }
+                if ($pageSize) {
+                    $command += " --pageSize $pageSize"
+                }
+                if ($logLevel) {
+                    $command += " --logLevel $logLevel"
+                }
+                if ($description) {
+                    $command += " --description '$description'"
+                }
+
+                Write-DebugLog "Executing: $command" -LogLevel $logLevel
+                Invoke-Expression -Command $command
+            }
+            catch {
+                Write-ErrorLog $_.Exception.Message
+                $formatstring = "{0} : {1}`n{2}`n" +
+                    "    + CategoryInfo          : {3}`n" +
+                    "    + FullyQualifiedErrorId : {4}`n"
+                $fields = $_.InvocationInfo.MyCommand.Name,
+                        $_.ErrorDetails.Message,
+                        $_.InvocationInfo.PositionMessage,
+                        $_.CategoryInfo.ToString(),
+                        $_.FullyQualifiedErrorId
+                Write-ErrorLog ($formatstring -f $fields)
+            }
+            finally {
+                Pop-Location
+            }
         }
         else{
-            $locustProcess = Start-Process "locust" -PassThru -NoNewWindow -ArgumentList `
-                                    "-f $($testSuite)_tests.py -c $clientCount -r $hatchRate --no-web --csv $runnerOutputPath/$testType $runTimeArgument --only-summary" `
-                                    -RedirectStandardError $runnerOutputPath/Summary.txt
-            Wait-Process -Id $locustProcess.Id
-            Write-InfoLog "Test runner process complete"
+            $command = "locust -f $($testSuite)_tests.py -c $clientCount -r $hatchRate --no-web --csv $runnerOutputPath/$testType $runTimeArgument --only-summary"
+            Write-DebugLog "Executing: $command" -LogLevel $logLevel
+            Invoke-Expression -Command $command
         }
+        Write-InfoLog "Test runner process complete"
 
         foreach ($serverName in $backgroundJobs.Keys) {
             Write-InfoLog "Stopping background job to fetch metrics from $serverName. Output collected from background job:"
@@ -551,8 +556,8 @@ function Invoke-TestRunner {
                 Remove-Job -Job $backgroundJob
             }
             catch{
-                Write-InfoLog "Failed to stop job for $($serverName):"
-                Write-InfoLog $_.Exception.Message
+                Write-ErrorLog "Failed to stop job for $($serverName):"
+                Write-ErrorLog $_.Exception.Message
                 $formatstring = "{0} : {1}`n{2}`n" +
                     "    + CategoryInfo          : {3}`n" +
                     "    + FullyQualifiedErrorId : {4}`n"
@@ -561,21 +566,42 @@ function Invoke-TestRunner {
                         $_.InvocationInfo.PositionMessage,
                         $_.CategoryInfo.ToString(),
                         $_.FullyQualifiedErrorId
-                Write-InfoLog ($formatstring -f $fields)
+                Write-ErrorLog ($formatstring -f $fields)
             }
         }
 
         Write-InfoLog "Fetching new ODS log file content from $webServer"
         $logFile = Get-ConfigValue -Config $config -Key "PERF_API_LOG_FILE_PATH"
 
-        # Retreive API log file from the web server
+        Write-DebugLog "Log file path: $logFile" -LogLevel $logLevel
+
+        # Retrieve API log file from the web server
         if (Test-IsLocalhost $webServer) {
+            Write-DebugLog "Stopping IIS" -LogLevel $logLevel
+            Stop-Service W3SVC
+            Start-Sleep 1
+
+            Write-DebugLog "Copying WebAPI log file(s)" -LogLevel $logLevel
             Copy-Item $logFile -Destination $runnerOutputPath -Recurse
+
+            Write-DebugLog "Restarting IIS" -LogLevel $logLevel
+            Start-Service W3SVC
         } else {
             $sessionOptions = New-PSSessionOption -SkipCACheck -SkipCNCheck
             $webCredential = Get-CredentialOrDefault -Server $webServer
             $psSession = New-PSSession -ComputerName $webServer -Credential $webCredential -UseSSL -SessionOption $sessionOptions -ErrorAction Stop
+
+            # It is necessary to stop IIS before trying to copy log files, otherwise
+            # they will be locked and `Copy-Item` will throw an errror.
+            Write-DebugLog "Stopping IIS" -LogLevel $logLevel
+            Invoke-Command -Session $psSession -ScriptBlock { Stop-Service W3SVC }
+            Start-Sleep 1
+
+            Write-DebugLog "Copying WebAPI log file(s)" -LogLevel $logLevel
             Copy-Item $logFile -Destination $runnerOutputPath -FromSession $psSession -Recurse
+
+            Write-DebugLog "Restarting IIS" -LogLevel $logLevel
+            Invoke-Command -Session $psSession -ScriptBlock { Start-Service W3SVC }
         }
     }
     finally {
@@ -641,7 +667,8 @@ function Get-Configuration {
                 }
             }
         }
-        $config | Out-String | Out-Host
+        $logLevel = Get-ConfigValue -Config $config -Key "PERF_LOG_LEVEL"
+        Write-DebugLog ($config | Out-String) -LogLevel $logLevel
 
         # Allow the testing process to access the API over HTTP instead of HTTPS ?
         $insecure = Get-ConfigValue -Config $config -Key "IGNORE_TLS_CERTIFICATE" -Optional
