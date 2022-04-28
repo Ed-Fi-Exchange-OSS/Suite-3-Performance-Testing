@@ -73,6 +73,7 @@ function Install-Poetry {
 
 
 $ErrorActionPreference = "Stop"
+Install-PowerShellTools
 Install-Chocolatey
 Install-Pyenv
 Install-Python
