@@ -45,13 +45,6 @@ with the help of the scripts in the [eng directory](../eng).
   using Git or download a Zip file for the [2.0 Paging Volume
   Tests](https://github.com/Ed-Fi-Exchange-OSS/Suite-3-Performance-Testing/releases)
   release.
-* Install all application dependencies:
-
-  ```bash
-  cd src/edfi-paging-test
-  poetry install
-  ```
-
 * Create a `.env` file in the root directory, based on `.env.example`. Customize
   for your installation and testing requirements.
   * To test _all_ resources, comment out the `PERF_RESOURCE_LIST` entry.
@@ -63,19 +56,20 @@ with the help of the scripts in the [eng directory](../eng).
 
 ## Running the Paging Volume Tests
 
-From the root folder, simply call the `run-tests.ps1` file.
+From the root folder, simply call the `run-tests.ps1` file while running **in
+Administrator mode**.
 
 ```bash
 ./run-tests.ps1
 ```
 
-Server metrics will be output to the `./TestResults` directory. Paging test
-results will be in a dated sub-directory, e.g.
+Server metrics will be output to the `./TestResults/runner` directory. Paging
+test results will be in a dated sub-directory, e.g.
 `./TestResults/YYYY-mm-dd-HH-MM-SS`.
 
 ## Troubleshooting
 
-* Double-check settings in the `.env` and `test-config.json` files
+* Double-check settings in the `.env` file.
 * Make sure the API is running and can be accessed from the machine running
   these tests.
 * Make sure that the database is running, can be accessed from the machine
