@@ -264,7 +264,9 @@ class RequestClient:
         logger.info(f"Retrieving all {resource} records...")
 
         pagination_result = self.get_page(resource, 1)
-        items: List[Any] = pagination_result.current_page_items
+        page_items = pagination_result.current_page_items
+        # Assign to empty list if result is not a list, e.g. an error response from the API
+        items: List[Any] = page_items if(isinstance(page_items, list)) else []
 
         while True:
             pagination_result = self.get_page(
