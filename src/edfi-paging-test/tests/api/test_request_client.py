@@ -27,7 +27,8 @@ VERSION_INFO = {
      "apiMode": "b",
      "dataModels": "c",
      "urls": {
-         "oauth": "https://localhost:54746/oauth/token/"
+         "oauth": "https://localhost:54746/oauth/token/",
+         "dataManagementApi": "https://localhost:54746/data/v3/"
      }
 }
 FAKE_API_RESPONSE_PAGE1 = [{"id": "a"}, {"id": "b"}]
@@ -71,14 +72,16 @@ def describe_testing_RequestClient_class():
         def describe_given_correct_parameter():
             def it_builds_url_correctly_for_first_page(default_request_client):
                 # Arrange
-                resource_name = "resource"
-                expected_result = "data/v3/ed-fi/resource"
+                with requests_mock.Mocker() as m:
+                    resource_name = "resource"
+                    expected_result = API_BASE_URL + "/data/v3/ed-fi/resource"
+                    m.get(API_BASE_URL, status_code=HTTPStatus.OK, text=json.dumps(VERSION_INFO))
 
-                # Act
-                result = default_request_client._build_url_for_resource(resource_name)
+                    # Act
+                    result = default_request_client._build_url_for_resource(resource_name)
 
-                # Assert
-                assert result == expected_result
+                    # Assert
+                    assert result == expected_result
 
             def it_builds_url_correctly_for_fifth_page(default_request_client):
                 # Arrange

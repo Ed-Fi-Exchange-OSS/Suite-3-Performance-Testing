@@ -26,3 +26,7 @@ class APIInfo:
     @property
     def api_metadata_url(self) -> str:
         return self.urls["openApiMetadata"]
+
+    @property
+    def data_management_api_url(self) -> str:
+        return self.urls["dataManagementApi"]

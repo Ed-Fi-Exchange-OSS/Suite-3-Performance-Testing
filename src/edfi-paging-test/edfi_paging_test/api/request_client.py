@@ -70,13 +70,16 @@ class RequestClient:
         )
         self.oauth.mount("http://", requests_adapter)
         self.oauth.mount("https://", requests_adapter)
+        self.verify_cert = not args.ignoreCertificateErrors
+        # Supres insecure request warnings from the console
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     def _build_url_for_resource(self, resource: str) -> str:
         endpoint = resource
         if "/" not in resource:
             endpoint = EDFI_DATA_MODEL_NAME + "/" + resource
 
-        return f"data/v3/{endpoint}"
+        return self._urljoin(self._get_api_info().data_management_api_url, endpoint)
 
     def _build_query_params_for_page(self, page_index, page_size: int) -> str:
         page_offset = (page_index - 1) * page_size
@@ -118,7 +121,7 @@ class RequestClient:
         base_url = base_url[:len(base_url)-1] if base_url.endswith("/") else base_url
         return f"{base_url}/{relative_url}"
 
-    def _get(self, relative_url: str) -> Response:
+    def _get(self, url: str) -> Response:
         """
         Send an HTTP GET request.
 
@@ -144,7 +147,8 @@ class RequestClient:
         if not self.oauth.authorized:
             self._authorize()
 
-        url = self._urljoin(self.api_base_url, relative_url)
+        if not url.startswith(self.api_base_url):
+            url = self._urljoin(self.api_base_url, url)
 
         response: Response
 
