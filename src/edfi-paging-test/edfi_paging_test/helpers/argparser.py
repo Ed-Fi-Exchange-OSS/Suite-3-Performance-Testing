@@ -53,8 +53,7 @@ def parse_main_arguments() -> MainArguments:
         "-i",
         "--ignoreCertificateErrors",
         help="Certificate errors are ignored",
-        type=bool,
-        default=False,
+        action='store_true',  # default false
         env_var="IGNORE_TLS_CERTIFICATE",
     )
     parser.add(  # type: ignore
