@@ -4,6 +4,7 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 import logging
+import urllib3
 from typing import Any, Callable, Dict, List, Tuple, TypeVar, Optional
 from timeit import default_timer
 from http import HTTPStatus
@@ -89,7 +90,7 @@ class RequestClient:
         APIInfo
         """
         if self.api_info is None:
-            response = get_base_api_response(self.api_base_url)
+            response = get_base_api_response(self.api_base_url, self.verify_cert)
             self.api_info = APIInfo(
                 version=response["version"],
                 api_mode=response["apiMode"],
@@ -100,7 +101,10 @@ class RequestClient:
 
     def _authorize(self) -> None:
         logger.debug("Authenticating to the ODS/API")
-        self.oauth.fetch_token(self._get_api_info().oauth_url, auth=self.auth)
+        self.oauth.fetch_token(
+            self._get_api_info().oauth_url, auth=self.auth,
+            verify=self.verify_cert
+            )
 
     def _urljoin(self, base_url: str, relative_url: str) -> str:
         """

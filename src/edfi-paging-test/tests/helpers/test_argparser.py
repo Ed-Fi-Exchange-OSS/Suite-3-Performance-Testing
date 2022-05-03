@@ -55,6 +55,7 @@ def describe_when_parsing_from_command_line_args() -> None:
                 "-b", "http://api.ed-fi.org/v5.1",
                 "-k", "populatedTemplateX",
                 "-s", "populatedSecretX",
+                "-i", "True",
                 "-c", "404",
                 "-o", "test_outputX",
                 "-t", str(OutputFormat.CSV),
@@ -74,6 +75,9 @@ def describe_when_parsing_from_command_line_args() -> None:
 
         def it_sets_api_secret(main_arguments: MainArguments) -> None:
             assert main_arguments.secret == "populatedSecretX"
+
+        def it_sets_ignore_certificate_errors(main_arguments: MainArguments) -> None:
+            assert main_arguments.ignoreCertificateErrors is True
 
         def it_sets_connection_limit(main_arguments: MainArguments) -> None:
             assert main_arguments.connectionLimit == 404

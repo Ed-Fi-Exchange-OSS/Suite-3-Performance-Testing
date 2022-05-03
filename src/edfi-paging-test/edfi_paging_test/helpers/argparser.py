@@ -50,6 +50,14 @@ def parse_main_arguments() -> MainArguments:
         env_var="PERF_API_SECRET",
     )
     parser.add(  # type: ignore
+        "-i",
+        "--ignoreCertificateErrors",
+        help="Certificate errors are ignored",
+        type=bool,
+        default=False,
+        env_var="IGNORE_TLS_CERTIFICATE",
+    )
+    parser.add(  # type: ignore
         "-c",
         "--connectionLimit",
         help="Maximum concurrent connections to api",
@@ -114,6 +122,7 @@ def parse_main_arguments() -> MainArguments:
         args_parsed.connectionLimit,
         args_parsed.key,
         args_parsed.secret,
+        args_parsed.ignoreCertificateErrors,
         args_parsed.output,
         args_parsed.description,
         args_parsed.contentType,
