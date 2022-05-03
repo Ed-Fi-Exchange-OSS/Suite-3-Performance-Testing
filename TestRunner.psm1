@@ -577,15 +577,21 @@ function Invoke-TestRunner {
 
         # Retrieve API log file from the web server
         if (Test-IsLocalhost $webServer) {
-            Write-DebugLog "Stopping IIS" -LogLevel $logLevel
-            Stop-Service W3SVC
-            Start-Sleep 1
+
+            $has_iis = $null -ne (Get-Service -Name W3SVC -ErrorAction SilentlyContinue)
+            if ($has_iis) {
+                Write-DebugLog "Stopping IIS" -LogLevel $logLevel
+                Stop-Service W3SVC
+                Start-Sleep 1
+            }
 
             Write-DebugLog "Copying WebAPI log file(s)" -LogLevel $logLevel
             Copy-Item $logFile -Destination $runnerOutputPath -Recurse
 
-            Write-DebugLog "Restarting IIS" -LogLevel $logLevel
-            Start-Service W3SVC
+            if ($has_iis) {
+                Write-DebugLog "Restarting IIS" -LogLevel $logLevel
+                Start-Service W3SVC
+            }
         } else {
             $sessionOptions = New-PSSessionOption -SkipCACheck -SkipCNCheck
             $webCredential = Get-CredentialOrDefault -Server $webServer
