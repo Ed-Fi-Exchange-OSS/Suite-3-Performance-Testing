@@ -5,6 +5,7 @@
 
 import logging
 import urllib3
+import os
 from typing import Any, Callable, Dict, List, Tuple, TypeVar, Optional
 from timeit import default_timer
 from http import HTTPStatus
@@ -71,6 +72,9 @@ class RequestClient:
         self.oauth.mount("http://", requests_adapter)
         self.oauth.mount("https://", requests_adapter)
         self.verify_cert = not args.ignoreCertificateErrors
+        # Allow running with an unsecured server
+        if(args.ignoreCertificateErrors):
+            os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
         # Supres insecure request warnings from the console
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
