@@ -7,6 +7,14 @@
 # This script should be run should be run once for environments that do not
 # already have these prerequisites set up.
 
+function Install-PowerShellTools {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+    Install-PackageProvider -Name NuGet -Force
+    Install-Module CredentialManager -Confirm
+    Install-Module SqlServer -Confirm
+}
+
+
 function Update-Path {
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") +
                 ";" +
@@ -65,6 +73,7 @@ function Install-Poetry {
 
 
 $ErrorActionPreference = "Stop"
+Install-PowerShellTools
 Install-Chocolatey
 Install-Pyenv
 Install-Python
