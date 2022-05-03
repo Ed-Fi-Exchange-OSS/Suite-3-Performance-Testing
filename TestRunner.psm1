@@ -351,7 +351,7 @@ function Invoke-TestRunner {
         $pageSize = Get-ConfigValue -Config $Config -Key "PERF_API_PAGE_SIZE" -Optional
         $logLevel = Get-ConfigValue -Config $Config -Key "PERF_LOG_LEVEL" -Optional
         $description =Get-ConfigValue -Config $Config -Key "PERF_DESCRIPTION" -Optional
-        $insecure = Get-ConfigIgnoreTlsCertificate($config)
+        $insecure = Get-ConfigIgnoreTlsCertificate -Config $config
 
         if ($restoreDatabase) {
             Write-InfoLog "Restoring $databaseName from $sqlBackupFile"
@@ -522,7 +522,7 @@ function Invoke-TestRunner {
                     $command += " --description '$description'"
                 }
                 if ($insecure) {
-                    $params += @("--ignoreCertificateErrors", $insecure)
+                    $command += " --ignoreCertificateErrors"
                 }
 
                 Write-DebugLog "Executing: $command" -LogLevel $logLevel
@@ -679,7 +679,7 @@ function Get-Configuration {
         Write-DebugLog ($config | Out-String) -LogLevel $logLevel
 
         # Allow the testing process to access the API over HTTP instead of HTTPS ?
-        $insecure = Get-ConfigIgnoreTlsCertificate($config)
+        $insecure = Get-ConfigIgnoreTlsCertificate -Config $config
         $env:OAUTHLIB_INSECURE_TRANSPORT = if ($insecure) { $insecure } else { $null }
 
         $config
