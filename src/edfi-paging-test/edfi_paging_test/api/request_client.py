@@ -4,6 +4,8 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 import logging
+import urllib3
+import os
 from typing import Any, Callable, Dict, List, Tuple, TypeVar, Optional
 from timeit import default_timer
 from http import HTTPStatus
@@ -69,13 +71,19 @@ class RequestClient:
         )
         self.oauth.mount("http://", requests_adapter)
         self.oauth.mount("https://", requests_adapter)
+        self.verify_cert = not args.ignoreCertificateErrors
+        # Allow running with an unsecured server
+        if(args.ignoreCertificateErrors):
+            os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+        # Supres insecure request warnings from the console
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     def _build_url_for_resource(self, resource: str) -> str:
         endpoint = resource
         if "/" not in resource:
             endpoint = EDFI_DATA_MODEL_NAME + "/" + resource
 
-        return f"data/v3/{endpoint}"
+        return self._urljoin(self._get_api_info().data_management_api_url, endpoint)
 
     def _build_query_params_for_page(self, page_index, page_size: int) -> str:
         page_offset = (page_index - 1) * page_size
@@ -89,7 +97,7 @@ class RequestClient:
         APIInfo
         """
         if self.api_info is None:
-            response = get_base_api_response(self.api_base_url)
+            response = get_base_api_response(self.api_base_url, self.verify_cert)
             self.api_info = APIInfo(
                 version=response["version"],
                 api_mode=response["apiMode"],
@@ -100,7 +108,10 @@ class RequestClient:
 
     def _authorize(self) -> None:
         logger.debug("Authenticating to the ODS/API")
-        self.oauth.fetch_token(self._get_api_info().oauth_url, auth=self.auth)
+        self.oauth.fetch_token(
+            self._get_api_info().oauth_url, auth=self.auth,
+            verify=self.verify_cert
+            )
 
     def _urljoin(self, base_url: str, relative_url: str) -> str:
         """
@@ -114,7 +125,7 @@ class RequestClient:
         base_url = base_url[:len(base_url)-1] if base_url.endswith("/") else base_url
         return f"{base_url}/{relative_url}"
 
-    def _get(self, relative_url: str) -> Response:
+    def _get(self, url: str) -> Response:
         """
         Send an HTTP GET request.
 
@@ -140,7 +151,8 @@ class RequestClient:
         if not self.oauth.authorized:
             self._authorize()
 
-        url = self._urljoin(self.api_base_url, relative_url)
+        if not url.startswith(self.api_base_url):
+            url = self._urljoin(self.api_base_url, url)
 
         response: Response
 
@@ -256,7 +268,9 @@ class RequestClient:
         logger.info(f"Retrieving all {resource} records...")
 
         pagination_result = self.get_page(resource, 1)
-        items: List[Any] = pagination_result.current_page_items
+        page_items = pagination_result.current_page_items
+        # Assign to empty list if result is not a list, e.g. an error response from the API
+        items: List[Any] = page_items if(isinstance(page_items, list)) else []
 
         while True:
             pagination_result = self.get_page(

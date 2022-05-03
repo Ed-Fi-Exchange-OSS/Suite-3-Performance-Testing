@@ -48,7 +48,7 @@ def describe_when_requesting_resource_paths():
         )
 
         # act
-        return get_resource_paths(MOCK_BASE_URL)
+        return get_resource_paths(MOCK_BASE_URL, True)
 
     def it_should_have_correct_length(resource_paths):
         assert len(resource_paths) == 129

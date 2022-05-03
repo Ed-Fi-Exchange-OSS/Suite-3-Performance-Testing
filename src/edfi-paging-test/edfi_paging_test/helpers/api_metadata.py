@@ -4,15 +4,19 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 import logging
+import requests
+import urllib3
 from functools import cache
 from typing import Any, List, Dict
-import requests
+
+# Supres insecure request warnings from the console
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 logger = logging.getLogger(__name__)
 
 
 @cache
-def get_base_api_response(api_base_url: str) -> Dict[str, Any]:
+def get_base_api_response(api_base_url: str, verify_cert: bool = True) -> Dict[str, Any]:
     """
     Gets the metadata response from the base API. Cached to avoid multiple requests.
 
@@ -28,13 +32,16 @@ def get_base_api_response(api_base_url: str) -> Dict[str, Any]:
     """
     logger.debug("Getting metadata from the api root.")
     try:
-        return requests.get(api_base_url).json()
+        return requests.get(
+            api_base_url,
+            verify=verify_cert
+            ).json()
     except Exception as e:
         raise RuntimeError(f"Error fetching: {api_base_url}") from e
 
 
 @cache
-def get_openapi_metadata_response(api_base_url: str) -> List[Dict[str, str]]:
+def get_openapi_metadata_response(api_base_url: str, verify_cert: bool = True) -> List[Dict[str, str]]:
     """
     Gets the OpenAPI metadata response from the base API. Cached to avoid multiple
     requests.
@@ -50,12 +57,15 @@ def get_openapi_metadata_response(api_base_url: str) -> List[Dict[str, str]]:
         The OpenAPI metadata response from the server
     """
     logger.debug("Getting OpenAPI metadata from the api.")
-    base_api_response: Dict[str, Dict[str, str]] = get_base_api_response(api_base_url)
-    return requests.get(base_api_response["urls"]["openApiMetadata"]).json()
+    base_api_response: Dict[str, Dict[str, str]] = get_base_api_response(api_base_url, verify_cert)
+    return requests.get(
+        base_api_response["urls"]["openApiMetadata"],
+        verify=verify_cert
+        ).json()
 
 
 @cache
-def get_resource_metadata_response(api_base_url: str) -> Dict[str, Dict[str, str]]:
+def get_resource_metadata_response(api_base_url: str, verify_cert: bool = True) -> Dict[str, Dict[str, str]]:
     """
     Gets the resource metadata response from the base API. Cached to avoid multiple
     requests.
@@ -71,14 +81,17 @@ def get_resource_metadata_response(api_base_url: str) -> Dict[str, Dict[str, str
         The resource metadata response from the server
     """
     logger.debug("Getting resource metadata from the api.")
-    openapi_metadata: List[Dict[str, str]] = get_openapi_metadata_response(api_base_url)
+    openapi_metadata: List[Dict[str, str]] = get_openapi_metadata_response(api_base_url, verify_cert)
     resource_metadata: Dict[str, str] = next(
         filter(lambda x: x["name"] == "Resources", openapi_metadata)
     )
-    return requests.get(resource_metadata["endpointUri"]).json()
+    return requests.get(
+        resource_metadata["endpointUri"],
+        verify=verify_cert
+        ).json()
 
 
-def get_resource_paths(api_base_url: str) -> List[str]:
+def get_resource_paths(api_base_url: str, verify_cert: bool = True) -> List[str]:
     """
     Gets the resources for the API as relative paths, including the
     project/extension prefix.
@@ -96,7 +109,7 @@ def get_resource_paths(api_base_url: str) -> List[str]:
     """
     resource_metadata_response: Dict[
         str, Dict[str, str]
-    ] = get_resource_metadata_response(api_base_url)
+    ] = get_resource_metadata_response(api_base_url, verify_cert)
     all_paths: List[str] = list(resource_metadata_response["paths"].keys())
     # filter out paths that are for get by id or delete
     return list(filter(lambda p: "{id}" not in p and "/delete" not in p, all_paths))

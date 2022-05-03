@@ -68,7 +68,9 @@ async def run(args: MainArguments) -> None:
         logger.info("Starting paging volume test...")
         start = time.time()
 
-        normalized_resources: List[str] = normalize_resource_paths(get_resource_paths(args.baseUrl))
+        normalized_resources: List[str] = normalize_resource_paths(
+            get_resource_paths(args.baseUrl, not args.ignoreCertificateErrors)
+            )
         if len(args.resourceList) == 0:
             args.resourceList = normalized_resources
         else:

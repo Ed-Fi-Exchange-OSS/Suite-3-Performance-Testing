@@ -75,6 +75,9 @@ def describe_when_parsing_from_command_line_args() -> None:
         def it_sets_api_secret(main_arguments: MainArguments) -> None:
             assert main_arguments.secret == "populatedSecretX"
 
+        def it_sets_ignore_certificate_errors(main_arguments: MainArguments) -> None:
+            assert main_arguments.ignoreCertificateErrors is False
+
         def it_sets_connection_limit(main_arguments: MainArguments) -> None:
             assert main_arguments.connectionLimit == 404
 
@@ -146,7 +149,7 @@ def describe_when_parsing_from_env_vars() -> None:
         os.environ["PERF_API_PAGE_SIZE"] = "402"
         os.environ["PERF_LOG_LEVEL"] = "WARNing"
         os.environ["PERF_DESCRIPTION"] = "page run"
-
+        os.environ["IGNORE_TLS_CERTIFICATE"] = "True"
         sys.argv = ["pytest"]
 
         return parse_main_arguments()
@@ -180,3 +183,6 @@ def describe_when_parsing_from_env_vars() -> None:
 
     def it_sets_description(main_arguments: MainArguments) -> None:
         assert main_arguments.description == "page run"
+
+    def it_sets_ignore_certificate_errors(main_arguments: MainArguments) -> None:
+        assert main_arguments.ignoreCertificateErrors is True

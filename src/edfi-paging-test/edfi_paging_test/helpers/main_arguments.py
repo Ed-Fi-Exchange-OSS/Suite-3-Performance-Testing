@@ -20,6 +20,7 @@ class MainArguments:
     connectionLimit: int
     key: str
     secret: str
+    ignoreCertificateErrors: bool
     output: str
     description: str
     contentType: OutputFormat
