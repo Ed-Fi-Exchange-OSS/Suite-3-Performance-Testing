@@ -2,7 +2,7 @@
 
 ## Performance Testing 2.0 Release Notes
 
-April, 2022
+May, 2022
 
 * Supports volume testing of _paging_ get requests.
 * The script process using `run-tests.ps1` supports SQL Server only. The Python

@@ -4,27 +4,31 @@ Performance testing framework for the Ed-Fi ODS technical suite 3
 
 ## Version 2.0
 
-April, 2022
+May, 2022
 
-* Supports volume testing of _paging_ get requests
-* The script process using `run-tests.ps1` supports SQL Server only. The Python
-  tool [src/edfi-paging-test](src/edfi-paging-test/README.md) does not
-  connect to the database, and therefore can run without the PowerShell script
-  for PostgreSQL installations.
-* Temporarily deprecates the 1.x SIS Certification-related volume, load, and soak tests
-  * Contains outdated and insecure libraries
-  * Will be restored with 2.1 release
-  * Please see [Release
-    1.2.0](https://github.com/Ed-Fi-Exchange-OSS/Suite-3-Performance-Testing/tree/1.2.0)
-    for the last working version of the original test suite.
+The [current release](docs/release-notes.md) temporarily removes support for the
+older performance tests, while adding support for Paging Volume Tests. These
+tests execute GET requests across all selected resources, paging through all
+available data. This functionality therefore supports running before/after
+comparison testing on GET requests, which can help identify missing indexes,
+assess performance changes in the .NET code, or validate the effects of
+infrastructure changes (such as adding webserver load balancing or upsizing a
+virtual machine).
 
-For more information on the Paging Volume Tests, see:
+There are two ways to run these Paging Volume Tests:
 
-* [User Guide](docs/user-guide.md) - full install and instructions for scripted
-  execution in a Windows / SQL Server environment (not suitable for Linux or
-  Docker).
-* [src/edfi-paging-test](src/edfi-paging-test/README.md) - instructions for direct
-  execution of the test kit (suitable for any platform).
+* Directly run the [edfi-paging-test](src/edfi-paging-test) package against any
+  ODS/API 5.1 or newer, running in any environment and with any database.
+  * See the [README](src/edfi-paging-test/README.md) for details on how to run
+    this tool.
+* Or, run `run-tests.ps1` to capture additional Windows Server metrics and
+  logging when running the ODS/API in IIS on Windows with SQL Server on the
+  backend.
+  * See the [User Guide](docs/user-guide.md) for a full description of
+    requirements and run instructions.
+
+Upcoming releases will re-introduce support for write-based tests, and _might_
+add support for executing the Paging Volume Tests on ODS/API 5.0 and older.
 
 ## Support
 
