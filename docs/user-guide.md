@@ -32,6 +32,7 @@ with the help of the scripts in the [eng directory](../eng).
     module](https://www.powershellgallery.com/packages/CredentialManager/2.0)
     module on the test host.
   * You might also need to configure TLS 1.2.
+  * Tested in: PowerShell 5.1 and PowerShell 7.2.
 * The user running the tests must be able to connect to the Web Server and the
   Database Server with Windows authentication, with sys admin permissions in SQL
   Server. You will be prompted to enter your credentials. _This only applies
