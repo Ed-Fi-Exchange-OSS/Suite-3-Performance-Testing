@@ -6,6 +6,9 @@ on:
       - main
     paths:
       - 'src/**'
+  push:
+    branches:
+      - main
 
 jobs:
   analyze:
@@ -40,7 +43,7 @@ jobs:
           cache: "poetry"
 
       - name: Install dependencies
-        run: poetry install
+        run: poetry env use "3.9" && poetry install
         working-directory: ${{ env.SRC_DIR }}
 
       - name: Initialize CodeQL
@@ -53,4 +56,4 @@ jobs:
         uses: github/codeql-action/analyze@1fae5bf71b0ecdc7d0a2ef0d0c28409d99693966  # v2.9.2
 
       - name: Dependency Review ("Dependabot on PR")
-        uses: actions/dependency-review-action@3f943b86c9a289f4e632c632695e2e0898d9d67d  # v1
+        uses: actions/dependency-review-action@a9c83d3af6b9031e20feba03b904645bb23d1dab  # v1.0.2
