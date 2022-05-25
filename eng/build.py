@@ -73,6 +73,8 @@ def _run_tests(exit_immediately: bool = True):
         [
             "poetry",
             "run",
+            "python",
+            "-m",
             "pytest",
             "tests",
         ],
