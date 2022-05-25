@@ -1,4 +1,4 @@
-name: "Security Scan"
+name: CodeQL Security Scan
 
 on:
   pull_request:
@@ -12,10 +12,9 @@ on:
 
 jobs:
   analyze:
-    name: Analyze
+    name: Analyze Code
     runs-on: ubuntu-latest
     env:
-        PACKAGE_NAME: edfi-paging-test
         SRC_DIR: src/edfi-paging-test
     permissions:
       actions: read
@@ -28,10 +27,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b  # v3.0.2
-
-      # Uncomment this after merge of DEVOPS-93
-      #   - name: Scan actions used in this repository
-      #     uses: ed-fi-alliance-oss/ed-fi-actions/.github/workflows/repository-scanner.yml@latest
 
       - name: Install Poetry
         run: pipx install poetry
@@ -54,6 +49,3 @@ jobs:
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@1fae5bf71b0ecdc7d0a2ef0d0c28409d99693966  # v2.9.2
-
-      - name: Dependency Review ("Dependabot on PR")
-        uses: actions/dependency-review-action@a9c83d3af6b9031e20feba03b904645bb23d1dab  # v1.0.2
