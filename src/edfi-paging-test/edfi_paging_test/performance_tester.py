@@ -80,7 +80,7 @@ async def run(args: MainArguments) -> None:
             )
             if len(invalid_env_resources) != 0:
                 raise RuntimeError(
-                    f"Invalid resources found: {*invalid_env_resources,}"
+                    f"Invalid resources found: {','.join(invalid_env_resources)}"
                 )
 
         request_client: RequestClient = RequestClient(args)
