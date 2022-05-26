@@ -34,7 +34,7 @@ def _configure_logging(configuration: MainArguments) -> None:
         handlers=[
             logging.StreamHandler(sys.stdout),
         ],
-        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s !!",
         level=log_level,
     )
 
