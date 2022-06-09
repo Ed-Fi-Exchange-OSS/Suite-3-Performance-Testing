@@ -3,28 +3,28 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-name: Ed-Fi Paging Volume Tests
+name: Ed-Fi Performance Tests
 on:
   pull_request:
     paths:
-      - 'src/edfi-paging-test/**'
-      - '!src/edfi-paging-test/**/*.md'
+      - 'src/edfi_performance_test/**'
+      - '!src/edfi_performance_test/**/*.md'
   push:
     paths:
-      - 'src/edfi-paging-test/**'
-      - '!src/edfi-paging-test/**/*.md'
+      - 'src/edfi-performance-test/**'
+      - '!src/edfi-performance-test/**/*.md'
     branches:
       - main
   workflow_dispatch:
 
 jobs:
-  test-edfi-paging-test:
+  test-edfi-performance-test:
     name: Run unit, style, and type checks
     runs-on: ubuntu-20.04
     env:
-        PACKAGE_NAME: edfi-paging-test
-        SRC_DIR: src/edfi-paging-test
-        LOCK_FILE: src/edfi-paging-test/poetry.lock
+        PACKAGE_NAME: edfi-performance-test
+        SRC_DIR: src/edfi-performance-test
+        LOCK_FILE: src/edfi-performance-test/poetry.lock
     steps:
       - name: Checkout code
         uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b  # v3.0.2
