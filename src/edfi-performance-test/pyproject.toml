@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "edfi-performance-test"
+version = "0.1.0"
+description = "SIS Certification - pipeclean, volume, load, change query, and soak tests"
+authors = ["Ed-Fi Alliance, LLC and contributors"]
+license = "Apache-2.0"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+ConfigArgParse = "^1.5.3"
+urllib3 = "^1.26.8"
+pandas = "^1.4.1"
+errorhandler = "^2.0.1"
+python-dotenv = "^0.20.0"
+
+[tool.poetry.dev-dependencies]
+flake8 = "^4.0.1"
+pytest = "^7.0.1"
+mypy = "^0.931"
+pytest-describe = "^2.0.1"
+coverage = "^6.3.2"
+black = "^22.1.0"
+pytest-mock = "^3.7.0"
+pyfakefs = "^4.5.5"
+pook = "^1.0.2"
+
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests"
+]
