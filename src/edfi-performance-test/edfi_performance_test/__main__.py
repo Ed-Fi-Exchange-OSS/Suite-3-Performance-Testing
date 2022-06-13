@@ -12,6 +12,7 @@ from errorhandler import ErrorHandler
 from edfi_performance_test.helpers.argparser import parse_main_arguments
 from edfi_performance_test.helpers.main_arguments import MainArguments
 from edfi_performance_test.helpers.log_level import LogLevel
+from edfi_performance_test.performance_tester import run
 
 
 def _redefine_debug_as_verbose(configuration: MainArguments, logger: str) -> None:
@@ -55,6 +56,7 @@ async def main() -> None:
     print(configuration.baseUrl)
     print(configuration.failDeliberately)
     print(configuration.ignoreCertificateErrors)
+    await run(configuration)
 
     if error_tracker.fired:
         print(
