@@ -5,7 +5,7 @@
 
 from locust import TaskSet
 
-from edfi_performance_test.api.client import _import_from_dotted_path, EdFiAPIClient
+from api.client.ed_fi_api_client import _import_from_dotted_path, EdFiAPIClient
 
 
 class EdFiTaskSet(TaskSet):

@@ -10,7 +10,7 @@ import json
 import traceback
 
 from locust.clients import HttpSession
-from edfi_performance_test.config import get_config_value
+from helpers.config import get_config_value
 
 logger = logging.getLogger('locust.runners')
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
