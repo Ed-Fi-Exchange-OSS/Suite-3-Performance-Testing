@@ -13,6 +13,8 @@ from locust.stats import stats_printer, stats_history
 
 from edfi_performance_test.helpers.main_arguments import MainArguments
 from edfi_performance_test.helpers.locustfile import HelloWorldUser
+from edfi_performance_test.config import get_config_value, set_config_values
+from edfi_performance_test.tasks.pipeclean.pipeclean_tests import DummyUser
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +25,11 @@ async def run(args: MainArguments) -> None:
         logger.info("Starting performance test...")
         start = time.time()
 
+        set_config_values(args)
+
         # setup Environment and Runner
-        env = Environment(user_classes=[HelloWorldUser])
+        # env = Environment(user_classes=[HelloWorldUser], host=get_config_value("baseUrl"))
+        env = Environment(user_classes=[DummyUser], host=get_config_value("baseUrl"))
         env.create_local_runner()
 
         # start a WebUI instance
@@ -37,7 +42,7 @@ async def run(args: MainArguments) -> None:
         gevent.spawn(stats_history, env.runner)
 
         # start the test
-        env.runner.start(1, spawn_rate=10)
+        env.runner.start(1, spawn_rate=10) # increase this
 
         # in 60 seconds stop the runner
         gevent.spawn_later(60, lambda: env.runner.quit())
@@ -47,7 +52,7 @@ async def run(args: MainArguments) -> None:
 
         # stop the web server for good measures
         env.web_ui.stop()
-        run_single_user(HelloWorldUser)
+        run_single_user(DummyUser)
 
         logger.info(
             f"Finished running performance tests in {time.time() - start} seconds."
