@@ -3,23 +3,23 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-from urllib import response
 from locust import HttpUser, task
 import json
 
-from edfi_performance_test.config import get_config_value
+from edfi_performance_test.helpers.config import get_config_value
+
 
 class HelloWorldUser(HttpUser):
     API_PREFIX = "/data/v3/ed-fi"
 
     @task
     def get_students(self):
-        self.host=get_config_value("baseUrl")
+        self.host = get_config_value("baseUrl")
         self.get_list("students")
 
     @task
     def login(self, succeed_on=None, name=None):
-        self.host=get_config_value("baseUrl")
+        self.host = get_config_value("baseUrl")
         if succeed_on is None:
             succeed_on = []
         payload = {
@@ -28,11 +28,8 @@ class HelloWorldUser(HttpUser):
             "grant_type": "client_credentials",
         }
         response = self._get_response(
-            'post',
-            "/oauth/token",
-            payload,
-            succeed_on=succeed_on,
-            name=name)
+            "post", "/oauth/token", payload, succeed_on=succeed_on, name=name
+        )
 
         try:
             self.token = json.loads(response.text)["access_token"]
@@ -44,14 +41,18 @@ class HelloWorldUser(HttpUser):
     def _get_response(self, method, *args, **kwargs):
         self.client.verify = False
         method = getattr(self.client, method)
-        succeed_on = kwargs.pop('succeed_on', [])
-        with method(*args, catch_response=True, allow_redirects=False, **kwargs) as response:
+        succeed_on = kwargs.pop("succeed_on", [])
+        with method(
+            *args, catch_response=True, allow_redirects=False, **kwargs
+        ) as response:
             if response.status_code in succeed_on:
                 # If told explicitly to succeed, mark success
                 response.success()
             elif 300 <= response.status_code < 400:
                 # Mark 3xx Redirect responses as failure
-                response.failure("Status code {} is a failure".format(response.status_code))
+                response.failure(
+                    "Status code {} is a failure".format(response.status_code)
+                )
         # All other status codes are treated normally
         return response
 
@@ -67,12 +68,18 @@ class HelloWorldUser(HttpUser):
     @staticmethod
     def is_not_expected_result(response, expected_responses):
         if response.status_code not in expected_responses:
-            message = 'Invalid response received'
+            message = "Invalid response received"
             try:
-                message = json.loads(response.text)['message']
+                message = json.loads(response.text)["message"]
             except Exception:
                 pass
-            print (response.request.method + " " + str(response.status_code) + ' : ' + message)
+            print(
+                response.request.method
+                + " "
+                + str(response.status_code)
+                + " : "
+                + message
+            )
             return True
         return False
 
@@ -81,11 +88,12 @@ class HelloWorldUser(HttpUser):
 
     def get_list(self, endpoint, query=""):
         response = self._get_response(
-            'get',
+            "get",
             self.list_endpoint(endpoint, query),
             headers=self.get_headers(),
-            name=self.list_endpoint(endpoint))
+            name=self.list_endpoint(endpoint),
+        )
         if self.is_not_expected_result(response, [200]):
             return
-        #self.log_response(response)
+        # self.log_response(response)
         return json.loads(response.text)

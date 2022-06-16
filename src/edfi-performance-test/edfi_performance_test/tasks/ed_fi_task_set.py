@@ -3,9 +3,10 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
+from typing import Callable
 from locust import TaskSet
 
-from api.client.ed_fi_api_client import _import_from_dotted_path, EdFiAPIClient
+from edfi_performance_test.api.client.ed_fi_api_client import import_from_dotted_path, EdFiAPIClient
 
 
 class EdFiTaskSet(TaskSet):
@@ -41,10 +42,10 @@ class EdFiTaskSet(TaskSet):
             self.student_client.delete(s_id)
     ```
     """
-    client_class = None
-    weight = 1
+    client_class: Callable
+    weight: int = 1
 
-    _api_client = None
+    _api_client: EdFiAPIClient
 
     def __init__(self, parent, *args, **kwargs):
         if type(self) is EdFiTaskSet:
@@ -122,8 +123,10 @@ class EdFiTaskSet(TaskSet):
         elif 'change_query' in self.__class__.__module__:
             class_name = self.__class__.__name__.replace('ChangeQueryTest', 'Client')
             class_path = self.__class__.__module__.replace('tasks.change_query', 'api.client') + '.' + class_name
+        else:
+            raise RuntimeError("Cannot determine class_name and class_path")
 
-        self.client_class = _import_from_dotted_path(class_path)
+        self.client_class = import_from_dotted_path(class_path)
 
     @staticmethod
     def is_invalid_response(resource_id):

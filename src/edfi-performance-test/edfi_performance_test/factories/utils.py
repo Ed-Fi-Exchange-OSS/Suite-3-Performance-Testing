@@ -1,14 +1,13 @@
-﻿# SPDX-License-Identifier: Apache-2.0
-# Licensed to the Ed-Fi Alliance under one or more agreements.
-# The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
-# See the LICENSE and NOTICES files in the project root for more information.
+﻿# # SPDX-License-Identifier: Apache-2.0
+# # Licensed to the Ed-Fi Alliance under one or more agreements.
+# # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
+# # See the LICENSE and NOTICES files in the project root for more information.
 
 import random
 import string
 from datetime import date
 
-import factory
-from factory import declarations
+from factory import declarations, LazyAttribute
 
 
 def current_year():
@@ -80,7 +79,7 @@ class RandomDateAttribute(declarations.BaseDeclaration):
         )
 
 
-class RandomSuffixAttribute(factory.LazyAttribute):
+class RandomSuffixAttribute(LazyAttribute):
     """
     Subclasses `factory.LazyAttribute` to append a random string of characters.
 
@@ -91,6 +90,7 @@ class RandomSuffixAttribute(factory.LazyAttribute):
         if isinstance(func, str):
             unformatted_string = str(func)
             func = lambda o: unformatted_string
+
         self._suffix_length = kwargs.pop('suffix_length', 4)
         super(RandomSuffixAttribute, self).__init__(func, *args, **kwargs)
 

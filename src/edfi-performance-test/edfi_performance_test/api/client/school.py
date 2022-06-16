@@ -3,7 +3,7 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-from edfi_performance_test.api.client import EdFiAPIClient, _import_from_dotted_path
+from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient, import_from_dotted_path
 
 
 class SchoolClient(EdFiAPIClient):
@@ -31,7 +31,7 @@ class SchoolClient(EdFiAPIClient):
 
     @classmethod
     def _create_school_course_code(cls, school_id, course_code):
-        client_class = _import_from_dotted_path('edfi_performance_test.api.client.course.CourseClient')
+        client_class = import_from_dotted_path('edfi_performance_test.api.client.course.CourseClient')
         client_instance = client_class(client_class.client, token=client_class.token)
         client_instance.create(
             educationOrganizationReference__educationOrganizationId=school_id,
@@ -40,7 +40,7 @@ class SchoolClient(EdFiAPIClient):
 
     @classmethod
     def _create_school_graduation_plan(cls, school_id, school_year):
-        client_class = _import_from_dotted_path('edfi_performance_test.api.client.graduation_plan.GraduationPlanClient')
+        client_class = import_from_dotted_path('edfi_performance_test.api.client.graduation_plan.GraduationPlanClient')
         client_instance = client_class(client_class.client, token=client_class.token)
         client_instance.create(
             educationOrganizationReference__educationOrganizationId=school_id,

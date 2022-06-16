@@ -9,23 +9,26 @@ import urllib3
 import json
 import traceback
 
+from urllib3.exceptions import InsecureRequestWarning
 from locust.clients import HttpSession
-from helpers.config import get_config_value
+
+from edfi_performance_test.helpers.config import get_config_value
 
 logger = logging.getLogger('locust.runners')
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+urllib3.disable_warnings(InsecureRequestWarning)
 
 
 class EdFiBasicAPIClient(HttpSession):
 
     _token = None
+    client: "HttpSession"
 
     def __init__(self, api_prefix='/data/v3/ed-fi'):
         self.API_PREFIX = api_prefix
         self.host = get_config_value('baseUrl')
         # Suppress exceptions thrown in the Test Lab environment
         # when self-signed certificates are used.
-        self.client.verify = False
+        self.client.verify = False  # type: ignore
         if self._token is None:
             self._token = self.login()
 
@@ -78,7 +81,7 @@ class EdFiBasicAPIClient(HttpSession):
     @staticmethod
     def log_response(response, ignore_error=False, log_response_text=False):
         if response.status_code >= 400 and not ignore_error:
-            frame = inspect.currentframe(1)
+            frame = inspect.currentframe()
             stack_trace = traceback.format_stack(frame)
             logger.error(u''.join(stack_trace))
 
@@ -93,7 +96,7 @@ class EdFiBasicAPIClient(HttpSession):
                 message = json.loads(response.text)['message']
             except Exception:
                 pass
-            print (response.request.method + " " + str(response.status_code) + ' : ' + message)
+            print(response.request.method + " " + str(response.status_code) + ' : ' + message)
             return True
         return False
 

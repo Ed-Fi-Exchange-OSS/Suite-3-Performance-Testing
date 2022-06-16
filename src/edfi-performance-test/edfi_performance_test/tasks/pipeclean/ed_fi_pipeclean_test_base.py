@@ -3,14 +3,16 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
+from typing import Dict
+
 import traceback
 from greenlet import GreenletExit
 
-from locust import task, SequentialTaskSet, TaskSet, runners
+from locust import task, SequentialTaskSet, TaskSet
 from locust.exception import StopUser, InterruptTaskSet
 
-from edfi_performance_test.api.client import EdFiAPIClient
-from edfi_performance_test.tasks import EdFiTaskSet
+from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
+from edfi_performance_test.tasks.ed_fi_task_set import EdFiTaskSet
 
 
 class EdFiPipecleanTestBase(EdFiTaskSet):
@@ -48,11 +50,12 @@ class EdFiPipecleanTestBase(EdFiTaskSet):
             return {'schoolId': 255901107}
     ```
     """
-    _resource_reference = None
-    _resource_id = None
 
-    update_attribute_name = None
-    update_attribute_value = None
+    _resource_reference: Dict
+    _resource_id: str
+
+    update_attribute_name: str
+    update_attribute_value: int
 
     @task
     def run_pipeclean_scenario(self):
@@ -65,7 +68,9 @@ class EdFiPipecleanTestBase(EdFiTaskSet):
             if self.is_invalid_response(self._resource_id):
                 self._proceed_to_next_pipeclean_test()
             self._touch_get_detail_endpoint(self._resource_id)
-            self._touch_put_endpoint(self._resource_id, self._resource_reference['attributes'])
+            self._touch_put_endpoint(
+                self._resource_id, self._resource_reference["attributes"]
+            )
             self._touch_delete_endpoint(self._resource_reference)
             self._proceed_to_next_pipeclean_test()  # Pass on to the next pipeclean test
         except (StopUser, GreenletExit, InterruptTaskSet, KeyboardInterrupt):
@@ -80,7 +85,7 @@ class EdFiPipecleanTestBase(EdFiTaskSet):
             if self.is_invalid_response(response):
                 self._proceed_to_next_pipeclean_test()
             first_resource = response[0]
-            resource_id = first_resource['id']
+            resource_id = first_resource["id"]
             self._touch_get_detail_endpoint(resource_id)
             self._proceed_to_next_pipeclean_test()
         except (StopUser, GreenletExit, InterruptTaskSet, KeyboardInterrupt):
@@ -97,8 +102,10 @@ class EdFiPipecleanTestBase(EdFiTaskSet):
 
     def _touch_post_endpoint(self):
         # Note that this may POST to other endpoints to create dependencies
-        self._resource_reference = self.create_with_dependencies(**self.get_create_with_dependencies_kwargs())
-        self._resource_id = self._resource_reference['resource_id']
+        self._resource_reference = self.create_with_dependencies(
+            **self.get_create_with_dependencies_kwargs()
+        )
+        self._resource_id = self._resource_reference["resource_id"]
 
     def _touch_get_detail_endpoint(self, resource_id):
         self.get_item(resource_id)
@@ -107,7 +114,8 @@ class EdFiPipecleanTestBase(EdFiTaskSet):
         if self.update_attribute_name is None or self.update_attribute_value is None:
             raise ValueError(
                 "Subclasses of {} must define update_attribute_name and"
-                " update_attribute_value".format('EdFiPipecleanTestBase'))
+                " update_attribute_value".format("EdFiPipecleanTestBase")
+            )
         attrs = default_attributes
         attrs[self.update_attribute_name] = self.update_attribute_value
         self.update(resource_id, **attrs)
@@ -127,14 +135,10 @@ class EdFiPipecleanTaskSequence(SequentialTaskSet):
     The pipeclean_tests.py locustfile will automatically detect and append each
     child task set to be run to the `tasks` attribute.
     """
-    tasks = []
-
 
     def __init__(self, *args, **kwargs):
         super(EdFiPipecleanTaskSequence, self).__init__(*args, **kwargs)
-        client = EdFiAPIClient(self.client)
-
-
+        self.client = EdFiAPIClient(self.client)
 
 
 class EdFiPipecleanTestTerminator(TaskSet):
@@ -149,11 +153,12 @@ class EdFiPipecleanTestTerminator(TaskSet):
     unpredictable behavior: the first client to hit this task will cause
     the entire Locust run to quit.
     """
+
     @task
     def finish_pipeclean_test_run(self):
         self.interrupt()
 
 
 class AcademicWeekPipecleanTest(EdFiPipecleanTestBase):
-    update_attribute_name = 'totalInstructionalDays'
+    update_attribute_name = "totalInstructionalDays"
     update_attribute_value = 4

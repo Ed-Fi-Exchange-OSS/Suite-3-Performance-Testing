@@ -5,11 +5,10 @@
 
 import factory
 
-#from edfi_performance_test.api.client.education import LocalEducationAgencyClient
-from .. import APIFactory
-from ..descriptors.utils import build_descriptor_dicts, ListOfDescriptors
-from ..resources.address import AddressFactory
-from ..utils import UniquePrimaryKeyAttribute, RandomSuffixAttribute
+from edfi_performance_test.factories.descriptors.utils import build_descriptor_dicts, ListOfDescriptors
+from edfi_performance_test.factories.resources.address import AddressFactory
+from edfi_performance_test.factories.resources.api_factory import APIFactory
+from edfi_performance_test.factories.utils import RandomSuffixAttribute, UniquePrimaryKeyAttribute
 
 
 class SchoolFactory(APIFactory):
@@ -37,7 +36,7 @@ class SchoolFactory(APIFactory):
         [('Main', {'telephoneNumber': '(950) 325-9465'})]
     )
     localEducationAgencyReference = {
-        'localEducationAgencyId': '255901' #LocalEducationAgencyClient.shared_education_organization_id(),
+        'localEducationAgencyId': '255901'  # LocalEducationAgencyClient.shared_education_organization_id(),
     }
 
 

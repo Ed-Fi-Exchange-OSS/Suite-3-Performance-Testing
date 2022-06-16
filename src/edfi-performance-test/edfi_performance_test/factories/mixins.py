@@ -4,7 +4,6 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 
-
 class DefaultToDictMixin(object):
     """
     FactoryBoy's build-to-dict mechanism doesn't handle subfactories
@@ -17,4 +16,4 @@ class DefaultToDictMixin(object):
     def _build(cls, model_class, *args, **kwargs):
         if model_class is None:
             model_class = dict
-        return super(DefaultToDictMixin, cls)._build(model_class, *args, **kwargs)
+        return super(DefaultToDictMixin, cls)._build(model_class, *args, **kwargs)  # type: ignore

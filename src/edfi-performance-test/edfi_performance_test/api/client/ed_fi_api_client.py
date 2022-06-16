@@ -9,20 +9,21 @@ import json
 import logging
 import re
 import traceback
+from typing import Any, Dict
 
 import urllib3
-#from locust.clients import HttpSession
+from urllib3.exceptions import InsecureRequestWarning
 
-from helpers.config import get_config_value
+from edfi_performance_test.helpers.config import get_config_value
 
-logger = logging.getLogger('locust.runners')
+logger = logging.getLogger("locust.runners")
 
 # Suppress warnings logged to the console in the Test Lab environment
 # when self-signed certificates are used.
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+urllib3.disable_warnings(InsecureRequestWarning)
 
 
-class EdFiAPIClient():
+class EdFiAPIClient:
     """
     Wraps the Locust HTTP client with some Ed-Fi specific logic.  Use this
     class to create, read, update, and delete Ed-Fi resources.
@@ -73,17 +74,18 @@ class EdFiAPIClient():
             ...
     ```
     """
-    API_PREFIX = '/data/v3/ed-fi'
 
-    factory = None
-    endpoint = None
+    API_PREFIX = "/data/v3/ed-fi"
 
-    dependencies = {}
+    factory: Any
+    endpoint: str
 
-    token = None
+    dependencies: Dict = {}
 
-    def __init__(self, client, token=None):
-        #super().__init__(client.base_url,client.request_event,client.user)
+    token: str
+
+    def __init__(self, client, token: str = ""):
+        # super().__init__(client.base_url,client.request_event,client.user)
         self.token = token
         self.client = client
 
@@ -97,15 +99,13 @@ class EdFiAPIClient():
 
         for subclient_class, options in self.dependencies.items():
             if isinstance(subclient_class, str):
-                subclient_class = _import_from_dotted_path(subclient_class)
-            subclient_name = options.get('client_name')
+                subclient_class = import_from_dotted_path(subclient_class)
+            subclient_name = options.get("client_name")
             if subclient_name is None:
                 # Default to FooClient => foo_client
                 subclient_name = _title_case_to_snake_case(subclient_class.__name__)
 
-            client = subclient_class(
-                client,
-                token=token)
+            client = subclient_class(client, token=token)
             setattr(self, subclient_name, client)
 
         self.generate_factory_class()
@@ -113,9 +113,9 @@ class EdFiAPIClient():
     @staticmethod
     def log_response(response, ignore_error=False, log_response_text=False):
         if response.status_code >= 400 and not ignore_error:
-            frame = inspect.currentframe(1)
+            frame = inspect.currentframe()
             stack_trace = traceback.format_stack(frame)
-            logger.error(u''.join(stack_trace))
+            logger.error("".join(stack_trace))
 
         if log_response_text:
             logger.debug(response.text)
@@ -131,21 +131,25 @@ class EdFiAPIClient():
 
     def _get_response(self, method, *args, **kwargs):
         method = getattr(self.client, method)
-        succeed_on = kwargs.pop('succeed_on', [])
-        with method(*args, catch_response=True, allow_redirects=False, **kwargs) as response:
+        succeed_on = kwargs.pop("succeed_on", [])
+        with method(
+            *args, catch_response=True, allow_redirects=False, **kwargs
+        ) as response:
             if response.status_code in succeed_on:
                 # If told explicitly to succeed, mark success
                 response.success()
             elif 300 <= response.status_code < 400:
                 # Mark 3xx Redirect responses as failure
-                response.failure("Status code {} is a failure".format(response.status_code))
+                response.failure(
+                    "Status code {} is a failure".format(response.status_code)
+                )
         # All other status codes are treated normally
         return response
 
-    def login(self, succeed_on=None, name=None, **credentials_overrides):
+    def login(self, succeed_on=None, name=None, **credentials_overrides) -> str:
         if succeed_on is None:
             succeed_on = []
-        name = name or '/oauth/token'
+        name = name or "/oauth/token"
         payload = {
             "client_id": get_config_value("key"),
             "client_secret": get_config_value("secret"),
@@ -153,18 +157,15 @@ class EdFiAPIClient():
         }
         payload.update(credentials_overrides)
         response = self._get_response(
-            'post',
-            "/oauth/token",
-            payload,
-            succeed_on=succeed_on,
-            name=name)
+            "post", "/oauth/token", payload, succeed_on=succeed_on, name=name
+        )
         self.log_response(response, ignore_error=response.status_code in succeed_on)
         try:
             self.token = json.loads(response.text)["access_token"]
             return self.token
         except (KeyError, ValueError):
             # failed login
-            return None
+            raise RuntimeError("Login failed")
 
     def get_headers(self):
         token = self.token
@@ -178,10 +179,11 @@ class EdFiAPIClient():
 
     def get_list(self, query=""):
         response = self._get_response(
-            'get',
+            "get",
             self.list_endpoint(query),
             headers=self.get_headers(),
-            name=self.list_endpoint())
+            name=self.list_endpoint(),
+        )
         if self.is_not_expected_result(response, [200]):
             return
         self.log_response(response)
@@ -189,10 +191,11 @@ class EdFiAPIClient():
 
     def get_item(self, resource_id):
         response = self._get_response(
-            'get',
+            "get",
             self.detail_endpoint(resource_id),
             headers=self.get_headers(),
-            name=self.detail_endpoint_nickname())
+            name=self.detail_endpoint_nickname(),
+        )
         if self.is_not_expected_result(response, [200]):
             return
         self.log_response(response)
@@ -203,18 +206,18 @@ class EdFiAPIClient():
         # attribute returned alongside the resource_id.  Useful if you need
         # an association to this resource.
         unique_id = None
-        succeed_on = factory_kwargs.pop('succeed_on', [])
+        succeed_on = factory_kwargs.pop("succeed_on", [])
         name = name or self.list_endpoint()
         payload = self.factory.build_json(**factory_kwargs)
         if unique_id_field:
             unique_id = json.loads(payload)[unique_id_field]
         response = self._get_response(
-            'post',
+            "post",
             self.list_endpoint(),
             data=payload,
             headers=self.get_headers(),
             succeed_on=succeed_on,
-            name=name
+            name=name,
         )
         if response.status_code in succeed_on:
             return
@@ -226,7 +229,7 @@ class EdFiAPIClient():
                 return None, None
             return None
         self.log_response(response)
-        resource_id = response.headers['Location'].split('/')[-1].strip()
+        resource_id = response.headers["Location"].split("/")[-1].strip()
         if unique_id is not None:
             return resource_id, unique_id
         return resource_id
@@ -235,31 +238,34 @@ class EdFiAPIClient():
         # Be sure to pass in a fully defined object; ODS doesn't allow partial updates.
         payload = self.factory.build_json(**update_kwargs)
         response = self._get_response(
-            'put',
+            "put",
             self.detail_endpoint(resource_id),
             data=payload,
             headers=self.get_headers(),
-            name=self.detail_endpoint_nickname())
+            name=self.detail_endpoint_nickname(),
+        )
         if self.is_not_expected_result(response, [200, 204]):
             return
         self.log_response(response)
-        new_id = response.headers['Location'].split('/')[-1].strip()
+        new_id = response.headers["Location"].split("/")[-1].strip()
         assert new_id == resource_id
         return resource_id
 
     def delete_item(self, resource_id):
-        if get_config_value('deleteResources').lower() == 'false':
+        if get_config_value("deleteResources").lower() == "false":
             logger.debug(
                 "Skipping delete of {} instance {} because"
                 " deleteResources=False".format(
-                    self.__class__.__name__.replace('Client', ''),
-                    resource_id))
+                    self.__class__.__name__.replace("Client", ""), resource_id
+                )
+            )
             return True
         response = self._get_response(
-            'delete',
+            "delete",
             self.detail_endpoint(resource_id),
             headers=self.get_headers(),
-            name=self.detail_endpoint_nickname())
+            name=self.detail_endpoint_nickname(),
+        )
         if self.is_not_expected_result(response, [204]):
             return
         self.log_response(response)
@@ -295,8 +301,8 @@ class EdFiAPIClient():
         resource_attrs = self.factory.build_dict(**kwargs)
         resource_id = self.create(**resource_attrs)
         return {
-            'resource_id': resource_id,
-            'attributes': resource_attrs,
+            "resource_id": resource_id,
+            "attributes": resource_attrs,
         }
 
     def create_using_dependencies(self, dependency_reference=None, **kwargs):
@@ -310,17 +316,17 @@ class EdFiAPIClient():
                 dependencies[key] = value
 
             return {
-                'resource_id': resource_id,
-                'dependency_ids': dependencies,
-                'attributes': resource_attrs,
+                "resource_id": resource_id,
+                "dependency_ids": dependencies,
+                "attributes": resource_attrs,
             }
 
         return {
-            'resource_id': resource_id,
-            'dependency_ids': {
-                'dependency_reference': dependency_reference,
+            "resource_id": resource_id,
+            "dependency_ids": {
+                "dependency_reference": dependency_reference,
             },
-            'attributes': resource_attrs,
+            "attributes": resource_attrs,
         }
 
     def delete_with_dependencies(self, reference, **kwargs):
@@ -335,18 +341,22 @@ class EdFiAPIClient():
         :param kwargs: Currently unused
         :return: `None`
         """
-        self.delete_item(reference['resource_id'])
+        self.delete_item(reference["resource_id"])
         if len(self.dependencies) == 1:
-            self._get_dependency_client().delete_with_dependencies(reference['dependency_ids']['dependency_reference'])
+            self._get_dependency_client().delete_with_dependencies(
+                reference["dependency_ids"]["dependency_reference"]
+            )
         elif len(self.dependencies) > 1:
-            for dependency in reference['dependency_ids']:
-                getattr(self, dependency).delete_with_dependencies(reference['dependency_ids'][dependency])
+            for dependency in reference["dependency_ids"]:
+                getattr(self, dependency).delete_with_dependencies(
+                    reference["dependency_ids"][dependency]
+                )
 
     def _get_dependency_client(self):
-        subclient_class, client_name = self.dependencies.items()[0]
+        subclient_class, client_name = self.dependencies.items()[0]  # type: ignore
         if isinstance(subclient_class, str):
-            subclient_class = _import_from_dotted_path(subclient_class)
-        subclient_name = client_name.get('client_name')
+            subclient_class = import_from_dotted_path(subclient_class)
+        subclient_name = client_name.get("client_name")
         if subclient_name is None:
             subclient_name = _title_case_to_snake_case(subclient_class.__name__)
         return getattr(self, subclient_name)
@@ -355,38 +365,45 @@ class EdFiAPIClient():
     def create_shared_resource(cls, value, **kwargs):
         client_instance = cls(cls.client, token=cls.token)
         resource_reference = client_instance.create_with_dependencies(**kwargs)
-        return resource_reference['attributes'][value]
+        return resource_reference["attributes"][value]
 
     def generate_factory_class(self):
-        if self.factory is not None or self.__class__.__name__ == 'EdFiAPIClient':
+        if self.factory is not None or self.__class__.__name__ == "EdFiAPIClient":
             return
-        class_name = self.__class__.__name__.replace('Client', 'Factory')
-        class_path = self.__class__.__module__.replace('api.client', 'factories.resources') + '.' + class_name
-        self.factory = _import_from_dotted_path(class_path)
+        class_name = self.__class__.__name__.replace("Client", "Factory")
+        class_path = (
+            self.__class__.__module__.replace("api.client", "factories.resources")
+            + "."
+            + class_name
+        )
+        self.factory = import_from_dotted_path(class_path)
 
     @staticmethod
     def is_not_expected_result(response, expected_responses):
         if response.status_code not in expected_responses:
-            message = 'Invalid response received'
+            message = "Invalid response received"
             try:
-                message = json.loads(response.text)['message']
+                message = json.loads(response.text)["message"]
             except Exception:
                 pass
-            print (response.request.method + " " + str(response.status_code) + ' : ' + message)
+            print(
+                response.request.method
+                + " "
+                + str(response.status_code)
+                + " : "
+                + message
+            )
             return True
         return False
 
 
 def _title_case_to_snake_case(name):
-    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+    s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
+    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
 
 
-def _import_from_dotted_path(path):
-    parts = path.split('.')
-    module_path = '.'.join(parts[:-1])
+def import_from_dotted_path(path) -> Any:
+    parts = path.split(".")
+    module_path = ".".join(parts[:-1])
     module = importlib.import_module(module_path)
     return getattr(module, parts[-1])
-
-class AcademicWeekClient(EdFiAPIClient):
-    endpoint = 'academicWeeks'

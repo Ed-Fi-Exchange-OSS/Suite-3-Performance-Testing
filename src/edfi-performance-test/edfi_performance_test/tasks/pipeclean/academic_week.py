@@ -3,9 +3,9 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-from edfi_performance_test.tasks.pipeclean import EdFiPipecleanTestBase
+from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import EdFiPipecleanTestBase
+
 
 class AcademicWeekPipecleanTest(EdFiPipecleanTestBase):
     update_attribute_name = 'totalInstructionalDays'
     update_attribute_value = 4
-
