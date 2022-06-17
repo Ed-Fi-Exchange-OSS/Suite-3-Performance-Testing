@@ -3,10 +3,10 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-from .. import APIFactory
-from ..descriptors.utils import build_descriptor
-from ..mixins import DefaultToDictMixin
-from ..utils import RandomSuffixAttribute
+from edfi_performance_test.factories.resources.api_factory import APIFactory
+from edfi_performance_test.factories.descriptors.utils import build_descriptor
+from edfi_performance_test.factories.mixins import DefaultToDictMixin
+from edfi_performance_test.factories.utils import RandomSuffixAttribute
 
 
 class AddressFactory(DefaultToDictMixin, APIFactory):

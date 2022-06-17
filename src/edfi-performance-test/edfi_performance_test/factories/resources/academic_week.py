@@ -6,7 +6,7 @@
 import factory
 
 from edfi_performance_test.api.client.school import SchoolClient
-from edfi_performance_test.factories import APIFactory
+from edfi_performance_test.factories.resources.api_factory import APIFactory
 from edfi_performance_test.factories.utils import UniqueIdAttribute, formatted_date
 
 

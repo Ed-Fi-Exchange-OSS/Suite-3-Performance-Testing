@@ -25,6 +25,7 @@ black = "^22.1.0"
 pytest-mock = "^3.7.0"
 pyfakefs = "^4.5.5"
 pook = "^1.0.2"
+types-urllib3 = "^1.26.15"
 
 
 [build-system]

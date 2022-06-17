@@ -3,12 +3,13 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-from pytest import mark, fixture
+from datetime import date
 
-from ..utils import *
+from edfi_performance_test.factories.utils import formatted_date
+
 
 class Test_utils(object):
-    def test_given_no_year_when_formatting_date_then_use_current_year(self):        
+    def test_given_no_year_when_formatting_date_then_use_current_year(self):
 
         month = 12
         day = 1
@@ -18,8 +19,7 @@ class Test_utils(object):
 
         assert actual == expected
 
-        
-    def test_given_year_is_supplied_when_formatting_date_then_use_supplied_year(self):        
+    def test_given_year_is_supplied_when_formatting_date_then_use_supplied_year(self):
 
         year = 1999
         month = 12
