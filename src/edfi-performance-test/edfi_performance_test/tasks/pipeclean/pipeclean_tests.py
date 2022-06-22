@@ -11,6 +11,7 @@ locust which runs each scenario in order.
 import importlib
 import os
 import pkgutil
+import edfi_performance_test.tasks.pipeclean
 
 from locust import HttpUser
 
@@ -21,9 +22,7 @@ from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
     EdFiPipecleanTestTerminator,
 )
 
-
 class EdFiPipecleanTestMixin(object):
-    host = get_config_value("baseUrl")
     min_wait = 2000
     max_wait = 9000
 
@@ -32,10 +31,11 @@ class DummyUser(HttpUser):
     tasks_submodules = [
         name
         for _, name, _ in pkgutil.iter_modules(
-            [os.path.join("edfi_performance_test", "tasks", "pipeclean")],
+            [os.path.dirname(edfi_performance_test.tasks.pipeclean.__file__)],
             prefix="edfi_performance_test.tasks.pipeclean.",
         )
     ]
+
     for mod_name in tasks_submodules:
         importlib.import_module(mod_name)
 
@@ -57,5 +57,5 @@ class DummyUser(HttpUser):
 
     EdFiPipecleanTaskSequence.tasks.append(EdFiPipecleanTestTerminator)
 
-    # TODO: I don't know what this next line is trying to do, so commenting it out
-    # tasks = {EdFiPipecleanTaskSequence}
+    #assign all pipeclean tasks to HttpUser
+    tasks = {EdFiPipecleanTaskSequence}

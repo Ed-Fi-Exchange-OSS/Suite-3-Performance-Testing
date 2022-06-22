@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0
 # Licensed to the Ed-Fi Alliance under one or more agreements.
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
@@ -77,15 +77,14 @@ class EdFiAPIClient:
 
     API_PREFIX = "/data/v3/ed-fi"
 
-    factory: Any
-    endpoint: str
+    factory: Any = None
+    endpoint: str = None
 
     dependencies: Dict = {}
 
-    token: str
+    token: str = None
 
     def __init__(self, client, token: str = ""):
-        # super().__init__(client.base_url,client.request_event,client.user)
         self.token = token
         self.client = client
 

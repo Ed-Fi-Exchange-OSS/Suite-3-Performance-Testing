@@ -138,7 +138,9 @@ class EdFiPipecleanTaskSequence(SequentialTaskSet):
 
     def __init__(self, *args, **kwargs):
         super(EdFiPipecleanTaskSequence, self).__init__(*args, **kwargs)
-        self.client = EdFiAPIClient(self.client)
+        EdFiAPIClient.client = self.client
+        EdFiAPIClient.token = None
+
 
 
 class EdFiPipecleanTestTerminator(TaskSet):
@@ -157,8 +159,3 @@ class EdFiPipecleanTestTerminator(TaskSet):
     @task
     def finish_pipeclean_test_run(self):
         self.interrupt()
-
-
-class AcademicWeekPipecleanTest(EdFiPipecleanTestBase):
-    update_attribute_name = "totalInstructionalDays"
-    update_attribute_value = 4

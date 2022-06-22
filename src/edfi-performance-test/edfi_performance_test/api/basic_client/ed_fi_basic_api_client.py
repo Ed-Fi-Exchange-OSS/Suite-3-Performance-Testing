@@ -18,10 +18,10 @@ logger = logging.getLogger('locust.runners')
 urllib3.disable_warnings(InsecureRequestWarning)
 
 
-class EdFiBasicAPIClient(HttpSession):
+class EdFiBasicAPIClient:
 
     _token = None
-    client: "HttpSession"
+    client: HttpSession = None
 
     def __init__(self, api_prefix='/data/v3/ed-fi'):
         self.API_PREFIX = api_prefix

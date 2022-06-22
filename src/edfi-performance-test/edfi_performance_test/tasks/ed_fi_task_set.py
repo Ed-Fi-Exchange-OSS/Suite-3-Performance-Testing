@@ -42,10 +42,9 @@ class EdFiTaskSet(TaskSet):
             self.student_client.delete(s_id)
     ```
     """
-    client_class: Callable
-    weight: int = 1
+    client_class: Callable = None
 
-    _api_client: EdFiAPIClient
+    _api_client: EdFiAPIClient = None
 
     def __init__(self, parent, *args, **kwargs):
         if type(self) is EdFiTaskSet:
@@ -55,7 +54,7 @@ class EdFiTaskSet(TaskSet):
 
         self.generate_client_class()
 
-        self._api_client = self.client_class(EdFiAPIClient.client, token=EdFiAPIClient.token)
+        self._api_client = self.client_class(client=EdFiAPIClient.client, token=EdFiAPIClient.token)
 
     def __getattr__(self, item):
         # Pass some attributes through to the EdFiAPIClient
