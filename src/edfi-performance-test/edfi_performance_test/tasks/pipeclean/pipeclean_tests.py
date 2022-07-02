@@ -16,10 +16,11 @@ import edfi_performance_test.tasks.pipeclean
 from locust import HttpUser
 
 from edfi_performance_test.helpers.config import get_config_value
+from edfi_performance_test.tasks.pipeclean.composite import EdFiCompositePipecleanTestBase
 from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
     EdFiPipecleanTestBase,
     EdFiPipecleanTaskSequence,
-    EdFiPipecleanTestTerminator,
+    EdFiPipecleanTestTerminator
 )
 
 class EdFiPipecleanTestMixin(object):
@@ -42,8 +43,8 @@ class DummyUser(HttpUser):
     # Collect *PipecleanTest classes and append them to
     # EdFiPipecleanTaskSequence.tasks
     subclasses = EdFiPipecleanTestBase.__subclasses__()
-    # subclasses += EdFiCompositePipecleanTestBase.__subclasses__()
-    # subclasses.remove(EdFiCompositePipecleanTestBase)
+    subclasses += EdFiCompositePipecleanTestBase.__subclasses__()
+    subclasses.remove(EdFiCompositePipecleanTestBase)
     valid_names = set()
     # valid_names.add(AllDescriptorsPipecleanTest.__name__)
     for subclass in subclasses:

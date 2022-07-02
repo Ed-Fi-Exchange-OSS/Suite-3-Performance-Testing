@@ -13,7 +13,7 @@ from typing import Any, Dict
 
 import urllib3
 from urllib3.exceptions import InsecureRequestWarning
-
+from locust.clients import HttpSession
 from edfi_performance_test.helpers.config import get_config_value
 
 logger = logging.getLogger("locust.runners")
@@ -84,7 +84,7 @@ class EdFiAPIClient:
 
     token: str = None
 
-    def __init__(self, client, token: str = ""):
+    def __init__(self, client: HttpSession, token: str = ""):
         self.token = token
         self.client = client
 
@@ -93,6 +93,9 @@ class EdFiAPIClient:
         self.client.verify = False
 
         token = token or self.login()
+        if(type(client) is not HttpSession):
+           self.client = client
+
         EdFiAPIClient.token = token
         EdFiAPIClient.client = client
 
@@ -104,8 +107,8 @@ class EdFiAPIClient:
                 # Default to FooClient => foo_client
                 subclient_name = _title_case_to_snake_case(subclient_class.__name__)
 
-            client = subclient_class(client, token=token)
-            setattr(self, subclient_name, client)
+            subclient = subclient_class(client, token=token)
+            setattr(self, subclient_name, subclient)
 
         self.generate_factory_class()
 
@@ -311,7 +314,7 @@ class EdFiAPIClient:
         if isinstance(dependency_reference, list):
             dependencies = {}
             for obj in dependency_reference:
-                key, value = obj.items()[0]
+                key, value = list(obj.items())[0]
                 dependencies[key] = value
 
             return {
@@ -352,7 +355,7 @@ class EdFiAPIClient:
                 )
 
     def _get_dependency_client(self):
-        subclient_class, client_name = self.dependencies.items()[0]  # type: ignore
+        subclient_class, client_name = list(self.dependencies.items())[0]  # type: ignore
         if isinstance(subclient_class, str):
             subclient_class = import_from_dotted_path(subclient_class)
         subclient_name = client_name.get("client_name")
