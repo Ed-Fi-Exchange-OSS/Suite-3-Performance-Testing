@@ -3,6 +3,8 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
+from typing import Dict
+
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 from edfi_performance_test.api.client.assessment import LearningObjectiveClient
 from edfi_performance_test.api.client.competency_objective import CompetencyObjectiveClient
@@ -14,7 +16,7 @@ from edfi_performance_test.api.client.parent import ParentClient
 class StudentParentAssociationClient(EdFiAPIClient):
     endpoint = 'studentParentAssociations'
 
-    dependencies = {
+    dependencies: Dict = {
         'edfi_performance_test.api.client.student.StudentClient': {},
     }
 
@@ -39,7 +41,7 @@ class StudentClient(EdFiAPIClient):
 
     _student_id = None
 
-    dependencies = {
+    dependencies: Dict = {
         'edfi_performance_test.api.client.student.StudentSchoolAssociationClient': {
             'client_name': 'assoc_client',
         }
@@ -100,7 +102,7 @@ class StudentSchoolAssociationClient(EdFiAPIClient):
 class StudentEducationOrganizationAssociationClient(EdFiAPIClient):
     endpoint = 'studentEducationOrganizationAssociations'
 
-    dependencies = {
+    dependencies: Dict = {
         StudentClient: {},
     }
 
@@ -121,7 +123,7 @@ class StudentEducationOrganizationAssociationClient(EdFiAPIClient):
 class StudentCohortAssociationClient(EdFiAPIClient):
     endpoint = 'studentCohortAssociations'
 
-    dependencies = {
+    dependencies: Dict = {
         'edfi_performance_test.api.client.cohort.CohortClient': {},
         StudentClient: {},
     }
@@ -150,7 +152,7 @@ class StudentCohortAssociationClient(EdFiAPIClient):
 class StudentTitleIPartAProgramAssociationClient(EdFiAPIClient):
     endpoint = 'studentTitleIPartAProgramAssociations'
 
-    dependencies = {
+    dependencies: Dict = {
         StudentClient: {},
     }
 
@@ -171,7 +173,7 @@ class StudentTitleIPartAProgramAssociationClient(EdFiAPIClient):
 class StudentSpecialEducationProgramAssociationClient(EdFiAPIClient):
     endpoint = 'studentSpecialEducationProgramAssociations'
 
-    dependencies = {
+    dependencies: Dict = {
         StudentClient: {},
     }
 
@@ -192,7 +194,7 @@ class StudentSpecialEducationProgramAssociationClient(EdFiAPIClient):
 class StudentProgramAssociationClient(EdFiAPIClient):
     endpoint = 'studentProgramAssociations'
 
-    dependencies = {
+    dependencies: Dict = {
         StudentClient: {}
     }
 
@@ -213,7 +215,7 @@ class StudentProgramAssociationClient(EdFiAPIClient):
 class StudentDisciplineIncidentAssociationClient(EdFiAPIClient):
     endpoint = 'studentDisciplineIncidentAssociations'
 
-    dependencies = {
+    dependencies: Dict = {
         StudentClient: {},
         'edfi_performance_test.api.client.discipline.DisciplineIncidentClient': {
             'client_name': 'incident_client'
@@ -242,7 +244,7 @@ class StudentDisciplineIncidentAssociationClient(EdFiAPIClient):
 class StudentSectionAssociationClient(EdFiAPIClient):
     endpoint = 'studentSectionAssociations'
 
-    dependencies = {
+    dependencies: Dict = {
         'edfi_performance_test.api.client.section.SectionClient': {},
         StudentClient: {}
     }
@@ -276,7 +278,7 @@ class StudentSectionAssociationClient(EdFiAPIClient):
 class StudentSchoolAttendanceEventClient(EdFiAPIClient):
     endpoint = 'studentSchoolAttendanceEvents'
 
-    dependencies = {
+    dependencies: Dict = {
         StudentClient: {},
         'edfi_performance_test.api.client.session.SessionClient': {}
     }
@@ -304,7 +306,7 @@ class StudentSchoolAttendanceEventClient(EdFiAPIClient):
 class StudentSectionAttendanceEventClient(EdFiAPIClient):
     endpoint = 'studentSectionAttendanceEvents'
 
-    dependencies = {
+    dependencies: Dict = {
         'edfi_performance_test.api.client.section.SectionClient': {},
         StudentClient: {},
     }
@@ -339,7 +341,7 @@ class StudentSectionAttendanceEventClient(EdFiAPIClient):
 class StudentAcademicRecordClient(EdFiAPIClient):
     endpoint = 'studentAcademicRecords'
 
-    dependencies = {
+    dependencies: Dict = {
         StudentClient: {},
     }
 
@@ -361,7 +363,7 @@ class StudentAcademicRecordClient(EdFiAPIClient):
 class StudentCompetencyObjectiveClient(EdFiAPIClient):
     endpoint = 'studentCompetencyObjectives'
 
-    dependencies = {
+    dependencies: Dict = {
         'edfi_performance_test.api.client.grading_period.GradingPeriodClient': {},
         CompetencyObjectiveClient: {}
     }
@@ -392,7 +394,7 @@ class StudentEducationOrganizationResponsibilityAssociationClient(EdFiAPIClient)
 class StudentGradebookEntryClient(EdFiAPIClient):
     endpoint = 'studentGradebookEntries'
 
-    dependencies = {
+    dependencies: Dict = {
         StudentSectionAssociationClient: {
             'client_name': 'assoc_client'
         },
@@ -438,7 +440,7 @@ class StudentGradebookEntryClient(EdFiAPIClient):
         )
 
     def delete_with_dependencies(self, reference, **kwargs):
-        self.delete(reference['resource_id'])
+        self.delete_item(reference['resource_id'])
         dependencies = reference['dependency_ids']
         self.entry_client.delete(dependencies['entry_client'])
         self.assoc_client.delete_with_dependencies(dependencies['assoc_client'])
@@ -451,7 +453,7 @@ class StudentHomelessProgramAssociationClient(EdFiAPIClient):
 class StudentInterventionAssociationClient(EdFiAPIClient):
     endpoint = 'studentInterventionAssociations'
 
-    dependencies = {
+    dependencies: Dict = {
         'edfi_performance_test.api.client.intervention.InterventionClient': {}
     }
 
@@ -468,7 +470,7 @@ class StudentInterventionAssociationClient(EdFiAPIClient):
 class StudentInterventionAttendanceEventClient(EdFiAPIClient):
     endpoint = 'studentInterventionAttendanceEvents'
 
-    dependencies = {
+    dependencies: Dict = {
         'edfi_performance_test.api.client.intervention.InterventionClient': {}
     }
 
@@ -489,7 +491,7 @@ class StudentLanguageInstructionProgramAssociationClient(EdFiAPIClient):
 class StudentLearningObjectiveClient(EdFiAPIClient):
     endpoint = 'studentLearningObjectives'
 
-    dependencies = {
+    dependencies: Dict = {
         LearningObjectiveClient: {
             'client_name': 'objective_client'
         },

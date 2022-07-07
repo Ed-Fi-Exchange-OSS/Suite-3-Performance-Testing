@@ -12,7 +12,6 @@ from locust.env import Environment
 from locust.stats import stats_printer, stats_history
 
 from edfi_performance_test.helpers.main_arguments import MainArguments
-# from edfi_performance_test.helpers.locustfile import HelloWorldUser
 from edfi_performance_test.helpers.config import get_config_value, set_config_values
 from edfi_performance_test.tasks.pipeclean.pipeclean_tests import DummyUser
 

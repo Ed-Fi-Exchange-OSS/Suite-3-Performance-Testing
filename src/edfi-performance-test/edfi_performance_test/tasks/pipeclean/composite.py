@@ -5,8 +5,8 @@
 
 import traceback
 from greenlet import GreenletExit
-
-from locust import task
+from typing import List
+from locust import TaskSet, task
 from locust.exception import StopUser, InterruptTaskSet
 
 from edfi_performance_test.api.client.ed_fi_api_client import import_from_dotted_path
@@ -14,7 +14,7 @@ from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import EdFi
 
 
 class EdFiCompositePipecleanTestBase(EdFiPipecleanTestBase):
-    composite_resources = None
+    composite_resources: List[str]
 
     @task
     def run_pipeclean_scenario(self):

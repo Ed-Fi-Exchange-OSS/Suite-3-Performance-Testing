@@ -3,6 +3,8 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
+from typing import Dict
+
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient, import_from_dotted_path
 from edfi_performance_test.api.client.school import SchoolClient
 
@@ -14,7 +16,7 @@ class EducationContentClient(EdFiAPIClient):
 class EducationOrganizationInterventionPrescriptionAssociationClient(EdFiAPIClient):
     endpoint = 'educationOrganizationInterventionPrescriptionAssociations'
 
-    dependencies = {
+    dependencies: Dict = {
         'edfi_performance_test.api.client.intervention.InterventionPrescriptionClient': {
             'client_name': 'prescription_client',
         }
@@ -37,7 +39,7 @@ class EducationOrganizationNetworkClient(EdFiAPIClient):
 class EducationOrganizationNetworkAssociationClient(EdFiAPIClient):
     endpoint = 'educationOrganizationNetworkAssociations'
 
-    dependencies = {
+    dependencies: Dict = {
         EducationOrganizationNetworkClient: {
             'client_name': 'network_client',
         }
@@ -57,7 +59,7 @@ class EducationOrganizationNetworkAssociationClient(EdFiAPIClient):
 class EducationOrganizationPeerAssociationClient(EdFiAPIClient):
     endpoint = 'educationOrganizationPeerAssociations'
 
-    dependencies = {
+    dependencies: Dict = {
         'edfi_performance_test.api.client.school.SchoolClient': {},
     }
 
@@ -81,7 +83,7 @@ class LocalEducationAgencyClient(EdFiAPIClient):
 
     _education_organization_id = None
 
-    dependencies = {
+    dependencies: Dict = {
         EducationServiceCenterClient: {
             'client_name': 'service_center_client',
         },
@@ -109,7 +111,7 @@ class LocalEducationAgencyClient(EdFiAPIClient):
 class FeederSchoolAssociationClient(EdFiAPIClient):
     endpoint = 'feederSchoolAssociations'
 
-    dependencies = {
+    dependencies: Dict = {
         'edfi_performance_test.api.client.school.SchoolClient': {},
     }
 

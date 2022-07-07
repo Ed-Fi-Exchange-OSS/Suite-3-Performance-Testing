@@ -3,6 +3,7 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
+from typing import Dict
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 
 
@@ -13,7 +14,7 @@ class AssessmentClient(EdFiAPIClient):
 class AssessmentItemClient(EdFiAPIClient):
     endpoint = 'assessmentItems'
 
-    dependencies = {
+    dependencies: Dict = {
         AssessmentClient: {}
     }
 
@@ -40,7 +41,7 @@ class LearningStandardClient(EdFiAPIClient):
 class ObjectiveAssessmentClient(EdFiAPIClient):
     endpoint = 'objectiveAssessments'
 
-    dependencies = {
+    dependencies: Dict = {
         AssessmentClient: {}
     }
 
@@ -59,7 +60,7 @@ class ObjectiveAssessmentClient(EdFiAPIClient):
 class StudentAssessmentClient(EdFiAPIClient):
     endpoint = 'studentAssessments'
 
-    dependencies = {
+    dependencies: Dict = {
         AssessmentClient: {}
     }
 

@@ -3,6 +3,7 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
+from typing import Dict
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 
 
@@ -13,7 +14,7 @@ class AccountCodeClient(EdFiAPIClient):
 class AccountClient(EdFiAPIClient):
     endpoint = 'accounts'
 
-    dependencies = {
+    dependencies: Dict = {
         AccountCodeClient: {},
     }
 
@@ -40,7 +41,7 @@ class _AccountDependentMixin(object):
     """
     Base class for clients for all resources dependent solely on Account
     """
-    dependencies = {
+    dependencies: Dict = {
         AccountClient: {},
     }
 

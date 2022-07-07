@@ -5,14 +5,14 @@
 
 import json
 
-
+from typing import Dict
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 from edfi_performance_test.helpers.config import get_config_value
 
 class EdFiCompositeClient(EdFiAPIClient):
-    API_PREFIX = None  # Must be entered by the user. Should look like '/composites/v1/ed-fi/{compositeName}'
+    API_PREFIX: str  # Must be entered by the user. Should look like '/composites/v1/ed-fi/{compositeName}'
     factory = 'None'
-    constants = None
+    constants: Dict
 
     def get_composite_list(self, resource_name, resource_id):
         response = self._get_response(

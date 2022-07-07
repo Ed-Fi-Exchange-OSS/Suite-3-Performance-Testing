@@ -78,11 +78,9 @@ class EdFiAPIClient:
     API_PREFIX = "/data/v3/ed-fi"
 
     factory: Any = None
-    endpoint: str = None
-
+    endpoint: str = ""
     dependencies: Dict = {}
-
-    token: str = None
+    token: str = ""
 
     def __init__(self, client: HttpSession, token: str = ""):
         self.token = token
@@ -93,8 +91,6 @@ class EdFiAPIClient:
         self.client.verify = False
 
         token = token or self.login()
-        if(type(client) is not HttpSession):
-           self.client = client
 
         EdFiAPIClient.token = token
         EdFiAPIClient.client = client

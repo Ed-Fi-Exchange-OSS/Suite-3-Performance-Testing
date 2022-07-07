@@ -21,7 +21,7 @@ urllib3.disable_warnings(InsecureRequestWarning)
 class EdFiBasicAPIClient:
 
     _token = None
-    client: HttpSession = None
+    client: HttpSession
 
     def __init__(self, api_prefix='/data/v3/ed-fi'):
         self.API_PREFIX = api_prefix

@@ -3,6 +3,8 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
+from typing import Dict
+
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 from edfi_performance_test.api.client.calendar_date import CalendarDateClient
 from edfi_performance_test.api.client.class_period import ClassPeriodClient
@@ -13,7 +15,7 @@ from edfi_performance_test.api.client.school import SchoolClient
 class SectionClient(EdFiAPIClient):
     endpoint = 'sections'
 
-    dependencies = {
+    dependencies: Dict = {
         ClassPeriodClient: {},
         'edfi_performance_test.api.client.course_offering.CourseOfferingClient': {},
         LocationClient: {},
@@ -80,7 +82,7 @@ class SectionClient(EdFiAPIClient):
 class SectionAttendanceTakenEventClient(EdFiAPIClient):
     endpoint = 'sectionAttendanceTakenEvents'
 
-    dependencies = {
+    dependencies: Dict = {
         SectionClient: {},
         CalendarDateClient: {},
     }

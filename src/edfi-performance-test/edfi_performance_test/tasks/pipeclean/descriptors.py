@@ -3,194 +3,35 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-""" import traceback
+from asyncio import Task
+import traceback
 from greenlet import GreenletExit
 
 import json
 
-from locust import SequentialTaskSet, TaskSet, task
-from locust.core import TaskSetMeta
+from locust import TaskSet, task
 from locust.exception import StopUser, InterruptTaskSet
+from typing import List
 
-from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import EdFiPipecleanTestBase
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 from edfi_performance_test.factories.utils import random_chars
-from edfi_performance_test.tasks.pipeclean.pipeclean_tests import EdFiPipecleanTestTerminator
-
-ALL_DESCRIPTORS = [
-    'absenceEventCategory',
-    'academicHonorCategory',
-    'academicSubject',
-    'accommodation',
-    'accountClassification',
-    'achievementCategory',
-    'additionalCreditType',
-    'addressType',
-    'administrationEnvironment',
-    'administrativeFundingControl',
-    'assessmentCategory',
-    'assessmentIdentificationSystem',
-    'assessmentItemCategory',
-    'assessmentItemResult',
-    'assessmentPeriod',
-    'assessmentReportingMethod',
-    'attemptStatus',
-    'attendanceEventCategory',
-    'behavior',
-    'calendarEvent',
-    'calendarType',
-    'careerPathway',
-    'charterApprovalAgencyType',
-    'charterStatus',
-    'citizenshipStatus',
-    'classroomPosition',
-    'cohortScope',
-    'cohortType',
-    'cohortYearType',
-    'competencyLevel',
-    'contactType',
-    'contentClass',
-    'continuationOfServicesReason',
-    'costRate',
-    'country',
-    'courseAttemptResult',
-    'courseDefinedBy',
-    'courseGPAApplicability',
-    'courseIdentificationSystem',
-    'courseLevelCharacteristic',
-    'courseRepeatCode',
-    'credentialField',
-    'credentialType',
-    'creditType',
-    'curriculumUsed',
-    'deliveryMethod',
-    'diagnosis',
-    'diplomaLevel',
-    'diplomaType',
-    'disability',
-    'disabilityDesignation',
-    'disabilityDeterminationSourceType',
-    'disciplineActionLengthDifferenceReason',
-    'discipline',
-    'educationalEnvironment',
-    'educationOrganizationCategory',
-    'educationOrganizationIdentificationSystem',
-    'educationPlan',
-    'electronicMailType',
-    'employmentStatus',
-    'entryGradeLevelReason',
-    'entryType',
-    'eventCircumstance',
-    'exitWithdrawType',
-    'gradebookEntryType',
-    'gradeLevel',
-    'gradeType',
-    'gradingPeriod',
-    'graduationPlanType',
-    'gunFreeSchoolsActReportingStatus',
-    'homelessPrimaryNighttimeResidence',
-    'homelessProgramService',
-    'identificationDocumentUse',
-    'incidentLocation',
-    'institutionTelephoneNumberType',
-    'interactivityStyle',
-    'internetAccess',
-    'interventionClass',
-    'interventionEffectivenessRating',
-    'language',
-    'languageInstructionProgramService',
-    'languageUse',
-    'learningStandardCategory',
-    'levelOfEducation',
-    'licenseStatus',
-    'licenseType',
-    'limitedEnglishProficiency',
-    'locale',
-    'localEducationAgencyCategory',
-    'magnetSpecialProgramEmphasisSchool',
-    'mediumOfInstruction',
-    'methodCreditEarned',
-    'migrantEducationProgramService',
-    'monitored',
-    'neglectedOrDelinquentProgram',
-    'neglectedOrDelinquentProgramService',
-    'networkPurpose',
-    'oldEthnicity',
-    'operationalStatus',
-    'otherNameType',
-    'participation',
-    'performanceBaseConversion',
-    'performanceLevel',
-    'personalInformationVerification',
-    'populationServed',
-    'postingResult',
-    'postSecondaryEventCategory',
-    'postSecondaryInstitutionLevel',
-    'proficiency',
-    'programAssignment',
-    'programCharacteristic',
-    'programSponsor',
-    'programType',
-    'progress',
-    'progressLevel',
-    'providerCategory',
-    'providerProfitability',
-    'providerStatus',
-    'publicationStatus',
-    'race',
-    'reasonExited',
-    'reasonNotTested',
-    'recognitionType',
-    'relation',
-    'repeatIdentifier',
-    'reporterDescription',
-    'residencyStatus',
-    'responseIndicator',
-    'responsibility',
-    'restraintEventReason',
-    'resultDatatypeType',
-    'retestIndicator',
-    'schoolCategory',
-    'schoolChoiceImplementStatus',
-    'schoolFoodServiceProgramService',
-    'schoolType',
-    'sectionCharacteristic',
-    'separation',
-    'separationReason',
-    'service',
-    'sex',
-    'specialEducationProgramService',
-    'specialEducationSetting',
-    'staffClassification',
-    'staffIdentificationSystem',
-    'staffLeaveEventCategory',
-    'stateAbbreviation',
-    'studentCharacteristic',
-    'studentIdentificationSystem',
-    'studentParticipationCode',
-    'teachingCredentialBasis',
-    'teachingCredential',
-    'technicalSkillsAssessment',
-    'telephoneNumberType',
-    'term',
-    'titleIPartAParticipant',
-    'titleIPartASchoolDesignation',
-    'tribalAffiliation',
-    'visa',
-    'weapon',
-]
+from edfi_performance_test.tasks.ed_fi_task_set import EdFiTaskSet
 
 
-class _DescriptorPipecleanTask(TaskSet):
-    client = None           # Set during class instantiation
-    token = None            # Set during class instantiation
-    list_endpoint = None    # Set during class instantiation
-    namespace = None        # Set during class instantiation
+class DescriptorPipecleanTestBase(TaskSet):
+    descriptor: str
+    client = None
+    token: str
+    list_endpoint: str
+    namespace: str
 
-    def on_start(self):
-        # Suppress exceptions thrown in the Test Lab environment
-        # when self-signed certificates are used.
-        self.client.verify = False
+    def __init__(self, descriptor, parent, *args, **kwargs):
+        super(DescriptorPipecleanTestBase, self).__init__(parent, *args, **kwargs)
+        descriptor_title = '{}{}'.format(descriptor[0].upper(), descriptor[1:])
+        self.list_endpoint= '{}/{}Descriptors'.format(EdFiAPIClient.API_PREFIX, descriptor)
+        self.namespace = "uri://ed-fi.org/{}Descriptor".format(descriptor_title)
+        self.client = EdFiAPIClient.client
+        self.token = EdFiAPIClient.token
 
     @task
     def run_descriptor_pipeclean_test(self):
@@ -273,25 +114,434 @@ class _DescriptorPipecleanTask(TaskSet):
     def is_invalid_response(response):
         return response is None
 
-
-class AllDescriptorsPipecleanTest(SequentialTaskSet):
+class AbsenceEventCategoryDescriptorPipecleanTest(DescriptorPipecleanTestBase):
     def __init__(self, parent, *args, **kwargs):
-        super(AllDescriptorsPipecleanTest, self).__init__(parent, *args, **kwargs)
-        _client = EdFiAPIClient(self.locust.host)
-        for descriptor in sorted(ALL_DESCRIPTORS):
-            descriptor_title = '{}{}'.format(descriptor[0].upper(), descriptor[1:])
-            self.tasks.append(
-                TaskSetMeta(
-                    "{}PipecleanTest".format(descriptor_title),
-                    (_DescriptorPipecleanTask,),
-                    {
-                        'list_endpoint': '{}/{}Descriptors'.format(_client.API_PREFIX, descriptor),
-                        'namespace': "uri://ed-fi.org/{}Descriptor".format(descriptor_title),
-                        'client': self.client,
-                        'token': _client.token,
-                    }
-                )
-            )
-        # Quit locust after running all descriptors' tests
-        self.tasks.append(EdFiPipecleanTestTerminator)
- """
+        super(AbsenceEventCategoryDescriptorPipecleanTest, self).__init__('absenceEventCategory', parent, *args, **kwargs)
+
+class AcademicHonorCategoryPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(AcademicHonorCategoryPipecleanTest, self).__init__('academicHonorCategory', parent, *args, **kwargs)
+
+class AcademicSubjectPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(AcademicSubjectPipecleanTest, self).__init__('academicSubject', parent, *args, **kwargs)
+
+class AccommodationPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(AccommodationPipecleanTest, self).__init__('accommodation', parent, *args, **kwargs)
+
+class AccountClassificationPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(AccountClassificationPipecleanTest, self).__init__('accountClassification', parent, *args, **kwargs)
+
+class AchievementCategoryPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(AchievementCategoryPipecleanTest, self).__init__('achievementCategory', parent, *args, **kwargs)
+
+class AdditionalCreditTypeyPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(AdditionalCreditTypeyPipecleanTest, self).__init__('additionalCreditType', parent, *args, **kwargs)
+
+class AddressTypePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(AddressTypePipecleanTest, self).__init__('addressType', parent, *args, **kwargs)
+
+class AdministrationEnvironmentPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(AdministrationEnvironmentPipecleanTest, self).__init__('administrationEnvironment', parent, *args, **kwargs)
+
+class AdministrativeFundingControlPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(AdministrativeFundingControlPipecleanTest, self).__init__('administrativeFundingControl', parent, *args, **kwargs)
+
+class AssessmentCategoryPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(AssessmentCategoryPipecleanTest, self).__init__('assessmentCategory', parent, *args, **kwargs)
+
+class AssessmentIdentificationSystemPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(AssessmentIdentificationSystemPipecleanTest, self).__init__('assessmentIdentificationSystem', parent, *args, **kwargs)
+
+class AssessmentItemCategoryPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(AssessmentItemCategoryPipecleanTest, self).__init__('assessmentItemCategory', parent, *args, **kwargs)
+
+class AssessmentItemResultPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(AssessmentItemResultPipecleanTest, self).__init__('assessmentItemResult', parent, *args, **kwargs)
+
+class AssessmentPeriodPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(AssessmentPeriodPipecleanTest, self).__init__('assessmentPeriod', parent, *args, **kwargs)
+
+class AssessmentReportingMethodPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(AssessmentReportingMethodPipecleanTest, self).__init__('assessmentReportingMethod', parent, *args, **kwargs)
+
+class AttemptStatusPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(AttemptStatusPipecleanTest, self).__init__('attemptStatus', parent, *args, **kwargs)
+
+class AttendanceEventCategoryPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(AttendanceEventCategoryPipecleanTest, self).__init__('attendanceEventCategory', parent, *args, **kwargs)
+
+class BehaviorPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(BehaviorPipecleanTest, self).__init__('behavior', parent, *args, **kwargs)
+
+class CalendarEventPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(CalendarEventPipecleanTest, self).__init__('calendarEvent', parent, *args, **kwargs)
+
+class CalendarTypePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(CalendarTypePipecleanTest, self).__init__('calendarType', parent, *args, **kwargs)
+
+class CareerPathwayPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(CareerPathwayPipecleanTest, self).__init__('careerPathway', parent, *args, **kwargs)
+
+class CharterApprovalAgencyTypePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(CharterApprovalAgencyTypePipecleanTest, self).__init__('charterApprovalAgencyType', parent, *args, **kwargs)
+
+class CharterStatusPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(CharterStatusPipecleanTest, self).__init__('charterStatus', parent, *args, **kwargs)
+
+class CitizenshipStatusPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(CitizenshipStatusPipecleanTest, self).__init__('citizenshipStatus', parent, *args, **kwargs)
+
+class ClassroomPositionPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(ClassroomPositionPipecleanTest, self).__init__('classroomPosition', parent, *args, **kwargs)
+
+class CohortScopePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(CohortScopePipecleanTest, self).__init__('cohortScope', parent, *args, **kwargs)
+
+class CohortTypePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(CohortTypePipecleanTest, self).__init__('cohortType', parent, *args, **kwargs)
+
+class CohortYearTypePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(CohortYearTypePipecleanTest, self).__init__('cohortYearType', parent, *args, **kwargs)
+
+class CompetencyLevelPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(CompetencyLevelPipecleanTest, self).__init__('competencyLevel', parent, *args, **kwargs)
+
+class ContactTypePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(ContactTypePipecleanTest, self).__init__('contactType', parent, *args, **kwargs)
+
+class ContentClassPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(ContentClassPipecleanTest, self).__init__('contentClass', parent, *args, **kwargs)
+
+class ContinuationOfServicesReasonPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(ContinuationOfServicesReasonPipecleanTest, self).__init__('continuationOfServicesReason', parent, *args, **kwargs)
+
+class CostRatePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(CostRatePipecleanTest, self).__init__('costRate', parent, *args, **kwargs)
+
+class CountryPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(CountryPipecleanTest, self).__init__('country', parent, *args, **kwargs)
+
+class CourseAttemptResultPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(CourseAttemptResultPipecleanTest, self).__init__('courseAttemptResult', parent, *args, **kwargs)
+
+class CourseDefinedByPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(CourseDefinedByPipecleanTest, self).__init__('courseDefinedBy', parent, *args, **kwargs)
+
+class CourseGPAApplicabilityPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(CourseGPAApplicabilityPipecleanTest, self).__init__('courseGPAApplicability', parent, *args, **kwargs)
+
+class CourseIdentificationSystemPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(CourseIdentificationSystemPipecleanTest, self).__init__('courseIdentificationSystem', parent, *args, **kwargs)
+
+class CourseLevelCharacteristicPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(CourseLevelCharacteristicPipecleanTest, self).__init__('courseLevelCharacteristic', parent, *args, **kwargs)
+
+class CourseRepeatCodePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(CourseRepeatCodePipecleanTest, self).__init__('courseRepeatCode', parent, *args, **kwargs)
+
+class CredentialFieldPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(CredentialFieldPipecleanTest, self).__init__('credentialField', parent, *args, **kwargs)
+
+class CredentialTypePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(CredentialTypePipecleanTest, self).__init__('credentialType', parent, *args, **kwargs)
+
+class CreditTypePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(CreditTypePipecleanTest, self).__init__('creditType', parent, *args, **kwargs)
+
+class CurriculumUsedPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(CurriculumUsedPipecleanTest, self).__init__('curriculumUsed', parent, *args, **kwargs)
+
+class DeliveryMethodPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(DeliveryMethodPipecleanTest, self).__init__('deliveryMethod', parent, *args, **kwargs)
+
+class DiagnosisPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(DiagnosisPipecleanTest, self).__init__('diagnosis', parent, *args, **kwargs)
+
+class DiplomaLevelPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(DiplomaLevelPipecleanTest, self).__init__('diplomaLevel', parent, *args, **kwargs)
+
+class DiplomaTypePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(DiplomaTypePipecleanTest, self).__init__('diplomaType', parent, *args, **kwargs)
+
+class DisabilityPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(DisabilityPipecleanTest, self).__init__('disability', parent, *args, **kwargs)
+
+class DisabilityDesignationPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(DisabilityDesignationPipecleanTest, self).__init__('disabilityDesignation', parent, *args, **kwargs)
+
+class DisabilityDeterminationSourceTypePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(DisabilityDeterminationSourceTypePipecleanTest, self).__init__('disabilityDeterminationSourceType', parent, *args, **kwargs)
+
+class DisciplineActionLengthDifferenceReasonPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(DisciplineActionLengthDifferenceReasonPipecleanTest, self).__init__('disciplineActionLengthDifferenceReason', parent, *args, **kwargs)
+
+class DisciplinePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(DisciplinePipecleanTest, self).__init__('discipline', parent, *args, **kwargs)
+
+class EducationalEnvironmentPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(EducationalEnvironmentPipecleanTest, self).__init__('educationalEnvironment', parent, *args, **kwargs)
+
+class EducationOrganizationCategoryPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(EducationOrganizationCategoryPipecleanTest, self).__init__('educationOrganizationCategory', parent, *args, **kwargs)
+
+class EducationOrganizationIdentificationSystemPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(EducationOrganizationIdentificationSystemPipecleanTest, self).__init__('educationOrganizationIdentificationSystem', parent, *args, **kwargs)
+
+class EducationPlanPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(EducationPlanPipecleanTest, self).__init__('educationPlan', parent, *args, **kwargs)
+
+class ElectronicMailTypePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(ElectronicMailTypePipecleanTest, self).__init__('electronicMailType', parent, *args, **kwargs)
+
+class EmploymentStatusPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(EmploymentStatusPipecleanTest, self).__init__('employmentStatus', parent, *args, **kwargs)
+
+class EntryGradeLevelReasonPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(EntryGradeLevelReasonPipecleanTest, self).__init__('entryGradeLevelReason', parent, *args, **kwargs)
+
+class EntryTypePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(EntryTypePipecleanTest, self).__init__('entryType', parent, *args, **kwargs)
+
+class EventCircumstancePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(EventCircumstancePipecleanTest, self).__init__('eventCircumstance', parent, *args, **kwargs)
+
+class ExitWithdrawTypePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(ExitWithdrawTypePipecleanTest, self).__init__('exitWithdrawType', parent, *args, **kwargs)
+
+class GradebookEntryTypePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(GradebookEntryTypePipecleanTest, self).__init__('gradebookEntryType', parent, *args, **kwargs)
+
+class GradeLevelPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(GradeLevelPipecleanTest, self).__init__('gradeLevel', parent, *args, **kwargs)
+
+class GradeTypePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(GradeTypePipecleanTest, self).__init__('gradeType', parent, *args, **kwargs)
+
+class GradingPeriodPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(GradingPeriodPipecleanTest, self).__init__('gradingPeriod', parent, *args, **kwargs)
+
+class GraduationPlanTypePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(GraduationPlanTypePipecleanTest, self).__init__('graduationPlanType', parent, *args, **kwargs)
+
+class GunFreeSchoolsActReportingStatusPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(GunFreeSchoolsActReportingStatusPipecleanTest, self).__init__('gunFreeSchoolsActReportingStatus', parent, *args, **kwargs)
+
+class HomelessPrimaryNighttimeResidencePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(HomelessPrimaryNighttimeResidencePipecleanTest, self).__init__('homelessPrimaryNighttimeResidence', parent, *args, **kwargs)
+
+class HomelessProgramServicePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(HomelessProgramServicePipecleanTest, self).__init__('homelessProgramService', parent, *args, **kwargs)
+
+class IdentificationDocumentUsePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(IdentificationDocumentUsePipecleanTest, self).__init__('identificationDocumentUse', parent, *args, **kwargs)
+
+class IncidentLocationPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(IncidentLocationPipecleanTest, self).__init__('incidentLocation', parent, *args, **kwargs)
+
+class InstitutionTelephoneNumberTypePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(InstitutionTelephoneNumberTypePipecleanTest, self).__init__('institutionTelephoneNumberType', parent, *args, **kwargs)
+
+class InstitutionTelephoneNumberTypePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(InstitutionTelephoneNumberTypePipecleanTest, self).__init__('institutionTelephoneNumberType', parent, *args, **kwargs)
+
+class InteractivityStylePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(InteractivityStylePipecleanTest, self).__init__('interactivityStyle', parent, *args, **kwargs)
+
+class InternetAccessPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(InternetAccessPipecleanTest, self).__init__('internetAccess', parent, *args, **kwargs)
+
+class InterventionClassPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(InterventionClassPipecleanTest, self).__init__('interventionClass', parent, *args, **kwargs)
+
+class InterventionEffectivenessRatingPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(InterventionEffectivenessRatingPipecleanTest, self).__init__('interventionEffectivenessRating', parent, *args, **kwargs)
+
+class LanguagePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(LanguagePipecleanTest, self).__init__('language', parent, *args, **kwargs)
+
+class LanguageInstructionProgramServicePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(LanguageInstructionProgramServicePipecleanTest, self).__init__('languageInstructionProgramService', parent, *args, **kwargs)
+
+class LanguageUsePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(LanguageUsePipecleanTest, self).__init__('languageUse', parent, *args, **kwargs)
+
+class LearningStandardCategoryPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(LearningStandardCategoryPipecleanTest, self).__init__('learningStandardCategory', parent, *args, **kwargs)
+
+class LevelOfEducationPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(LevelOfEducationPipecleanTest, self).__init__('levelOfEducation', parent, *args, **kwargs)
+
+class LicenseStatusPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(LicenseStatusPipecleanTest, self).__init__('licenseStatus', parent, *args, **kwargs)
+
+class LicenseTypePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(LicenseTypePipecleanTest, self).__init__('licenseType', parent, *args, **kwargs)
+
+class LimitedEnglishProficiencyPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(LimitedEnglishProficiencyPipecleanTest, self).__init__('limitedEnglishProficiency', parent, *args, **kwargs)
+
+class LocalePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(LocalePipecleanTest, self).__init__('locale', parent, *args, **kwargs)
+
+class LocalEducationAgencyCategoryPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(LocalEducationAgencyCategoryPipecleanTest, self).__init__('localEducationAgencyCategory', parent, *args, **kwargs)
+
+class MagnetSpecialProgramEmphasisSchoolPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(MagnetSpecialProgramEmphasisSchoolPipecleanTest, self).__init__('magnetSpecialProgramEmphasisSchool', parent, *args, **kwargs)
+
+class MediumOfInstructionPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(MediumOfInstructionPipecleanTest, self).__init__('mediumOfInstruction', parent, *args, **kwargs)
+
+class MethodCreditEarnedPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(MethodCreditEarnedPipecleanTest, self).__init__('methodCreditEarned', parent, *args, **kwargs)
+
+class MigrantEducationProgramServicePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(MigrantEducationProgramServicePipecleanTest, self).__init__('migrantEducationProgramService', parent, *args, **kwargs)
+
+class MonitoredPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(MonitoredPipecleanTest, self).__init__('monitored', parent, *args, **kwargs)
+
+class NeglectedOrDelinquentProgramPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(NeglectedOrDelinquentProgramPipecleanTest, self).__init__('neglectedOrDelinquentProgram', parent, *args, **kwargs)
+
+class NetworkPurposePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(NetworkPurposePipecleanTest, self).__init__('networkPurpose', parent, *args, **kwargs)
+
+class OldEthnicityPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(OldEthnicityPipecleanTest, self).__init__('oldEthnicity', parent, *args, **kwargs)
+
+class OperationalStatusPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(OperationalStatusPipecleanTest, self).__init__('operationalStatus', parent, *args, **kwargs)
+
+class OtherNameTypePipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(OtherNameTypePipecleanTest, self).__init__('otherNameType', parent, *args, **kwargs)
+
+class ParticipationPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(ParticipationPipecleanTest, self).__init__('participation', parent, *args, **kwargs)
+
+class PerformanceBaseConversionPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(PerformanceBaseConversionPipecleanTest, self).__init__('performanceBaseConversion', parent, *args, **kwargs)
+
+class PerformanceLevelPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(PerformanceLevelPipecleanTest, self).__init__('performanceLevel', parent, *args, **kwargs)
+
+class PersonalInformationVerificationPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(PersonalInformationVerificationPipecleanTest, self).__init__('personalInformationVerification', parent, *args, **kwargs)
+
+class PopulationServedPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(PopulationServedPipecleanTest, self).__init__('populationServed', parent, *args, **kwargs)
+
+class PostingResultPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(PostingResultPipecleanTest, self).__init__('postingResult', parent, *args, **kwargs)
+
+class PostSecondaryEventCategoryPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(PostSecondaryEventCategoryPipecleanTest, self).__init__('postSecondaryEventCategory', parent, *args, **kwargs)
+
+class PostSecondaryInstitutionLevelPipecleanTest(DescriptorPipecleanTestBase):
+    def __init__(self, parent, *args, **kwargs):
+        super(PostSecondaryInstitutionLevelPipecleanTest, self).__init__('postSecondaryInstitutionLevel', parent, *args, **kwargs)

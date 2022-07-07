@@ -3,6 +3,8 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
+from typing import Dict
+
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 from edfi_performance_test.api.client.cohort import CohortClient
 from edfi_performance_test.api.client.school import SchoolClient
@@ -18,7 +20,7 @@ class StaffClient(EdFiAPIClient):
 
     _staff_id = None
 
-    dependencies = {
+    dependencies: Dict = {
         'edfi_performance_test.api.client.staff.StaffEducationOrganizationAssignmentAssociationClient': {
             'client_name': 'assoc_client',
         },
@@ -83,7 +85,7 @@ class StaffAbsenceEventClient(EdFiAPIClient):
 class StaffCohortAssociationClient(EdFiAPIClient):
     endpoint = 'staffCohortAssociations'
 
-    dependencies = {
+    dependencies: Dict = {
         CohortClient: {},
         StaffClient: {}
     }
@@ -128,7 +130,7 @@ class StaffProgramAssociationClient(EdFiAPIClient):
 class StaffSchoolAssociationClient(EdFiAPIClient):
     endpoint = 'staffSchoolAssociations'
 
-    dependencies = {
+    dependencies: Dict = {
         StaffClient: {}
     }
 
@@ -149,7 +151,7 @@ class StaffSchoolAssociationClient(EdFiAPIClient):
 class StaffSectionAssociationClient(EdFiAPIClient):
     endpoint = 'staffSectionAssociations'
 
-    dependencies = {
+    dependencies: Dict = {
         'edfi_performance_test.api.client.section.SectionClient': {},
         StaffClient: {}
     }

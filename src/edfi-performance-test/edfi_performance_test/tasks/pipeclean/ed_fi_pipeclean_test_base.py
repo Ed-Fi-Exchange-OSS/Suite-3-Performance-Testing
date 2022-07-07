@@ -3,7 +3,7 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-from typing import Dict
+from typing import Dict, Any
 
 import traceback
 from greenlet import GreenletExit
@@ -55,7 +55,7 @@ class EdFiPipecleanTestBase(EdFiTaskSet):
     _resource_id: str
 
     update_attribute_name: str
-    update_attribute_value: int
+    update_attribute_value: Any
 
     @task
     def run_pipeclean_scenario(self):

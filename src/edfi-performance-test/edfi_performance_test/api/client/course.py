@@ -3,6 +3,7 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
+from typing import Dict
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 from edfi_performance_test.api.client.school import SchoolClient
 
@@ -14,7 +15,7 @@ class CourseClient(EdFiAPIClient):
 class CourseTranscriptClient(EdFiAPIClient):
     endpoint = 'courseTranscripts'
 
-    dependencies = {
+    dependencies: Dict = {
         'edfi_performance_test.api.client.student.StudentAcademicRecordClient': {
             'client_name': 'record_client',
         }

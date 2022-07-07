@@ -17,6 +17,7 @@ from locust import HttpUser
 
 from edfi_performance_test.helpers.config import get_config_value
 from edfi_performance_test.tasks.pipeclean.composite import EdFiCompositePipecleanTestBase
+from edfi_performance_test.tasks.pipeclean.descriptors import DescriptorPipecleanTestBase
 from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
     EdFiPipecleanTestBase,
     EdFiPipecleanTaskSequence,
@@ -29,6 +30,7 @@ class EdFiPipecleanTestMixin(object):
 
 
 class DummyUser(HttpUser):
+
     tasks_submodules = [
         name
         for _, name, _ in pkgutil.iter_modules(
@@ -42,21 +44,20 @@ class DummyUser(HttpUser):
 
     # Collect *PipecleanTest classes and append them to
     # EdFiPipecleanTaskSequence.tasks
-    subclasses = EdFiPipecleanTestBase.__subclasses__()
-    subclasses += EdFiCompositePipecleanTestBase.__subclasses__()
-    subclasses.remove(EdFiCompositePipecleanTestBase)
-    valid_names = set()
-    # valid_names.add(AllDescriptorsPipecleanTest.__name__)
-    for subclass in subclasses:
-        name = subclass.__name__
-        valid_names.add(name)
+    for subclass in EdFiPipecleanTestBase.__subclasses__():
+        if(subclass != EdFiCompositePipecleanTestBase):
+            EdFiPipecleanTaskSequence.tasks.append(subclass)
+
+    # Add composite pipeclean tests
+    for subclass in EdFiCompositePipecleanTestBase.__subclasses__():
         EdFiPipecleanTaskSequence.tasks.append(subclass)
-    # Add descriptor pipeclean tests after resource pipeclean tests
-    # if it's been named or we're running everything
-    # if len(args) == 0 or AllDescriptorsPipecleanTest.__name__ in args:
-    #   EdFiPipecleanTaskSequence.tasks.append(AllDescriptorsPipecleanTest)
+
+    # Add descriptor pipeclean tests
+    for descriptorSubclass in DescriptorPipecleanTestBase.__subclasses__():
+        EdFiPipecleanTaskSequence.tasks.append(descriptorSubclass)
 
     EdFiPipecleanTaskSequence.tasks.append(EdFiPipecleanTestTerminator)
 
     #assign all pipeclean tasks to HttpUser
     tasks = {EdFiPipecleanTaskSequence}
+

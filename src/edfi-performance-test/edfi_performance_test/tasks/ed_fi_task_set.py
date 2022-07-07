@@ -44,7 +44,7 @@ class EdFiTaskSet(TaskSet):
     """
     client_class: Callable = None
 
-    _api_client: EdFiAPIClient = None
+    _api_client: EdFiAPIClient
 
     def __init__(self, parent, *args, **kwargs):
         if type(self) is EdFiTaskSet:

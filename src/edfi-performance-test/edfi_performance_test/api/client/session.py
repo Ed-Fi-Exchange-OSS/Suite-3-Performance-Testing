@@ -3,6 +3,7 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
+from typing import Dict
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 from edfi_performance_test.api.client.grading_period import GradingPeriodClient
 from edfi_performance_test.api.client.school import SchoolClient
@@ -12,7 +13,7 @@ from edfi_performance_test.factories.descriptors.utils import build_descriptor
 class SessionClient(EdFiAPIClient):
     endpoint = 'sessions'
 
-    dependencies = {
+    dependencies: Dict = {
         GradingPeriodClient: {}
     }
 
