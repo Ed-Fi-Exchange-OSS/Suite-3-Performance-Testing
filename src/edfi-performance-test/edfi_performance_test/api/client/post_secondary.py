@@ -8,16 +8,14 @@ from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 
 
 class PostSecondaryInstitutionClient(EdFiAPIClient):
-    endpoint = 'postSecondaryInstitutions'
+    endpoint = "postSecondaryInstitutions"
 
 
 class PostSecondaryEventClient(EdFiAPIClient):
-    endpoint = 'postSecondaryEvents'
+    endpoint = "postSecondaryEvents"
 
     dependencies = {
-        PostSecondaryInstitutionClient: {
-            'client_name': 'institution_client'
-        }
+        PostSecondaryInstitutionClient: {"client_name": "institution_client"}
     }
 
     def create_with_dependencies(self, **kwargs):
@@ -26,7 +24,10 @@ class PostSecondaryEventClient(EdFiAPIClient):
 
         return self.create_using_dependencies(
             institution_reference,
-            postSecondaryInstitutionReference__postSecondaryInstitutionId=
-            institution_reference['attributes']['postSecondaryInstitutionId'],
+            postSecondaryInstitutionReference__postSecondaryInstitutionId=institution_reference[
+                "attributes"
+            ][
+                "postSecondaryInstitutionId"
+            ],
             **kwargs
         )

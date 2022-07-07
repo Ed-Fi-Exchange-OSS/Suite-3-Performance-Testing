@@ -7,15 +7,15 @@ from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 
 
 class InterventionPrescriptionClient(EdFiAPIClient):
-    endpoint = 'interventionPrescriptions'
+    endpoint = "interventionPrescriptions"
 
 
 class InterventionClient(EdFiAPIClient):
-    endpoint = 'interventions'
+    endpoint = "interventions"
 
     dependencies = {
         InterventionPrescriptionClient: {
-            'client_name': 'prescription_client',
+            "client_name": "prescription_client",
         }
     }
 
@@ -26,17 +26,20 @@ class InterventionClient(EdFiAPIClient):
         # Create intervention
         return self.create_using_dependencies(
             rx_reference,
-            interventionPrescriptions__0__interventionPrescriptionReference__interventionPrescriptionIdentificationCode=
-            rx_reference['attributes']['interventionPrescriptionIdentificationCode'],
+            interventionPrescriptions__0__interventionPrescriptionReference__interventionPrescriptionIdentificationCode=rx_reference[
+                "attributes"
+            ][
+                "interventionPrescriptionIdentificationCode"
+            ],
         )
 
 
 class InterventionStudyClient(EdFiAPIClient):
-    endpoint = 'interventionStudies'
+    endpoint = "interventionStudies"
 
     dependencies = {
         InterventionPrescriptionClient: {
-            'client_name': 'prescription_client',
+            "client_name": "prescription_client",
         }
     }
 
@@ -47,6 +50,9 @@ class InterventionStudyClient(EdFiAPIClient):
         # Create intervention
         return self.create_using_dependencies(
             rx_reference,
-            interventionPrescriptionReference__interventionPrescriptionIdentificationCode=
-            rx_reference['attributes']['interventionPrescriptionIdentificationCode'],
+            interventionPrescriptionReference__interventionPrescriptionIdentificationCode=rx_reference[
+                "attributes"
+            ][
+                "interventionPrescriptionIdentificationCode"
+            ],
         )
