@@ -10,6 +10,7 @@ from edfi_performance_test.factories.resources.api_factory import APIFactory
 from edfi_performance_test.factories.utils import RandomSuffixAttribute
 from edfi_performance_test.factories.descriptors.utils import build_descriptor
 
+
 class CohortFactory(APIFactory):
     cohortIdentifier = RandomSuffixAttribute("1")
     educationOrganizationReference = factory.Dict({

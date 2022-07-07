@@ -7,12 +7,12 @@ import logging
 import time
 import gevent
 
-from locust.debug import run_single_user
+# from locust.debug import run_single_user # for running tests in a debugger
 from locust.env import Environment
 from locust.stats import stats_printer, stats_history
 
 from edfi_performance_test.helpers.main_arguments import MainArguments
-from edfi_performance_test.helpers.config import get_config_value, set_config_values
+from edfi_performance_test.helpers.config import set_config_values
 from edfi_performance_test.tasks.pipeclean.pipeclean_tests import DummyUser
 
 logger = logging.getLogger(__name__)
@@ -27,8 +27,7 @@ async def run(args: MainArguments) -> None:
         set_config_values(args)
 
         # setup Environment and Runner
-        # env = Environment(user_classes=[HelloWorldUser], host=get_config_value("baseUrl"))
-        env = Environment(user_classes=[DummyUser], host=get_config_value("baseUrl"))
+        env = Environment(user_classes=[DummyUser], host=args.baseUrl)
         env.create_local_runner()
 
         # start a WebUI instance
@@ -45,10 +44,10 @@ async def run(args: MainArguments) -> None:
             raise RuntimeError("Locust runner not configured correctly")
         runner = env.runner
 
-        runner.start(1, spawn_rate=10)  # increase this
+        runner.start(args.clientCount, spawn_rate=args.spawnRate)
 
         # in 60 seconds stop the runner
-        gevent.spawn_later(60, lambda: runner.quit())
+        gevent.spawn_later(args.runTimeInMinutes*60, lambda: runner.quit())  # stop the runner
 
         # wait for the greenlets
         env.runner.greenlet.join()
@@ -57,7 +56,8 @@ async def run(args: MainArguments) -> None:
         if env.web_ui:
             env.web_ui.stop()
 
-        run_single_user(DummyUser)
+        # for running tests in a debugger
+        # run_single_user(DummyUser)
 
         logger.info(
             f"Finished running performance tests in {time.time() - start} seconds."

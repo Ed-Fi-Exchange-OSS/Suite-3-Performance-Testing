@@ -5,7 +5,7 @@
 
 from typing import Dict
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
-from  edfi_performance_test.api.client.class_period import ClassPeriodClient
+from edfi_performance_test.api.client.class_period import ClassPeriodClient
 
 
 class BellScheduleClient(EdFiAPIClient):

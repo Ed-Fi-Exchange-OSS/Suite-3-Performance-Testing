@@ -42,7 +42,7 @@ class EdFiTaskSet(TaskSet):
             self.student_client.delete(s_id)
     ```
     """
-    client_class: Callable = None
+    client_class: Callable = type(None)
 
     _api_client: EdFiAPIClient
 
@@ -111,7 +111,7 @@ class EdFiTaskSet(TaskSet):
         return client_instance.delete_with_dependencies(reference)
 
     def generate_client_class(self):
-        if self.client_class is not None:
+        if isinstance(self.client_class, type(None)):
             return
         if 'pipeclean' in self.__class__.__module__:
             class_name = self.__class__.__name__.replace('PipecleanTest', 'Client')

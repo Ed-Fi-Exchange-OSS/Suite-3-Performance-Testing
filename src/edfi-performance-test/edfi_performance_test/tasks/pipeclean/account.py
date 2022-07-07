@@ -7,6 +7,7 @@ from edfi_performance_test.factories.descriptors.utils import build_descriptor
 from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import EdFiPipecleanTestBase
 from edfi_performance_test.factories.utils import current_year
 
+
 class AccountPipecleanTest(EdFiPipecleanTestBase):
     update_attribute_name = 'fiscalYear'
     update_attribute_value = current_year()

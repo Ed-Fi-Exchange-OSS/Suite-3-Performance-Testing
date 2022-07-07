@@ -11,7 +11,7 @@ from edfi_performance_test.api.client.section import SectionClient
 class GradebookEntryClient(EdFiAPIClient):
     endpoint = 'gradebookEntries'
 
-    dependencies: Dict  = {
+    dependencies: Dict = {
         SectionClient: {},
     }
 

@@ -142,7 +142,6 @@ class EdFiPipecleanTaskSequence(SequentialTaskSet):
         EdFiAPIClient.token = None
 
 
-
 class EdFiPipecleanTestTerminator(TaskSet):
     """
     Append this to the end of a sequence of tasks to terminate the test run

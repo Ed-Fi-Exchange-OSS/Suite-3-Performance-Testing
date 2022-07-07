@@ -6,7 +6,7 @@
 import traceback
 from greenlet import GreenletExit
 from typing import List
-from locust import TaskSet, task
+from locust import task
 from locust.exception import StopUser, InterruptTaskSet
 
 from edfi_performance_test.api.client.ed_fi_api_client import import_from_dotted_path

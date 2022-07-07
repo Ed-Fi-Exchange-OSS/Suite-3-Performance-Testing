@@ -15,7 +15,6 @@ import edfi_performance_test.tasks.pipeclean
 
 from locust import HttpUser
 
-from edfi_performance_test.helpers.config import get_config_value
 from edfi_performance_test.tasks.pipeclean.composite import EdFiCompositePipecleanTestBase
 from edfi_performance_test.tasks.pipeclean.descriptors import DescriptorPipecleanTestBase
 from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
@@ -24,6 +23,7 @@ from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
     EdFiPipecleanTestTerminator
 )
 
+
 class EdFiPipecleanTestMixin(object):
     min_wait = 2000
     max_wait = 9000
@@ -31,33 +31,34 @@ class EdFiPipecleanTestMixin(object):
 
 class DummyUser(HttpUser):
 
-    tasks_submodules = [
-        name
-        for _, name, _ in pkgutil.iter_modules(
-            [os.path.dirname(edfi_performance_test.tasks.pipeclean.__file__)],
-            prefix="edfi_performance_test.tasks.pipeclean.",
-        )
-    ]
+    def on_start(self):
+        tasks_submodules = [
+            name
+            for _, name, _ in pkgutil.iter_modules(
+                [os.path.dirname(edfi_performance_test.tasks.pipeclean.__file__)],
+                prefix="edfi_performance_test.tasks.pipeclean.",
+             )
+        ]
 
-    for mod_name in tasks_submodules:
-        importlib.import_module(mod_name)
+        for mod_name in tasks_submodules:
+            importlib.import_module(mod_name)
 
-    # Collect *PipecleanTest classes and append them to
-    # EdFiPipecleanTaskSequence.tasks
-    for subclass in EdFiPipecleanTestBase.__subclasses__():
-        if(subclass != EdFiCompositePipecleanTestBase):
+        # Collect *PipecleanTest classes and append them to
+        # EdFiPipecleanTaskSequence.tasks
+        for subclass in EdFiPipecleanTestBase.__subclasses__():
+            if(subclass != EdFiCompositePipecleanTestBase):
+                EdFiPipecleanTaskSequence.tasks.append(subclass)
+
+        # Add composite pipeclean tests
+        for subclass in EdFiCompositePipecleanTestBase.__subclasses__():
             EdFiPipecleanTaskSequence.tasks.append(subclass)
 
-    # Add composite pipeclean tests
-    for subclass in EdFiCompositePipecleanTestBase.__subclasses__():
-        EdFiPipecleanTaskSequence.tasks.append(subclass)
+        # Add descriptor pipeclean tests
+        for descriptorSubclass in DescriptorPipecleanTestBase.__subclasses__():
+            EdFiPipecleanTaskSequence.tasks.append(descriptorSubclass)
 
-    # Add descriptor pipeclean tests
-    for descriptorSubclass in DescriptorPipecleanTestBase.__subclasses__():
-        EdFiPipecleanTaskSequence.tasks.append(descriptorSubclass)
+        EdFiPipecleanTaskSequence.tasks.append(EdFiPipecleanTestTerminator)
 
-    EdFiPipecleanTaskSequence.tasks.append(EdFiPipecleanTestTerminator)
-
-    #assign all pipeclean tasks to HttpUser
-    tasks = {EdFiPipecleanTaskSequence}
-
+        # assign all pipeclean tasks to HttpUser
+        # tasks = {EdFiPipecleanTaskSequence}
+        self.tasks.append(EdFiPipecleanTaskSequence)

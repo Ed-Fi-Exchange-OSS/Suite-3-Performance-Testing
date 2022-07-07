@@ -51,10 +51,10 @@ class DisciplineActionClient(EdFiAPIClient):
         return self.create_using_dependencies(
             assoc_reference,
             studentReference__studentUniqueId=assoc_reference['attributes']['studentReference']['studentUniqueId'],
-            studentDisciplineIncidentAssociations__0__studentDisciplineIncidentAssociationReference__incidentIdentifier
-            =assoc_reference['attributes']['disciplineIncidentReference']['incidentIdentifier'],
-            studentDisciplineIncidentAssociations__0__studentDisciplineIncidentAssociationReference__studentUniqueId
-            =assoc_reference['attributes']['studentReference']['studentUniqueId'],
+            studentDisciplineIncidentAssociations__0__studentDisciplineIncidentAssociationReference__incidentIdentifier=
+            assoc_reference['attributes']['disciplineIncidentReference']['incidentIdentifier'],
+            studentDisciplineIncidentAssociations__0__studentDisciplineIncidentAssociationReference__studentUniqueId=
+            assoc_reference['attributes']['studentReference']['studentUniqueId'],
             studentDisciplineIncidentAssociations__0__studentDisciplineIncidentAssociationReference__schoolId=school_id,
             **kwargs
         )

@@ -53,9 +53,6 @@ async def main() -> None:
     # Important that this comes _after_ the logging configuration
     error_tracker = ErrorHandler()
 
-    print(configuration.baseUrl)
-    print(configuration.failDeliberately)
-    print(configuration.ignoreCertificateErrors)
     await run(configuration)
 
     if error_tracker.fired:

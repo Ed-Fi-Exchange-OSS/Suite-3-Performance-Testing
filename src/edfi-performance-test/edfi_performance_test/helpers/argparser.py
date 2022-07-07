@@ -70,6 +70,30 @@ def parse_main_arguments() -> MainArguments:
         env_var="PERF_FAIL_DELIBERATELY",
     )
     parser.add(  # type: ignore
+        "-c",
+        "--clientCount",
+        help="Total number of users spawned by locust tests",
+        type=int,
+        default=1000,  # default false
+        env_var="CLIENT_COUNT",
+    )
+    parser.add(  # type: ignore
+        "-r",
+        "--spawnRate",
+        help="Number of users spawned by locust tests per second",
+        type=int,
+        default=25,  # default false
+        env_var="SPAWN_RATE",
+    )
+    parser.add(  # type: ignore
+        "-t",
+        "--runTimeInMinutes",
+        help="Test Run Time",
+        type=int,
+        default=30,  # default false
+        env_var="RUN_TIME_IN_MINUTES",
+    )
+    parser.add(  # type: ignore
         "-o",
         "--output",
         help="Directory for writing results",
@@ -95,6 +119,9 @@ def parse_main_arguments() -> MainArguments:
         args_parsed.ignoreCertificateErrors,
         args_parsed.deleteResources,
         args_parsed.failDeliberately,
+        args_parsed.clientCount,
+        args_parsed.spawnRate,
+        args_parsed.runTimeInMinutes,
         args_parsed.output,
         args_parsed.logLevel,
     )
