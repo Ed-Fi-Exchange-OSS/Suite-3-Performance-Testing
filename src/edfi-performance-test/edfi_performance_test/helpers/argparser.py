@@ -7,7 +7,11 @@ from configargparse import ArgParser  # type: ignore
 
 from edfi_performance_test.helpers.log_level import LogLevel
 from edfi_performance_test.helpers.main_arguments import MainArguments
-from edfi_performance_test.helpers.config import DEFAULT_API_PREFIX, DEFAULT_OAUTH_ENDPOINT
+from edfi_performance_test.helpers.config import (
+    DEFAULT_API_PREFIX,
+    DEFAULT_OAUTH_ENDPOINT,
+)
+
 
 def parse_main_arguments() -> MainArguments:
     """
@@ -123,7 +127,7 @@ def parse_main_arguments() -> MainArguments:
         help="Override for the API prefix in the URL",
         type=str,
         env_var="PERF_API_PREFIX",
-        default=DEFAULT_API_PREFIX
+        default=DEFAULT_API_PREFIX,
     )
     parser.add(  # type: ignore
         "-oe",
@@ -131,7 +135,7 @@ def parse_main_arguments() -> MainArguments:
         help="Override for the OAuth endpoint in the URL",
         type=str,
         env_var="PERF_API_OAUTH_ENDPOINT",
-        default=DEFAULT_OAUTH_ENDPOINT
+        default=DEFAULT_OAUTH_ENDPOINT,
     )
     args_parsed = parser.parse_args()
 
