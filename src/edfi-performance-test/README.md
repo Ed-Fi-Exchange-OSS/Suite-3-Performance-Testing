@@ -34,6 +34,9 @@ poetry run python edfi_performance_test -b "https://localhost:54746" -k "testkey
 | `-i` or `--ignoreCertificateErrors`  | no (default: false)                  | Ignore certificate errors                                                                     |
 | `-d` or `--deleteResources`          | no (default: true)                   | Delete resources during test run                                                              |
 | `-f` or `--failDeliberately`         | no (default: true)                   | Deliberately introduce requests that result in failure                                        |
+| `-c` or `--clientCount`              | no (default: 1000)                   | Total number of users spawned by locust tests                                                 |
+| `-r` or `--spawnRate`                | no (default: 25)                     | Number of users spawned by locust tests per second                                            |
+| `-t` or `--runTimeInMinutes`         | no (default: 30)                     | Test Run Time                                                                                 |
 | `-o` or `--output`                   | no (default: out)                    | Directory for writing results                                                                 |
 | `-l` or `--logLevel`                 | no (default: INFO)                   | Override the console output log level: VERBOSE, DEBUG, INFO, WARN, ERROR                      |
 

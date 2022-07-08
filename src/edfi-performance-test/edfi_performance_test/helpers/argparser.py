@@ -52,22 +52,46 @@ def parse_main_arguments() -> MainArguments:
         "-i",
         "--ignoreCertificateErrors",
         help="Certificate errors are ignored",
-        action='store_true',  # default false
+        action="store_true",  # default false
         env_var="IGNORE_TLS_CERTIFICATE",
     )
     parser.add(  # type: ignore
         "-d",
         "--deleteResources",
         help="Delete resources during test run",
-        action='store_true',  # default false
+        action="store_true",  # default false
         env_var="PERF_DELETE_RESOURCES",
     )
     parser.add(  # type: ignore
         "-f",
         "--failDeliberately",
         help="Deliberately introduce requests that result in failure",
-        action='store_true',  # default false
+        action="store_true",  # default false
         env_var="PERF_FAIL_DELIBERATELY",
+    )
+    parser.add(  # type: ignore
+        "-c",
+        "--clientCount",
+        help="Total number of users spawned by locust tests",
+        type=int,
+        default=1000,  # default false
+        env_var="CLIENT_COUNT",
+    )
+    parser.add(  # type: ignore
+        "-r",
+        "--spawnRate",
+        help="Number of users spawned by locust tests per second",
+        type=int,
+        default=25,  # default false
+        env_var="SPAWN_RATE",
+    )
+    parser.add(  # type: ignore
+        "-t",
+        "--runTimeInMinutes",
+        help="Test Run Time",
+        type=int,
+        default=30,  # default false
+        env_var="RUN_TIME_IN_MINUTES",
     )
     parser.add(  # type: ignore
         "-o",
@@ -95,6 +119,9 @@ def parse_main_arguments() -> MainArguments:
         args_parsed.ignoreCertificateErrors,
         args_parsed.deleteResources,
         args_parsed.failDeliberately,
+        args_parsed.clientCount,
+        args_parsed.spawnRate,
+        args_parsed.runTimeInMinutes,
         args_parsed.output,
         args_parsed.logLevel,
     )

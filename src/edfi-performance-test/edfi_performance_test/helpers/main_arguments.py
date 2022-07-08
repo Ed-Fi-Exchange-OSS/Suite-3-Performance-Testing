@@ -20,5 +20,8 @@ class MainArguments:
     ignoreCertificateErrors: bool
     deleteResources: bool
     failDeliberately: bool
+    clientCount: int
+    spawnRate: int
+    runTimeInMinutes: int
     output: str
     log_level: LogLevel = LogLevel.INFO

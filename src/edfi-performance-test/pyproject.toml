@@ -12,6 +12,8 @@ urllib3 = "^1.26.8"
 pandas = "^1.4.1"
 errorhandler = "^2.0.1"
 python-dotenv = "^0.20.0"
+locust = "^2.9.0"
+factory-boy = "^3.2.1"
 
 [tool.poetry.dev-dependencies]
 flake8 = "^4.0.1"
@@ -23,6 +25,7 @@ black = "^22.1.0"
 pytest-mock = "^3.7.0"
 pyfakefs = "^4.5.5"
 pook = "^1.0.2"
+types-urllib3 = "^1.26.15"
 
 
 [build-system]
