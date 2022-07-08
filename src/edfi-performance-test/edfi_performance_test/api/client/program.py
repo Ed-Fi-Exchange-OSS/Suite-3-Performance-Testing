@@ -7,7 +7,7 @@ from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 
 
 class ProgramClient(EdFiAPIClient):
-    endpoint = 'programs'
+    endpoint = "programs"
 
     _program_name = None
 
@@ -15,5 +15,7 @@ class ProgramClient(EdFiAPIClient):
     def shared_program_name(cls):
         if cls._program_name is not None:
             return cls._program_name
-        cls._program_name = cls.create_shared_resource('programName', programName='Bilingual')
+        cls._program_name = cls.create_shared_resource(
+            "programName", programName="Bilingual"
+        )
         return cls._program_name

@@ -9,9 +9,9 @@ from edfi_performance_test.api.client.grading_period import GradingPeriodClient
 
 
 class ReportCardClient(EdFiAPIClient):
-    endpoint = 'reportCards'
+    endpoint = "reportCards"
 
-    dependencies : Dict = {
+    dependencies: Dict = {
         GradingPeriodClient: {},
     }
 
@@ -20,5 +20,7 @@ class ReportCardClient(EdFiAPIClient):
 
         return self.create_using_dependencies(
             period_reference,
-            gradingPeriodReference__periodSequence=period_reference['attributes']['periodSequence'],
+            gradingPeriodReference__periodSequence=period_reference["attributes"][
+                "periodSequence"
+            ],
         )

@@ -12,6 +12,10 @@ from edfi_performance_test.factories.utils import UniqueIdAttribute
 
 
 class CompetencyObjectiveFactory(APIFactory):
-    educationOrganizationReference = factory.Dict(dict(educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id()))
+    educationOrganizationReference = factory.Dict(
+        dict(
+            educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id()
+        )
+    )
     objective = UniqueIdAttribute(num_chars=60)
-    objectiveGradeLevelDescriptor = build_descriptor('GradeLevel', 'Tenth grade')
+    objectiveGradeLevelDescriptor = build_descriptor("GradeLevel", "Tenth grade")

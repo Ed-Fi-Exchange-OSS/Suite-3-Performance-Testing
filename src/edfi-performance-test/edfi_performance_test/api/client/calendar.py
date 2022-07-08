@@ -7,4 +7,4 @@ from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 
 
 class CalendarClient(EdFiAPIClient):
-    endpoint = 'calendars'
+    endpoint = "calendars"

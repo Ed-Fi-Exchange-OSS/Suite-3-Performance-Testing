@@ -12,14 +12,22 @@ from edfi_performance_test.factories.utils import UniqueIdAttribute, formatted_d
 
 class CredentialFactory(APIFactory):
     credentialIdentifier = UniqueIdAttribute(num_chars=60)
-    stateOfIssueStateAbbreviationDescriptor = build_descriptor('StateAbbreviation', 'TX')
-    credentialFieldDescriptor = build_descriptor('CredentialField', 'Mathematics')
-    credentialTypeDescriptor = build_descriptor('CredentialType', 'Registration')
-    teachingCredentialDescriptor = build_descriptor('TeachingCredential', 'Paraprofessional')
+    stateOfIssueStateAbbreviationDescriptor = build_descriptor(
+        "StateAbbreviation", "TX"
+    )
+    credentialFieldDescriptor = build_descriptor("CredentialField", "Mathematics")
+    credentialTypeDescriptor = build_descriptor("CredentialType", "Registration")
+    teachingCredentialDescriptor = build_descriptor(
+        "TeachingCredential", "Paraprofessional"
+    )
     issuanceDate = formatted_date(7, 4)
-    gradeLevels = factory.List([
-        factory.Dict(
-            dict(gradeLevelDescriptor=build_descriptor('GradeLevel', 'Sixth grade')),
-        ),
-    ])
+    gradeLevels = factory.List(
+        [
+            factory.Dict(
+                dict(
+                    gradeLevelDescriptor=build_descriptor("GradeLevel", "Sixth grade")
+                ),
+            ),
+        ]
+    )
     namespace = "uri://ed-fi.org"

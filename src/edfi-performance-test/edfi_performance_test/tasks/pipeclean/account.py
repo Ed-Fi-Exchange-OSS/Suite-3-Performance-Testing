@@ -4,35 +4,37 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 from edfi_performance_test.factories.descriptors.utils import build_descriptor
-from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import EdFiPipecleanTestBase
+from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
+    EdFiPipecleanTestBase,
+)
 from edfi_performance_test.factories.utils import current_year
 
 
 class AccountPipecleanTest(EdFiPipecleanTestBase):
-    update_attribute_name = 'fiscalYear'
+    update_attribute_name = "fiscalYear"
     update_attribute_value = current_year()
 
 
 class AccountCodePipecleanTest(EdFiPipecleanTestBase):
-    update_attribute_name = 'accountClassificationDescriptor'
-    update_attribute_value = build_descriptor('AccountClassification', 'Fund')
+    update_attribute_name = "accountClassificationDescriptor"
+    update_attribute_value = build_descriptor("AccountClassification", "Fund")
 
 
 class ActualPipecleanTest(EdFiPipecleanTestBase):
-    update_attribute_name = 'amountToDate'
+    update_attribute_name = "amountToDate"
     update_attribute_value = 456.78
 
 
 class BudgetPipecleanTest(EdFiPipecleanTestBase):
-    update_attribute_name = 'amount'
+    update_attribute_name = "amount"
     update_attribute_value = 2000.00
 
 
 class ContractedStaffPipecleanTest(EdFiPipecleanTestBase):
-    update_attribute_name = 'amountToDate'
+    update_attribute_name = "amountToDate"
     update_attribute_value = 1137.00
 
 
 class PayrollPipecleanTest(EdFiPipecleanTestBase):
-    update_attribute_name = 'amountToDate'
+    update_attribute_name = "amountToDate"
     update_attribute_value = 314.16

@@ -8,24 +8,24 @@ import factory
 
 def _snake_to_title(descriptor_type):
     # convert snake_case to TitleCase
-    return ''.join(c.title() for c in descriptor_type.split('_'))
+    return "".join(c.title() for c in descriptor_type.split("_"))
 
 
 def _normalize_descriptor_type(descriptor_type):
-    if '_' in descriptor_type:
+    if "_" in descriptor_type:
         descriptor_type = _snake_to_title(descriptor_type)
-    if not descriptor_type.endswith('Descriptor'):
-        descriptor_type = '{}Descriptor'.format(descriptor_type)
+    if not descriptor_type.endswith("Descriptor"):
+        descriptor_type = "{}Descriptor".format(descriptor_type)
     return descriptor_type
 
 
 def _descriptor_type_to_dict_key(descriptor_type):
     dt = _normalize_descriptor_type(descriptor_type)
-    return '{}{}'.format(dt[0].lower(), dt[1:])
+    return "{}{}".format(dt[0].lower(), dt[1:])
 
 
 def _descriptor_type_to_endpoint(descriptor_type):
-    return '{}s'.format(_descriptor_type_to_dict_key(descriptor_type))
+    return "{}s".format(_descriptor_type_to_dict_key(descriptor_type))
 
 
 def build_descriptor(descriptor_type, value):
@@ -115,8 +115,11 @@ class ListOfDescriptors(factory.List):
         )
     ```
     """
+
     def __init__(self, descriptor_type, values):
-        super(ListOfDescriptors, self).__init__([
-            factory.Dict(dct)
-            for dct in _build_descriptor_dicts(descriptor_type, values)
-        ])
+        super(ListOfDescriptors, self).__init__(
+            [
+                factory.Dict(dct)
+                for dct in _build_descriptor_dicts(descriptor_type, values)
+            ]
+        )

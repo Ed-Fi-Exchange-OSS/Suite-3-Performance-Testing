@@ -11,15 +11,17 @@ from edfi_performance_test.factories.utils import RandomSuffixAttribute
 
 
 class CourseOfferingFactory(APIFactory):
-    localCourseCode = RandomSuffixAttribute('ELA-01')
-    localCourseTitle = 'English Language Arts GB Elementary'
+    localCourseCode = RandomSuffixAttribute("ELA-01")
+    localCourseTitle = "English Language Arts GB Elementary"
     courseReference = factory.Dict(
         dict(
             courseCode="ELA-01",
             educationOrganizationId=SchoolClient.shared_elementary_school_id(),
         )
     )
-    schoolReference = factory.Dict(dict(schoolId=SchoolClient.shared_elementary_school_id()))
+    schoolReference = factory.Dict(
+        dict(schoolId=SchoolClient.shared_elementary_school_id())
+    )
     sessionReference = factory.Dict(
         dict(
             schoolId=SchoolClient.shared_elementary_school_id(),

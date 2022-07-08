@@ -12,9 +12,11 @@ from edfi_performance_test.factories.utils import RandomSuffixAttribute
 
 
 class ProgramFactory(APIFactory):
-    programId = '101'
+    programId = "101"
     programName = RandomSuffixAttribute("Grand Bend Bilingual 101")
-    programTypeDescriptor = build_descriptor('ProgramType', 'Bilingual')
+    programTypeDescriptor = build_descriptor("ProgramType", "Bilingual")
     educationOrganizationReference = factory.Dict(
-        dict(educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id())
+        dict(
+            educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id()
+        )
     )

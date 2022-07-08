@@ -15,12 +15,16 @@ import edfi_performance_test.tasks.pipeclean
 
 from locust import HttpUser
 
-from edfi_performance_test.tasks.pipeclean.composite import EdFiCompositePipecleanTestBase
-from edfi_performance_test.tasks.pipeclean.descriptors import DescriptorPipecleanTestBase
+from edfi_performance_test.tasks.pipeclean.composite import (
+    EdFiCompositePipecleanTestBase,
+)
+from edfi_performance_test.tasks.pipeclean.descriptors import (
+    DescriptorPipecleanTestBase,
+)
 from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
     EdFiPipecleanTestBase,
     EdFiPipecleanTaskSequence,
-    EdFiPipecleanTestTerminator
+    EdFiPipecleanTestTerminator,
 )
 
 
@@ -30,14 +34,13 @@ class EdFiPipecleanTestMixin(object):
 
 
 class DummyUser(HttpUser):
-
     def on_start(self):
         tasks_submodules = [
             name
             for _, name, _ in pkgutil.iter_modules(
                 [os.path.dirname(edfi_performance_test.tasks.pipeclean.__file__)],
                 prefix="edfi_performance_test.tasks.pipeclean.",
-             )
+            )
         ]
 
         for mod_name in tasks_submodules:
@@ -46,7 +49,7 @@ class DummyUser(HttpUser):
         # Collect *PipecleanTest classes and append them to
         # EdFiPipecleanTaskSequence.tasks
         for subclass in EdFiPipecleanTestBase.__subclasses__():
-            if(subclass != EdFiCompositePipecleanTestBase):
+            if subclass != EdFiCompositePipecleanTestBase:
                 EdFiPipecleanTaskSequence.tasks.append(subclass)
 
         # Add composite pipeclean tests

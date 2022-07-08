@@ -7,15 +7,15 @@ from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 
 
 class CommunityOrganizationClient(EdFiAPIClient):
-    endpoint = 'communityOrganizations'
+    endpoint = "communityOrganizations"
 
 
 class CommunityProviderClient(EdFiAPIClient):
-    endpoint = 'communityProviders'
+    endpoint = "communityProviders"
 
     dependencies = {
         CommunityOrganizationClient: {
-            'client_name': 'org_client',
+            "client_name": "org_client",
         },
     }
 
@@ -24,17 +24,19 @@ class CommunityProviderClient(EdFiAPIClient):
 
         return self.create_using_dependencies(
             org_reference,
-            communityOrganizationReference__communityOrganizationId=org_reference['attributes']['communityOrganizationId'],
+            communityOrganizationReference__communityOrganizationId=org_reference[
+                "attributes"
+            ]["communityOrganizationId"],
             **kwargs
         )
 
 
 class CommunityProviderLicenseClient(EdFiAPIClient):
-    endpoint = 'communityProviderLicenses'
+    endpoint = "communityProviderLicenses"
 
     dependencies = {
         CommunityProviderClient: {
-            'client_name': 'provider_client',
+            "client_name": "provider_client",
         },
     }
 
@@ -43,6 +45,8 @@ class CommunityProviderLicenseClient(EdFiAPIClient):
 
         return self.create_using_dependencies(
             provider_reference,
-            communityProviderReference__communityProviderId=provider_reference['attributes']['communityProviderId'],
+            communityProviderReference__communityProviderId=provider_reference[
+                "attributes"
+            ]["communityProviderId"],
             **kwargs
         )

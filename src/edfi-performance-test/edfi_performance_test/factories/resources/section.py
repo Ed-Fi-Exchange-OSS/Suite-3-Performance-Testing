@@ -12,19 +12,23 @@ from edfi_performance_test.factories.utils import RandomSuffixAttribute, formatt
 
 
 class SectionFactory(APIFactory):
-    educationalEnvironmentDescriptor = build_descriptor("EducationalEnvironment", "Classroom")
+    educationalEnvironmentDescriptor = build_descriptor(
+        "EducationalEnvironment", "Classroom"
+    )
     sectionIdentifier = RandomSuffixAttribute("ELA012017RM555")
     availableCredits = 1
     sequenceOfCourse = 1
-    classPeriods = factory.List([
-        factory.Dict(
-            dict(
-                classPeriodReference=factory.Dict(dict(
-                    classPeriodName=None  # Must be entered by client
-                )),
+    classPeriods = factory.List(
+        [
+            factory.Dict(
+                dict(
+                    classPeriodReference=factory.Dict(
+                        dict(classPeriodName=None)  # Must be entered by client
+                    ),
+                ),
             ),
-        ),
-    ])
+        ]
+    )
     courseOfferingReference = factory.Dict(
         dict(
             localCourseCode="ELA-01",  # Will need to override this with reference value

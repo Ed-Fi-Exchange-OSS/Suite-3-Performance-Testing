@@ -4,15 +4,17 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 from edfi_performance_test.factories.descriptors.utils import build_descriptor
-from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import EdFiPipecleanTestBase
+from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
+    EdFiPipecleanTestBase,
+)
 
 
 class ParentPipecleanTest(EdFiPipecleanTestBase):
-    update_attribute_name = 'parentOtherNames'
+    update_attribute_name = "parentOtherNames"
     update_attribute_value = [
         {
-            'firstName': "Lexi",
-            'lastSurname': "Johnson",
-            'otherNameTypeDescriptor': build_descriptor('OtherNameType', 'Nickname'),
+            "firstName": "Lexi",
+            "lastSurname": "Johnson",
+            "otherNameTypeDescriptor": build_descriptor("OtherNameType", "Nickname"),
         }
     ]

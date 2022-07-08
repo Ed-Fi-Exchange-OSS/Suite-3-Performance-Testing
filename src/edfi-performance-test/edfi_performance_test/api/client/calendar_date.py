@@ -10,24 +10,29 @@ from edfi_performance_test.factories.utils import RandomSuffixAttribute
 
 
 class CalendarDateClient(EdFiAPIClient):
-    endpoint = 'calendarDates'
+    endpoint = "calendarDates"
 
     dependencies: Dict = {
-        'edfi_performance_test.api.client.calendar.CalendarClient': {},
+        "edfi_performance_test.api.client.calendar.CalendarClient": {},
     }
 
     def create_with_dependencies(self, **kwargs):
-        school_id = kwargs.pop('schoolId', SchoolClient.shared_elementary_school_id())
-        custom_calendar_code = kwargs.pop('calendarCode', RandomSuffixAttribute("107SS111111"))
+        school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
+        custom_calendar_code = kwargs.pop(
+            "calendarCode", RandomSuffixAttribute("107SS111111")
+        )
         # Create a calendar
         calendar_reference = self.calendar_client.create_with_dependencies(
-            schoolReference__schoolId=school_id,
-            calendarCode=custom_calendar_code)
+            schoolReference__schoolId=school_id, calendarCode=custom_calendar_code
+        )
 
         # Create first calendar date
         return self.create_using_dependencies(
             calendar_reference,
-            calendarReference__calendarCode=calendar_reference['attributes']['calendarCode'],
+            calendarReference__calendarCode=calendar_reference["attributes"][
+                "calendarCode"
+            ],
             calendarReference__schoolId=school_id,
             calendarReference__schoolYear=2014,
-            **kwargs)
+            **kwargs
+        )

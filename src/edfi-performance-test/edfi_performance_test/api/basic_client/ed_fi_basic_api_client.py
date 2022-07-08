@@ -14,7 +14,7 @@ from locust.clients import HttpSession
 
 from edfi_performance_test.helpers.config import get_config_value
 
-logger = logging.getLogger('locust.runners')
+logger = logging.getLogger("locust.runners")
 urllib3.disable_warnings(InsecureRequestWarning)
 
 
@@ -23,9 +23,9 @@ class EdFiBasicAPIClient:
     _token = None
     client: HttpSession
 
-    def __init__(self, api_prefix='/data/v3/ed-fi'):
+    def __init__(self, api_prefix="/data/v3/ed-fi"):
         self.API_PREFIX = api_prefix
-        self.host = get_config_value('baseUrl')
+        self.host = get_config_value("baseUrl")
         # Suppress exceptions thrown in the Test Lab environment
         # when self-signed certificates are used.
         self.client.verify = False  # type: ignore
@@ -35,7 +35,7 @@ class EdFiBasicAPIClient:
     def login(self, succeed_on=None, name=None, **credentials_overrides):
         if succeed_on is None:
             succeed_on = []
-        name = name or '/oauth/token'
+        name = name or "/oauth/token"
         payload = {
             "client_id": get_config_value("key"),
             "client_secret": get_config_value("secret"),
@@ -43,11 +43,8 @@ class EdFiBasicAPIClient:
         }
         payload.update(credentials_overrides)
         response = self._get_response(
-            'post',
-            "/oauth/token",
-            payload,
-            succeed_on=succeed_on,
-            name=name)
+            "post", "/oauth/token", payload, succeed_on=succeed_on, name=name
+        )
         self.log_response(response, ignore_error=response.status_code in succeed_on)
         try:
             token = json.loads(response.text)["access_token"]
@@ -67,14 +64,18 @@ class EdFiBasicAPIClient:
 
     def _get_response(self, method, *args, **kwargs):
         method = getattr(self.client, method)
-        succeed_on = kwargs.pop('succeed_on', [])
-        with method(*args, catch_response=True, allow_redirects=False, **kwargs) as response:
+        succeed_on = kwargs.pop("succeed_on", [])
+        with method(
+            *args, catch_response=True, allow_redirects=False, **kwargs
+        ) as response:
             if response.status_code in succeed_on:
                 # If told explicitly to succeed, mark success
                 response.success()
             elif 300 <= response.status_code < 400:
                 # Mark 3xx Redirect responses as failure
-                response.failure("Status code {} is a failure".format(response.status_code))
+                response.failure(
+                    "Status code {} is a failure".format(response.status_code)
+                )
         # All other status codes are treated normally
         return response
 
@@ -83,7 +84,7 @@ class EdFiBasicAPIClient:
         if response.status_code >= 400 and not ignore_error:
             frame = inspect.currentframe()
             stack_trace = traceback.format_stack(frame)
-            logger.error(u''.join(stack_trace))
+            logger.error("".join(stack_trace))
 
         if log_response_text:
             logger.debug(response.text)
@@ -91,12 +92,18 @@ class EdFiBasicAPIClient:
     @staticmethod
     def is_not_expected_result(response, expected_responses):
         if response.status_code not in expected_responses:
-            message = 'Invalid response received'
+            message = "Invalid response received"
             try:
-                message = json.loads(response.text)['message']
+                message = json.loads(response.text)["message"]
             except Exception:
                 pass
-            print(response.request.method + " " + str(response.status_code) + ' : ' + message)
+            print(
+                response.request.method
+                + " "
+                + str(response.status_code)
+                + " : "
+                + message
+            )
             return True
         return False
 
@@ -111,10 +118,11 @@ class EdFiBasicAPIClient:
 
     def get_list(self, endpoint, query=""):
         response = self._get_response(
-            'get',
+            "get",
             self.list_endpoint(endpoint, query),
             headers=self.get_headers(),
-            name=self.list_endpoint(endpoint))
+            name=self.list_endpoint(endpoint),
+        )
         if self.is_token_exipired_result(response):
             self._token = self.login()
             return self.get_list(endpoint, query)

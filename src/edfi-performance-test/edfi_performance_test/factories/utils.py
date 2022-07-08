@@ -19,13 +19,13 @@ def formatted_date(month, day, year=None):
     Returns date formatted in YYYY-mm-dd format.  If year isn't passed in, it
     will default to the current year.
     """
-    return date(year or current_year(), month, day).strftime('%Y-%m-%d')
+    return date(year or current_year(), month, day).strftime("%Y-%m-%d")
 
 
 def random_chars(n=4, chars=None):
     if chars is None:
         chars = string.ascii_uppercase + string.digits
-    return ''.join(random.choice(chars) for _ in range(n))
+    return "".join(random.choice(chars) for _ in range(n))
 
 
 class UniqueIdAttribute(declarations.BaseDeclaration):
@@ -37,6 +37,7 @@ class UniqueIdAttribute(declarations.BaseDeclaration):
     logic to an existing resource, the existing resource will be returned
     instead of creating a new one.)
     """
+
     num_chars = 32
 
     def __init__(self, num_chars=None, **kwargs):
@@ -54,6 +55,7 @@ class UniquePrimaryKeyAttribute(declarations.BaseDeclaration):
     Use for primary key fields to prevent clashes and deduplication logic (see
     docstring for `UniqueIdAttribute` above.)
     """
+
     MAXINT = 2147483647
 
     def evaluate(self, instance, step, extra):
@@ -65,6 +67,7 @@ class RandomDateAttribute(declarations.BaseDeclaration):
     Returns a random date between 1/1/1901 and 12/12/max_year.  Ignores days
     of the month past the 28th.
     """
+
     max_year = 9999
 
     def __init__(self, max_year=None, **kwargs):
@@ -75,7 +78,7 @@ class RandomDateAttribute(declarations.BaseDeclaration):
         return formatted_date(
             random.randint(1, 12),
             random.randint(1, 28),
-            random.randint(1901, self.max_year)
+            random.randint(1901, self.max_year),
         )
 
 
@@ -86,17 +89,18 @@ class RandomSuffixAttribute(LazyAttribute):
     This can be used for disambiguation between string-based business keys (see
     docstring for `UniqueIdAttribute` above.)
     """
+
     def __init__(self, func, *args, **kwargs):
         if isinstance(func, str):
             unformatted_string = str(func)
             func = lambda o: unformatted_string
 
-        self._suffix_length = kwargs.pop('suffix_length', 4)
+        self._suffix_length = kwargs.pop("suffix_length", 4)
         super(RandomSuffixAttribute, self).__init__(func, *args, **kwargs)
 
     def evaluate(self, instance, step, extra):
         result = super(RandomSuffixAttribute, self).evaluate(instance, step, extra)
-        return '{} {}'.format(result, self._suffix(self._suffix_length))
+        return "{} {}".format(result, self._suffix(self._suffix_length))
 
     @staticmethod
     def _suffix(length=4):

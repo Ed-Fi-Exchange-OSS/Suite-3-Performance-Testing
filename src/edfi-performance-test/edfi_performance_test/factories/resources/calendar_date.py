@@ -19,5 +19,5 @@ class CalendarDateFactory(APIFactory):
             schoolYear=current_year(),
         )
     )
-    calendarEvents = build_descriptor_dicts('CalendarEvent', ['Holiday'])
+    calendarEvents = build_descriptor_dicts("CalendarEvent", ["Holiday"])
     date = "2014-09-16"

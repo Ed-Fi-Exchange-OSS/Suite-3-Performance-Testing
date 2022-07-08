@@ -5,19 +5,21 @@
 
 from edfi_performance_test.factories.descriptors.utils import build_descriptor
 from edfi_performance_test.factories.utils import formatted_date
-from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import EdFiPipecleanTestBase
+from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
+    EdFiPipecleanTestBase,
+)
 
 
 class CommunityOrganizationPipecleanTest(EdFiPipecleanTestBase):
-    update_attribute_name = 'nameOfInstitution'
+    update_attribute_name = "nameOfInstitution"
     update_attribute_value = "Foundation for the Arts & Sciences"
 
 
 class CommunityProviderPipecleanTest(EdFiPipecleanTestBase):
-    update_attribute_name = 'providerStatusDescriptor'
-    update_attribute_value = build_descriptor('ProviderStatus', 'Inactive')
+    update_attribute_name = "providerStatusDescriptor"
+    update_attribute_value = build_descriptor("ProviderStatus", "Inactive")
 
 
 class CommunityProviderLicensePipecleanTest(EdFiPipecleanTestBase):
-    update_attribute_name = 'licenseEffectiveDate'
+    update_attribute_name = "licenseEffectiveDate"
     update_attribute_value = formatted_date(12, 24)

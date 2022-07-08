@@ -4,9 +4,11 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 from edfi_performance_test.factories.utils import formatted_date
-from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import EdFiPipecleanTestBase
+from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
+    EdFiPipecleanTestBase,
+)
 
 
 class RestraintEventPipecleanTest(EdFiPipecleanTestBase):
-    update_attribute_name = 'eventDate'
+    update_attribute_name = "eventDate"
     update_attribute_value = formatted_date(2, 15)

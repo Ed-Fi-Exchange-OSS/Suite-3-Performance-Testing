@@ -9,11 +9,9 @@ from edfi_performance_test.api.client.class_period import ClassPeriodClient
 
 
 class BellScheduleClient(EdFiAPIClient):
-    endpoint = 'bellSchedules'
+    endpoint = "bellSchedules"
 
-    dependencies: Dict = {
-        ClassPeriodClient: {}
-    }
+    dependencies: Dict = {ClassPeriodClient: {}}
 
     def create_with_dependencies(self, **kwargs):
         # Create new class period
@@ -22,6 +20,10 @@ class BellScheduleClient(EdFiAPIClient):
         # Create bell schedule
         return self.create_using_dependencies(
             class_period_reference,
-            classPeriods__0__classPeriodReference__classPeriodName=class_period_reference['attributes']['classPeriodName'],
+            classPeriods__0__classPeriodReference__classPeriodName=class_period_reference[
+                "attributes"
+            ][
+                "classPeriodName"
+            ],
             **kwargs
         )

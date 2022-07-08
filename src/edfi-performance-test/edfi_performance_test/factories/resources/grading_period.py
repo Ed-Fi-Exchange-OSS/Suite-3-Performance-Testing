@@ -16,6 +16,8 @@ class GradingPeriodFactory(APIFactory):
     beginDate = "2014-08-23"
     endDate = "2014-10-04"
     totalInstructionalDays = 29
-    schoolReference = factory.Dict(dict(schoolId=SchoolClient.shared_elementary_school_id()))
+    schoolReference = factory.Dict(
+        dict(schoolId=SchoolClient.shared_elementary_school_id())
+    )
     schoolYearTypeReference = factory.Dict(dict(schoolYear=2014))
     gradingPeriodDescriptor = build_descriptor("GradingPeriod", "First Six Weeks")

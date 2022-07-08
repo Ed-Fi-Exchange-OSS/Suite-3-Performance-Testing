@@ -13,9 +13,9 @@ from edfi_performance_test.factories.descriptors.utils import build_descriptor
 
 class CohortFactory(APIFactory):
     cohortIdentifier = RandomSuffixAttribute("1")
-    educationOrganizationReference = factory.Dict({
-                                         "educationOrganizationId": SchoolClient.shared_elementary_school_id()
-                                     })
+    educationOrganizationReference = factory.Dict(
+        {"educationOrganizationId": SchoolClient.shared_elementary_school_id()}
+    )
     cohortDescription = "Cohort 1 Description"
     cohortScopeDescriptor = build_descriptor("CohortScope", "District")
     cohortTypeDescriptor = build_descriptor("CohortType", "Study Hall")

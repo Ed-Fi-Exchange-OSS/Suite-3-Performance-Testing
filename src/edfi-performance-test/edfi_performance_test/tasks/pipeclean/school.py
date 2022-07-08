@@ -3,12 +3,14 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import EdFiPipecleanTestBase
+from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
+    EdFiPipecleanTestBase,
+)
 
 
 class SchoolPipecleanTest(EdFiPipecleanTestBase):
     def _touch_put_endpoint(self, resource_id, attrs):
-        attrs['addresses'][0]['streetNumberName'] = "456 Cedar Street"
+        attrs["addresses"][0]["streetNumberName"] = "456 Cedar Street"
         self.update(resource_id, **attrs)
 
 

@@ -12,6 +12,7 @@ class APIFactory(factory.Factory):
     Wraps `factory.Factory` to add JSON-specific methods, as well as
     make it easier to use in the absence of an ORM.
     """
+
     @classmethod
     def build_dict(cls, **kwargs):
         return factory.build(dict, FACTORY_CLASS=cls, **kwargs)

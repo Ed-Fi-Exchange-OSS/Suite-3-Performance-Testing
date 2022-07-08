@@ -13,6 +13,10 @@ from edfi_performance_test.factories.utils import UniqueIdAttribute, formatted_d
 
 class RestraintEventFactory(APIFactory):
     restraintEventIdentifier = UniqueIdAttribute(num_chars=20)
-    schoolReference = factory.Dict(dict(schoolId=SchoolClient.shared_elementary_school_id()))
-    studentReference = factory.Dict(dict(studentUniqueId=StudentClient.shared_student_id()))
+    schoolReference = factory.Dict(
+        dict(schoolId=SchoolClient.shared_elementary_school_id())
+    )
+    studentReference = factory.Dict(
+        dict(studentUniqueId=StudentClient.shared_student_id())
+    )
     eventDate = formatted_date(2, 14)

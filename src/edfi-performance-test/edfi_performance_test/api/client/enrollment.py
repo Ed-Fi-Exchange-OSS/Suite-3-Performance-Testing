@@ -7,31 +7,31 @@ from edfi_performance_test.api.client.composite import EdFiCompositeClient
 
 
 class EnrollmentCompositeClient(EdFiCompositeClient):
-    API_PREFIX = '/composites/v1/ed-fi/enrollment'
+    API_PREFIX = "/composites/v1/ed-fi/enrollment"
     constants = {
-        'schools': None,
-        'sections': None,
-        'localEducationAgencies': None,
-        'staffs': None,
-        'students': None
+        "schools": None,
+        "sections": None,
+        "localEducationAgencies": None,
+        "staffs": None,
+        "students": None,
     }
 
 
 class LocalEducationAgencyEnrollmentCompositeClient(EnrollmentCompositeClient):
-    endpoint = 'localEducationAgencies'
+    endpoint = "localEducationAgencies"
 
 
 class SchoolEnrollmentCompositeClient(EnrollmentCompositeClient):
-    endpoint = 'schools'
+    endpoint = "schools"
 
 
 class SectionEnrollmentCompositeClient(EnrollmentCompositeClient):
-    endpoint = 'sections'
+    endpoint = "sections"
 
 
 class StaffEnrollmentCompositeClient(EnrollmentCompositeClient):
-    endpoint = 'staffs'
+    endpoint = "staffs"
 
 
 class StudentEnrollmentCompositeClient(EnrollmentCompositeClient):
-    endpoint = 'students'
+    endpoint = "students"

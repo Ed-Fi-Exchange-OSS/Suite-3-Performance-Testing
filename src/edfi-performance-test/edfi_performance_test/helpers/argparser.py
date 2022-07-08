@@ -52,21 +52,21 @@ def parse_main_arguments() -> MainArguments:
         "-i",
         "--ignoreCertificateErrors",
         help="Certificate errors are ignored",
-        action='store_true',  # default false
+        action="store_true",  # default false
         env_var="IGNORE_TLS_CERTIFICATE",
     )
     parser.add(  # type: ignore
         "-d",
         "--deleteResources",
         help="Delete resources during test run",
-        action='store_true',  # default false
+        action="store_true",  # default false
         env_var="PERF_DELETE_RESOURCES",
     )
     parser.add(  # type: ignore
         "-f",
         "--failDeliberately",
         help="Deliberately introduce requests that result in failure",
-        action='store_true',  # default false
+        action="store_true",  # default false
         env_var="PERF_FAIL_DELIBERATELY",
     )
     parser.add(  # type: ignore

@@ -4,9 +4,11 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 from edfi_performance_test.factories.utils import RandomSuffixAttribute
-from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import EdFiPipecleanTestBase
+from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
+    EdFiPipecleanTestBase,
+)
 
 
 class ClassPeriodPipecleanTest(EdFiPipecleanTestBase):
-    update_attribute_name = 'classPeriodName'
+    update_attribute_name = "classPeriodName"
     update_attribute_value = RandomSuffixAttribute("Class Period 01", suffix_length=10)

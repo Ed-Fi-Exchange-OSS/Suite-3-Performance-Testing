@@ -12,13 +12,15 @@ from edfi_performance_test.factories.utils import current_year, formatted_date
 
 
 class GradeFactory(APIFactory):
-    gradeTypeDescriptor = build_descriptor('GradeType', 'Grading Period')
+    gradeTypeDescriptor = build_descriptor("GradeType", "Grading Period")
     letterGradeEarned = "B"
     numericGradeEarned = 80
     gradingPeriodReference = factory.Dict(
         dict(
             schoolId=SchoolClient.shared_elementary_school_id(),
-            gradingPeriodDescriptor=build_descriptor('GradingPeriod', 'First Six Weeks'),
+            gradingPeriodDescriptor=build_descriptor(
+                "GradingPeriod", "First Six Weeks"
+            ),
             periodSequence=1,
             schoolYear=current_year(),
         )
@@ -26,7 +28,7 @@ class GradeFactory(APIFactory):
     studentSectionAssociationReference = factory.Dict(
         dict(
             beginDate=formatted_date(8, 23),
-            localCourseCode='ELA-01',
+            localCourseCode="ELA-01",
             schoolId=SchoolClient.shared_elementary_school_id(),
             schoolYear=current_year(),
             studentUniqueId=1111111,  # Default value for scenarios, but not in DB

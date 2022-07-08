@@ -5,10 +5,16 @@
 
 import factory
 
-from edfi_performance_test.factories.descriptors.utils import build_descriptor_dicts, ListOfDescriptors
+from edfi_performance_test.factories.descriptors.utils import (
+    build_descriptor_dicts,
+    ListOfDescriptors,
+)
 from edfi_performance_test.factories.resources.address import AddressFactory
 from edfi_performance_test.factories.resources.api_factory import APIFactory
-from edfi_performance_test.factories.utils import RandomSuffixAttribute, UniquePrimaryKeyAttribute
+from edfi_performance_test.factories.utils import (
+    RandomSuffixAttribute,
+    UniquePrimaryKeyAttribute,
+)
 
 
 class SchoolFactory(APIFactory):
@@ -17,26 +23,29 @@ class SchoolFactory(APIFactory):
     nameOfInstitution = factory.LazyAttribute(
         lambda o: "Grand Oaks High School {}".format(o.shortNameOfInstitution[-4:])
     )
-    addresses = factory.List([
-        factory.SubFactory(AddressFactory),
-    ])
-    educationOrganizationCategories = ListOfDescriptors('EducationOrganizationCategory', ['School'])
+    addresses = factory.List(
+        [
+            factory.SubFactory(AddressFactory),
+        ]
+    )
+    educationOrganizationCategories = ListOfDescriptors(
+        "EducationOrganizationCategory", ["School"]
+    )
     educationOrganizationCodes = factory.LazyAttribute(
         lambda o: build_descriptor_dicts(
-            'EducationOrganizationIdentificationSystem',
-            [('SEA', {'identificationCode': str(o.schoolId)})]
+            "EducationOrganizationIdentificationSystem",
+            [("SEA", {"identificationCode": str(o.schoolId)})],
         )
     )
     gradeLevels = ListOfDescriptors(
-        'GradeLevel',
-        ['Ninth grade', 'Tenth grade', 'Eleventh grade', 'Twelfth grade']
+        "GradeLevel", ["Ninth grade", "Tenth grade", "Eleventh grade", "Twelfth grade"]
     )
     institutionTelephones = ListOfDescriptors(
-        'InstitutionTelephoneNumberType',
-        [('Main', {'telephoneNumber': '(950) 325-9465'})]
+        "InstitutionTelephoneNumberType",
+        [("Main", {"telephoneNumber": "(950) 325-9465"})],
     )
     localEducationAgencyReference = {
-        'localEducationAgencyId': '255901'  # LocalEducationAgencyClient.shared_education_organization_id(),
+        "localEducationAgencyId": "255901"  # LocalEducationAgencyClient.shared_education_organization_id(),
     }
 
 

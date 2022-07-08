@@ -10,8 +10,8 @@ from edfi_performance_test.factories.utils import RandomSuffixAttribute
 
 
 class AddressFactory(DefaultToDictMixin, APIFactory):
-    addressTypeDescriptor = build_descriptor('AddressType', 'Physical')
-    city = RandomSuffixAttribute('Grand Oaks')
-    postalCode = '73334'
-    stateAbbreviationDescriptor = build_descriptor('StateAbbreviation', 'TX')
-    streetNumberName = '456 Oaks Street'
+    addressTypeDescriptor = build_descriptor("AddressType", "Physical")
+    city = RandomSuffixAttribute("Grand Oaks")
+    postalCode = "73334"
+    stateAbbreviationDescriptor = build_descriptor("StateAbbreviation", "TX")
+    streetNumberName = "456 Oaks Street"

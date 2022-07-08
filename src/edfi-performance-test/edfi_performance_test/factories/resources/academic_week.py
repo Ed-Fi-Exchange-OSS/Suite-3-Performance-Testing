@@ -12,7 +12,9 @@ from edfi_performance_test.factories.utils import UniqueIdAttribute, formatted_d
 
 class AcademicWeekFactory(APIFactory):
     weekIdentifier = UniqueIdAttribute()
-    schoolReference = factory.Dict(dict(schoolId=SchoolClient.shared_elementary_school_id()))
+    schoolReference = factory.Dict(
+        dict(schoolId=SchoolClient.shared_elementary_school_id())
+    )
     beginDate = formatted_date(8, 7)
     endDate = formatted_date(8, 13)
     totalInstructionalDays = 5

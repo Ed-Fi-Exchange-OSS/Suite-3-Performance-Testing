@@ -12,6 +12,7 @@ class DefaultToDictMixin(object):
     Mix this class into any factory you want to use as a `factory.SubFactory`
     and generate dicts or JSON from.
     """
+
     @classmethod
     def _build(cls, model_class, *args, **kwargs):
         if model_class is None:

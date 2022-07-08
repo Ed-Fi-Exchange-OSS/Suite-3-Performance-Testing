@@ -7,11 +7,11 @@ from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 
 
 class GraduationPlanClient(EdFiAPIClient):
-    endpoint = 'graduationPlans'
+    endpoint = "graduationPlans"
 
     dependencies = {
-        'edfi_performance_test.api.client.school.SchoolClient': {
-            'client_name': 'school_client'
+        "edfi_performance_test.api.client.school.SchoolClient": {
+            "client_name": "school_client"
         }
     }
 
@@ -20,6 +20,8 @@ class GraduationPlanClient(EdFiAPIClient):
 
         return self.create_using_dependencies(
             school_reference,
-            educationOrganizationReference__educationOrganizationId=school_reference['attributes']['schoolId'],
+            educationOrganizationReference__educationOrganizationId=school_reference[
+                "attributes"
+            ]["schoolId"],
             **kwargs
         )

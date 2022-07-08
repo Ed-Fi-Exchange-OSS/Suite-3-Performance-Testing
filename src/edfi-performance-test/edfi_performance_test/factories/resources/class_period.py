@@ -12,5 +12,7 @@ from edfi_performance_test.factories.utils import RandomSuffixAttribute
 
 class ClassPeriodFactory(APIFactory):
     classPeriodName = RandomSuffixAttribute("Class Period 1", suffix_length=10)
-    schoolReference = factory.Dict(dict(schoolId=SchoolClient.shared_elementary_school_id()))  # Prepopulated school
+    schoolReference = factory.Dict(
+        dict(schoolId=SchoolClient.shared_elementary_school_id())
+    )  # Prepopulated school
     officialAttendancePeriod = False

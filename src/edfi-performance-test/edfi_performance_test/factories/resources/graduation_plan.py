@@ -11,7 +11,7 @@ from edfi_performance_test.factories.descriptors.utils import build_descriptor
 
 class GraduationPlanFactory(APIFactory):
     totalRequiredCredits = 28
-    graduationPlanTypeDescriptor = build_descriptor('GraduationPlanType', 'Recommended')
+    graduationPlanTypeDescriptor = build_descriptor("GraduationPlanType", "Recommended")
     educationOrganizationReference = factory.Dict(
         dict(educationOrganizationId=None),
     )

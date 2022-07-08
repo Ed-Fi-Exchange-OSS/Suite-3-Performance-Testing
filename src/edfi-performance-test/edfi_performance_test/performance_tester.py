@@ -58,9 +58,7 @@ async def run(args: MainArguments) -> None:
         runner.start(args.clientCount, spawn_rate=args.spawnRate)
 
         # Manually stop locust, which otherwise would run continuously
-        gevent.spawn_later(
-            args.runTimeInMinutes * 60, lambda: runner.quit()
-        )
+        gevent.spawn_later(args.runTimeInMinutes * 60, lambda: runner.quit())
 
         # wait for the greenlets
         env.runner.greenlet.join()

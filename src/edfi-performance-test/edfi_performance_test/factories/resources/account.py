@@ -9,29 +9,49 @@ from edfi_performance_test.api.client.education import LocalEducationAgencyClien
 from edfi_performance_test.api.client.staff import StaffClient
 from edfi_performance_test.factories.resources.api_factory import APIFactory
 from edfi_performance_test.factories.descriptors.utils import build_descriptor
-from edfi_performance_test.factories.utils import UniqueIdAttribute, current_year, formatted_date
+from edfi_performance_test.factories.utils import (
+    UniqueIdAttribute,
+    current_year,
+    formatted_date,
+)
 
 
 class AccountFactory(APIFactory):
     accountIdentifier = UniqueIdAttribute()
-    educationOrganizationReference = factory.Dict(dict(educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id()))
-    accountCodes = factory.List([
-        factory.Dict({  # Values for a prepopulated account, but don't rely on this existing
-            'accountCodeReference': dict(
-                accountCodeNumber="1000",
-                educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
-                accountClassificationDescriptor=build_descriptor('AccountClassification', 'Function'),
-                fiscalYear=current_year(),
-            )
-        }),
-    ])
+    educationOrganizationReference = factory.Dict(
+        dict(
+            educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id()
+        )
+    )
+    accountCodes = factory.List(
+        [
+            factory.Dict(
+                {  # Values for a prepopulated account, but don't rely on this existing
+                    "accountCodeReference": dict(
+                        accountCodeNumber="1000",
+                        educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
+                        accountClassificationDescriptor=build_descriptor(
+                            "AccountClassification", "Function"
+                        ),
+                        fiscalYear=current_year(),
+                    )
+                }
+            ),
+        ]
+    )
     fiscalYear = current_year()
 
 
 class AccountCodeFactory(APIFactory):
     accountCodeNumber = UniqueIdAttribute()
-    educationOrganizationReference = factory.Dict(dict(educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id()))
-    accountClassificationDescriptor = build_descriptor('AccountClassification', 'Function')
+    educationOrganizationReference = factory.Dict(
+        dict(
+            educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id()
+        )
+    )
+    accountClassificationDescriptor = build_descriptor(
+        "AccountClassification", "Function"
+    )
     fiscalYear = current_year()
     accountCodeDescription = "Instruction"
 
@@ -68,7 +88,9 @@ class ContractedStaffFactory(APIFactory):
             fiscalYear=current_year(),
         )
     )
-    staffReference = factory.Dict(dict(staffUniqueId=StaffClient.shared_staff_id()))  # Prepopulated staff
+    staffReference = factory.Dict(
+        dict(staffUniqueId=StaffClient.shared_staff_id())
+    )  # Prepopulated staff
     asOfDate = formatted_date(4, 27)
     amountToDate = 187.00
 
@@ -81,6 +103,8 @@ class PayrollFactory(APIFactory):
             fiscalYear=current_year(),
         )
     )
-    staffReference = factory.Dict(dict(staffUniqueId=StaffClient.shared_staff_id()))  # Prepopulated staff
+    staffReference = factory.Dict(
+        dict(staffUniqueId=StaffClient.shared_staff_id())
+    )  # Prepopulated staff
     asOfDate = formatted_date(12, 27)
     amountToDate = 271.83

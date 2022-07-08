@@ -12,11 +12,13 @@ from edfi_performance_test.factories.utils import RandomSuffixAttribute
 
 
 class CalendarFactory(APIFactory):
-    schoolYearTypeReference = factory.Dict({
-        'schoolYear': 2014,
-    })
+    schoolYearTypeReference = factory.Dict(
+        {
+            "schoolYear": 2014,
+        }
+    )
     calendarTypeDescriptor = build_descriptor("CalendarType", "IEP")
     calendarCode = RandomSuffixAttribute("107SS111111")
-    schoolReference = factory.Dict({
-        "schoolId": SchoolClient.shared_elementary_school_id()
-    })
+    schoolReference = factory.Dict(
+        {"schoolId": SchoolClient.shared_elementary_school_id()}
+    )

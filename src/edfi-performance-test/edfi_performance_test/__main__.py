@@ -27,7 +27,11 @@ def _configure_logging(configuration: MainArguments) -> None:
 
     # Verbose is not a real Python log level, so convert back to DEBUG. Verbose
     # is used for quieting other loggers when in DEBUG mode.
-    log_level = str(LogLevel.DEBUG if configuration.log_level == LogLevel.VERBOSE else configuration.log_level)
+    log_level = str(
+        LogLevel.DEBUG
+        if configuration.log_level == LogLevel.VERBOSE
+        else configuration.log_level
+    )
 
     logging.basicConfig(
         handlers=[

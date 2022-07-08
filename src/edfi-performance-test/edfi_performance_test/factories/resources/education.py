@@ -7,22 +7,34 @@ import factory
 
 from edfi_performance_test.api.client.education import LocalEducationAgencyClient
 from edfi_performance_test.factories.resources.api_factory import APIFactory
-from edfi_performance_test.factories.descriptors.utils import build_descriptor, ListOfDescriptors, build_descriptor_dicts
+from edfi_performance_test.factories.descriptors.utils import (
+    build_descriptor,
+    ListOfDescriptors,
+    build_descriptor_dicts,
+)
 from edfi_performance_test.factories.resources.address import AddressFactory
-from edfi_performance_test.factories.utils import UniqueIdAttribute, UniquePrimaryKeyAttribute, formatted_date
+from edfi_performance_test.factories.utils import (
+    UniqueIdAttribute,
+    UniquePrimaryKeyAttribute,
+    formatted_date,
+)
 
 
 class EducationServiceCenterFactory(APIFactory):
     educationServiceCenterId = UniquePrimaryKeyAttribute()
     nameOfInstitution = "Texas DoE Service Center"
-    addresses = factory.List([
-        factory.SubFactory(AddressFactory),
-    ])
-    categories = ListOfDescriptors('EducationOrganizationCategory', ['Education Service Center'])
+    addresses = factory.List(
+        [
+            factory.SubFactory(AddressFactory),
+        ]
+    )
+    categories = ListOfDescriptors(
+        "EducationOrganizationCategory", ["Education Service Center"]
+    )
     educationOrganizationCodes = factory.LazyAttribute(
         lambda o: build_descriptor_dicts(
-            'EducationOrganizationIdentificationSystem',
-            [('SEA', {'identificationCode': o.educationServiceCenterId})]
+            "EducationOrganizationIdentificationSystem",
+            [("SEA", {"identificationCode": o.educationServiceCenterId})],
         )
     )
 
@@ -30,18 +42,26 @@ class EducationServiceCenterFactory(APIFactory):
 class LocalEducationAgencyFactory(APIFactory):
     localEducationAgencyId = UniquePrimaryKeyAttribute()
     nameOfInstitution = "Texas Local Education Agency"
-    addresses = factory.List([
-        factory.SubFactory(AddressFactory),
-    ])
-    categories = ListOfDescriptors('EducationOrganizationCategory', ['Local Education Agency'])
-    localEducationAgencyCategoryDescriptor = build_descriptor('LocalEducationAgencyCategory', 'Independent')
+    addresses = factory.List(
+        [
+            factory.SubFactory(AddressFactory),
+        ]
+    )
+    categories = ListOfDescriptors(
+        "EducationOrganizationCategory", ["Local Education Agency"]
+    )
+    localEducationAgencyCategoryDescriptor = build_descriptor(
+        "LocalEducationAgencyCategory", "Independent"
+    )
     educationOrganizationCodes = factory.LazyAttribute(
         lambda o: build_descriptor_dicts(
-            'EducationOrganizationIdentificationSystem',
-            [('SEA', {'identificationCode': o.localEducationAgencyId})]
+            "EducationOrganizationIdentificationSystem",
+            [("SEA", {"identificationCode": o.localEducationAgencyId})],
         )
     )
-    educationServiceCenterReference = factory.Dict(dict(educationServiceCenterId=None))  # Must be created
+    educationServiceCenterReference = factory.Dict(
+        dict(educationServiceCenterId=None)
+    )  # Must be created
 
 
 class EducationContentFactory(APIFactory):
@@ -51,7 +71,11 @@ class EducationContentFactory(APIFactory):
 
 
 class EducationOrganizationInterventionPrescriptionAssociationFactory(APIFactory):
-    educationOrganizationReference = factory.Dict(dict(educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id()))
+    educationOrganizationReference = factory.Dict(
+        dict(
+            educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id()
+        )
+    )
     interventionPrescriptionReference = factory.Dict(
         dict(
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
@@ -64,29 +88,41 @@ class EducationOrganizationInterventionPrescriptionAssociationFactory(APIFactory
 class EducationOrganizationNetworkFactory(APIFactory):
     educationOrganizationNetworkId = UniquePrimaryKeyAttribute()
     nameOfInstitution = "Schools United Texas"
-    networkPurposeDescriptor = build_descriptor('NetworkPurpose', 'Shared Services')
-    addresses = factory.List([
-        factory.SubFactory(AddressFactory),
-    ])
-    categories = ListOfDescriptors('EducationOrganizationCategory', ['School'])
+    networkPurposeDescriptor = build_descriptor("NetworkPurpose", "Shared Services")
+    addresses = factory.List(
+        [
+            factory.SubFactory(AddressFactory),
+        ]
+    )
+    categories = ListOfDescriptors("EducationOrganizationCategory", ["School"])
     educationOrganizationCodes = factory.LazyAttribute(
         lambda o: build_descriptor_dicts(
-            'EducationOrganizationIdentificationSystem',
-            [('SEA', {'identificationCode': o.educationOrganizationNetworkId})]
+            "EducationOrganizationIdentificationSystem",
+            [("SEA", {"identificationCode": o.educationOrganizationNetworkId})],
         )
     )
 
 
 class EducationOrganizationNetworkAssociationFactory(APIFactory):
-    educationOrganizationNetworkReference = factory.Dict(dict(educationOrganizationNetworkId=None))  # Must be created
-    memberEducationOrganizationReference = factory.Dict(dict(educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id()))
+    educationOrganizationNetworkReference = factory.Dict(
+        dict(educationOrganizationNetworkId=None)
+    )  # Must be created
+    memberEducationOrganizationReference = factory.Dict(
+        dict(
+            educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id()
+        )
+    )
     beginDate = formatted_date(1, 1)
     endDate = formatted_date(12, 31)
 
 
 class EducationOrganizationPeerAssociationFactory(APIFactory):
-    educationOrganizationReference = factory.Dict(dict(educationOrganizationId=None))  # Must be created
-    peerEducationOrganizationReference = factory.Dict(dict(educationOrganizationId=None))  # Must be created
+    educationOrganizationReference = factory.Dict(
+        dict(educationOrganizationId=None)
+    )  # Must be created
+    peerEducationOrganizationReference = factory.Dict(
+        dict(educationOrganizationId=None)
+    )  # Must be created
 
 
 class FeederSchoolAssociationFactory(APIFactory):
@@ -98,13 +134,17 @@ class FeederSchoolAssociationFactory(APIFactory):
 class StateEducationAgencyFactory(APIFactory):
     stateEducationAgencyId = UniquePrimaryKeyAttribute()
     nameOfInstitution = "Texas State Education Agency"
-    addresses = factory.List([
-        factory.SubFactory(AddressFactory),
-    ])
-    categories = ListOfDescriptors('EducationOrganizationCategory', ['Local Education Agency'])
+    addresses = factory.List(
+        [
+            factory.SubFactory(AddressFactory),
+        ]
+    )
+    categories = ListOfDescriptors(
+        "EducationOrganizationCategory", ["Local Education Agency"]
+    )
     educationOrganizationCodes = factory.LazyAttribute(
         lambda o: build_descriptor_dicts(
-            'EducationOrganizationIdentificationSystem',
-            [('SEA', {'identificationCode': o.stateEducationAgencyId})]
+            "EducationOrganizationIdentificationSystem",
+            [("SEA", {"identificationCode": o.stateEducationAgencyId})],
         )
     )
