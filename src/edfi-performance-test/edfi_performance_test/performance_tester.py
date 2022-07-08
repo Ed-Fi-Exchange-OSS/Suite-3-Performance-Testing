@@ -4,6 +4,7 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 import logging
+import sys
 import time
 import gevent
 from os import makedirs
@@ -65,6 +66,7 @@ async def run(args: MainArguments) -> None:
         if(args.runInDebugMode):
             # for running tests in a debugger
             DummyUser.host = args.baseUrl
+            sys.argv = sys.argv[:1]
             run_single_user(DummyUser)
         else:
             spawn_pref_tests(args)
