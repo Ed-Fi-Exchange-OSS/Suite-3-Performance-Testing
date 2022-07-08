@@ -77,8 +77,8 @@ class DescriptorPipecleanTestBase(TaskSet):
 
     def _touch_get_list_endpoint(self):
         return self.client.get(
-            self.list_endpoint, headers=self.get_headers(), name=self.list_endpoint
-        )  # type:ignore
+            self.list_endpoint, headers=self.get_headers(), name=self.list_endpoint  # type:ignore
+        )
 
     def _get_location(self, response: Response) -> str:
         if "location" not in response.headers:
@@ -91,8 +91,8 @@ class DescriptorPipecleanTestBase(TaskSet):
             self.list_endpoint,
             data=json.dumps(self.get_payload()),
             headers=self.get_headers(),
-            name=self.list_endpoint,
-        )  # type: ignore
+            name=self.list_endpoint,  # type: ignore
+        )
 
         return self._get_location(response)
 
@@ -100,16 +100,16 @@ class DescriptorPipecleanTestBase(TaskSet):
         return self.client.get(
             self.detail_endpoint(resource_id),
             headers=self.get_headers(),
-            name=self.detail_endpoint_name,
-        )  # type: ignore
+            name=self.detail_endpoint_name,  # type: ignore
+        )
 
     def _touch_put_endpoint(self, resource_id):
         response = self.client.put(
             self.detail_endpoint(resource_id),
             data=json.dumps(self.get_payload()),
             headers=self.get_headers(),
-            name=self.detail_endpoint_name,
-        )  # type: ignore
+            name=self.detail_endpoint_name,  # type: ignore
+        )
         new_id = self._get_location(response)
         assert new_id == resource_id
         return resource_id
@@ -118,8 +118,8 @@ class DescriptorPipecleanTestBase(TaskSet):
         response = self.client.delete(
             self.detail_endpoint(resource_id),
             headers=self.get_headers(),
-            name=self.detail_endpoint_name,
-        )  # type: ignore
+            name=self.detail_endpoint_name,  # type: ignore
+        )
         return response == 204
 
     def _proceed_to_next_pipeclean_test(self):
