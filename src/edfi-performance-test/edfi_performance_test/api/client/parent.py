@@ -50,7 +50,7 @@ class ParentClient(EdFiAPIClient):
         }
 
     def delete_with_dependencies(self, reference, **kwargs):
-        self.parent_assoc_client.delete(reference["dependency_ids"]["assoc_id"])
+        self.parent_assoc_client.delete_item(reference["dependency_ids"]["assoc_id"])
         self.student_client.delete_with_dependencies(
             reference["dependency_ids"]["student_reference"]
         )
