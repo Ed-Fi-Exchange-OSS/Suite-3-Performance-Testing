@@ -24,13 +24,11 @@ def prepare_for_output(args: MainArguments) -> str:
     output_base_path = f"{args.output}/pipeclean"
     return output_base_path
 
+
 def spawn_pref_tests(args: MainArguments) -> None:
     # setup Environment and Runner
     env = Environment(user_classes=[DummyUser], host=args.baseUrl)
     env.create_local_runner()
-
-    # start a WebUI instance
-    env.create_web_ui("127.0.0.1", 8089)
 
     # start a greenlet that periodically outputs the current stats
 
@@ -55,9 +53,6 @@ def spawn_pref_tests(args: MainArguments) -> None:
     # wait for the greenlets
     env.runner.greenlet.join()
 
-    # stop the web server for good measures
-    if env.web_ui:
-        env.web_ui.stop()
 
 async def run(args: MainArguments) -> None:
 
@@ -69,7 +64,7 @@ async def run(args: MainArguments) -> None:
 
         if(args.runInDebugMode):
             # for running tests in a debugger
-            DummyUser.host=args.baseUrl
+            DummyUser.host = args.baseUrl
             run_single_user(DummyUser)
         else:
             spawn_pref_tests(args)
