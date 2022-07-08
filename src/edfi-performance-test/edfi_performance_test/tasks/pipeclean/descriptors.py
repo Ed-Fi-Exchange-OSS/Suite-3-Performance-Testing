@@ -4,7 +4,6 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 import traceback
-from locust.clients import HttpSession
 from greenlet import GreenletExit
 from requests.models import Response
 
@@ -19,12 +18,6 @@ from edfi_performance_test.helpers.config import get_config_value, DEFAULT_API_P
 
 
 class DescriptorPipecleanTestBase(TaskSet):
-    descriptor: str
-    client: HttpSession
-    token: str
-    list_endpoint: str
-    namespace: str
-
     def __init__(self, descriptor, parent, *args, **kwargs):
         super(DescriptorPipecleanTestBase, self).__init__(parent, *args, **kwargs)
         descriptor_title = "{}{}".format(descriptor[0].upper(), descriptor[1:])

@@ -3,7 +3,6 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-from typing import Callable
 from locust import TaskSet
 
 from edfi_performance_test.api.client.ed_fi_api_client import (
@@ -45,11 +44,6 @@ class EdFiTaskSet(TaskSet):
             self.student_client.delete(s_id)
     ```
     """
-
-    client_class: Callable = type(None)
-
-    _api_client: EdFiAPIClient
-
     def __init__(self, parent, *args, **kwargs):
         if type(self) is EdFiTaskSet:
             raise NotImplementedError(
@@ -58,9 +52,9 @@ class EdFiTaskSet(TaskSet):
 
         super(EdFiTaskSet, self).__init__(parent, *args, **kwargs)
 
-        self.generate_client_class()
+        self.client_class: 'EdFiTaskSet' = self.generate_client_class()
 
-        self._api_client = self.client_class(
+        self._api_client: EdFiAPIClient = self.client_class(
             client=EdFiAPIClient.client, token=EdFiAPIClient.token
         )
 
@@ -90,6 +84,10 @@ class EdFiTaskSet(TaskSet):
     def client(self):
         # Overwrite Locust client with EdFiAPIClient instance
         return self._api_client
+
+    @client.setter
+    def client(self, value: EdFiAPIClient) -> None:
+        self._api_client = value
 
     def create_with_dependencies(self, client_class=None, **kwargs):
         """
@@ -128,9 +126,7 @@ class EdFiTaskSet(TaskSet):
         )
         return client_instance.delete_with_dependencies(reference)
 
-    def generate_client_class(self):
-        if isinstance(self.client_class, type(None)):
-            return
+    def generate_client_class(self) -> 'EdFiTaskSet':
         if "pipeclean" in self.__class__.__module__:
             class_name = self.__class__.__name__.replace("PipecleanTest", "Client")
             class_path = (
@@ -155,7 +151,7 @@ class EdFiTaskSet(TaskSet):
         else:
             raise RuntimeError("Cannot determine class_name and class_path")
 
-        self.client_class = import_from_dotted_path(class_path)
+        return import_from_dotted_path(class_path)
 
     @staticmethod
     def is_invalid_response(resource_id):
