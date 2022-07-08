@@ -385,13 +385,8 @@ class EdFiAPIClient:
     @staticmethod
     def is_not_expected_result(response, expected_responses):
         if response.status_code not in expected_responses:
-            message = "Invalid response received"
-            try:
-                message = json.loads(response.text)["message"]
-            except Exception:
-                pass
             print(
-                f"{response.request.method} {response.status_code} : {','.join(message)}"
+                f"{response.request.method} {response.status_code} : {response.text}"
             )
             return True
         return False
