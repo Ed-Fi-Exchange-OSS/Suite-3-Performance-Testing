@@ -94,6 +94,13 @@ def parse_main_arguments() -> MainArguments:
         env_var="RUN_TIME_IN_MINUTES",
     )
     parser.add(  # type: ignore
+        "-g",
+        "--runInDebugMode",
+        help="Runs tests in single user mode. When set to true, clientCount, spawnRate and runTimeInMinutes will be ignored",
+        action="store_true",  # default false
+        env_var="PERF_DEBUG",
+    )
+    parser.add(  # type: ignore
         "-o",
         "--output",
         help="Directory for writing results",
@@ -122,6 +129,7 @@ def parse_main_arguments() -> MainArguments:
         args_parsed.clientCount,
         args_parsed.spawnRate,
         args_parsed.runTimeInMinutes,
+        args_parsed.runInDebugMode,
         args_parsed.output,
         args_parsed.logLevel,
     )

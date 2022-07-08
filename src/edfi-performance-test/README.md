@@ -26,19 +26,20 @@ poetry run python edfi_performance_test -b "https://localhost:54746" -k "testkey
 
 ### Supported arguments
 
-| Command Line Argument                | Required                             | Description                                                                                   |
-| ------------------------------------ | ------------------------------------ | --------------------------------------------------------------------------------------------- |
-| `-b` or `--baseUrl`                  | yes (no default)                     | ​The base url used to derived api, metadata, oauth, and dependency urls (e.g., http://server)  |
-| `-k` or `--key`                      | yes (no default)                     | The web API OAuth key                                                                         |
-| `-s` or `--secret`                   | yes (no default)                     | The web API OAuth secret                                                                      |
-| `-i` or `--ignoreCertificateErrors`  | no (default: false)                  | Ignore certificate errors                                                                     |
-| `-d` or `--deleteResources`          | no (default: true)                   | Delete resources during test run                                                              |
-| `-f` or `--failDeliberately`         | no (default: true)                   | Deliberately introduce requests that result in failure                                        |
-| `-c` or `--clientCount`              | no (default: 1000)                   | Total number of users spawned by locust tests                                                 |
-| `-r` or `--spawnRate`                | no (default: 25)                     | Number of users spawned by locust tests per second                                            |
-| `-t` or `--runTimeInMinutes`         | no (default: 30)                     | Test Run Time                                                                                 |
-| `-o` or `--output`                   | no (default: out)                    | Directory for writing results                                                                 |
-| `-l` or `--logLevel`                 | no (default: INFO)                   | Override the console output log level: VERBOSE, DEBUG, INFO, WARN, ERROR                      |
+| Command Line Argument                | Required                             | Description                                                                                                    |
+| ------------------------------------ | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------|
+| `-b` or `--baseUrl`                  | yes (no default)                     | ​The base url used to derived api, metadata, oauth, and dependency urls (e.g., http://server)                   |
+| `-k` or `--key`                      | yes (no default)                     | The web API OAuth key                                                                                          |
+| `-s` or `--secret`                   | yes (no default)                     | The web API OAuth secret                                                                                       |
+| `-i` or `--ignoreCertificateErrors`  | no (default: false)                  | Ignore certificate errors                                                                                      |
+| `-d` or `--deleteResources`          | no (default: true)                   | Delete resources during test run                                                                               |
+| `-f` or `--failDeliberately`         | no (default: true)                   | Deliberately introduce requests that result in failure                                                         |
+| `-c` or `--clientCount`              | no (default: 1000)                   | Total number of users spawned by locust tests                                                                  |
+| `-r` or `--spawnRate`                | no (default: 25)                     | Number of users spawned by locust tests per second                                                             |
+| `-t` or `--runTimeInMinutes`         | no (default: 30)                     | Test Run Time                                                                                                  |
+| `-g` or `--runInDebugMode  `         | no (default: false)                  | Runs tests in single user mode. When set to true, clientCount, spawnRate and runTimeInMinutes will be ignored  |
+| `-o` or `--output`                   | no (default: out)                    | Directory for writing results                                                                                  |
+| `-l` or `--logLevel`                 | no (default: INFO)                   | Override the console output log level: VERBOSE, DEBUG, INFO, WARN, ERROR                                       |
 
 
 Each argument can also be set by environment variable, or by using as `.env`

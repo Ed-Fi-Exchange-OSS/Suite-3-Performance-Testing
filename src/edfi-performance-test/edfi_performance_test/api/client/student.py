@@ -544,7 +544,7 @@ class StudentGradebookEntryClient(EdFiAPIClient):
     def delete_with_dependencies(self, reference, **kwargs):
         self.delete_item(reference["resource_id"])
         dependencies = reference["dependency_ids"]
-        self.entry_client.delete(dependencies["entry_client"])
+        self.entry_client.delete_item(dependencies["entry_client"])
         self.assoc_client.delete_with_dependencies(dependencies["assoc_client"])
 
 

@@ -23,5 +23,6 @@ class MainArguments:
     clientCount: int
     spawnRate: int
     runTimeInMinutes: int
+    runInDebugMode: bool
     output: str
     log_level: LogLevel = LogLevel.INFO
