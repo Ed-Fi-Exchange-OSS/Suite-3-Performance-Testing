@@ -25,4 +25,6 @@ class MainArguments:
     runTimeInMinutes: int
     runInDebugMode: bool
     output: str
+    api_prefix: str
+    oauth_endpoint: str
     log_level: LogLevel = LogLevel.INFO

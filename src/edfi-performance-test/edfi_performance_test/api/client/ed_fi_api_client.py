@@ -14,7 +14,7 @@ from typing import Any, Dict
 import urllib3
 from urllib3.exceptions import InsecureRequestWarning
 from locust.clients import HttpSession
-from edfi_performance_test.helpers.config import get_config_value
+from edfi_performance_test.helpers.config import get_config_value, DEFAULT_API_PREFIX, DEFAULT_OAUTH_ENDPOINT
 
 logger = logging.getLogger("locust.runners")
 
@@ -75,8 +75,6 @@ class EdFiAPIClient:
     ```
     """
 
-    API_PREFIX = "/data/v3/ed-fi"
-
     factory: Any = None
     endpoint: str = ""
     dependencies: Dict = {}
@@ -85,6 +83,8 @@ class EdFiAPIClient:
     def __init__(self, client: HttpSession, token: str = ""):
         self.token = token
         self.client = client
+        self.api_prefix: str = get_config_value("PERF_API_PREFIX", DEFAULT_API_PREFIX)
+        self.oauth_endpoint = get_config_value("PERF_API_OAUTH_ENDPOINT", DEFAULT_OAUTH_ENDPOINT)
 
         # Suppress exceptions thrown in the Test Lab environment
         # when self-signed certificates are used.
@@ -119,7 +119,7 @@ class EdFiAPIClient:
             logger.debug(response.text)
 
     def list_endpoint(self, query=""):
-        return "{}/{}{}".format(self.API_PREFIX, self.endpoint, query)
+        return "{}/{}{}".format(self.api_prefix, self.endpoint, query)
 
     def detail_endpoint(self, resource_id):
         return "{}/{}".format(self.list_endpoint(), resource_id)
@@ -147,7 +147,7 @@ class EdFiAPIClient:
     def login(self, succeed_on=None, name=None, **credentials_overrides) -> str:
         if succeed_on is None:
             succeed_on = []
-        name = name or "/oauth/token"
+        name = name or self.oauth_endpoint
         payload = {
             "client_id": get_config_value("key"),
             "client_secret": get_config_value("secret"),
@@ -155,7 +155,7 @@ class EdFiAPIClient:
         }
         payload.update(credentials_overrides)
         response = self._get_response(
-            "post", "/oauth/token", payload, succeed_on=succeed_on, name=name
+            "post", self.oauth_endpoint, payload, succeed_on=succeed_on, name=name
         )
         self.log_response(response, ignore_error=response.status_code in succeed_on)
         try:
@@ -384,13 +384,7 @@ class EdFiAPIClient:
                 message = json.loads(response.text)["message"]
             except Exception:
                 pass
-            print(
-                response.request.method
-                + " "
-                + str(response.status_code)
-                + " : "
-                + message
-            )
+            print(f"{response.request.method} {response.status_code} : {','.join(message)}")
             return True
         return False
 
