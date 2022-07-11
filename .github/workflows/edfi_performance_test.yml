@@ -7,8 +7,8 @@ name: Ed-Fi Performance Tests
 on:
   pull_request:
     paths:
-      - 'src/edfi_performance_test/**'
-      - '!src/edfi_performance_test/**/*.md'
+      - 'src/edfi-performance-test/**'
+      - '!src/edfi-performance-test/**/*.md'
   push:
     paths:
       - 'src/edfi-performance-test/**'

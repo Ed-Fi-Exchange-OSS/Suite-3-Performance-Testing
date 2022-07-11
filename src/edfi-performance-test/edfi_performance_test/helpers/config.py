@@ -7,10 +7,16 @@
 import os
 from edfi_performance_test.helpers.main_arguments import MainArguments
 
+DEFAULT_API_PREFIX = "/data/v3/ed-fi"
+DEFAULT_OAUTH_ENDPOINT = "/oauth/token"
 
-def get_config_value(key) -> str:
+
+def get_config_value(key: str, default: str = "") -> str:
     if key in os.environ:
         return os.environ[key]
+
+    if default != "":
+        return default
 
     raise RuntimeError(f"Missing environment variable `{key}`")
 
@@ -22,3 +28,5 @@ def set_config_values(args: MainArguments):
     os.environ["failDeliberately"] = str(args.failDeliberately)
     os.environ["ignoreCertificateErrors"] = str(args.ignoreCertificateErrors)
     os.environ["secret"] = args.secret
+    os.environ["PERF_API_PREFIX"] = args.api_prefix
+    os.environ["PERF_API_OAUTH_PREFIX"] = args.oauth_endpoint

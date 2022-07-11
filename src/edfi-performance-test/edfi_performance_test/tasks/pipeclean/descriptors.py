@@ -5,6 +5,7 @@
 
 import traceback
 from greenlet import GreenletExit
+from requests.models import Response
 
 import json
 
@@ -13,24 +14,19 @@ from locust.exception import StopUser, InterruptTaskSet
 
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 from edfi_performance_test.factories.utils import random_chars
+from edfi_performance_test.helpers.config import get_config_value, DEFAULT_API_PREFIX
 
 
 class DescriptorPipecleanTestBase(TaskSet):
-    descriptor: str
-    client = None
-    token: str
-    list_endpoint: str
-    namespace: str
-
     def __init__(self, descriptor, parent, *args, **kwargs):
         super(DescriptorPipecleanTestBase, self).__init__(parent, *args, **kwargs)
         descriptor_title = "{}{}".format(descriptor[0].upper(), descriptor[1:])
-        self.list_endpoint = "{}/{}Descriptors".format(
-            EdFiAPIClient.API_PREFIX, descriptor
-        )
         self.namespace = "uri://ed-fi.org/{}Descriptor".format(descriptor_title)
         self.client = EdFiAPIClient.client
         self.token = EdFiAPIClient.token
+
+        api_prefix: str = get_config_value("PERF_API_PREFIX", DEFAULT_API_PREFIX)
+        self.list_endpoint = "{}/{}Descriptors".format(api_prefix, descriptor)
 
     @task
     def run_descriptor_pipeclean_test(self):
@@ -74,23 +70,30 @@ class DescriptorPipecleanTestBase(TaskSet):
 
     def _touch_get_list_endpoint(self):
         return self.client.get(
-            self.list_endpoint, headers=self.get_headers(), name=self.list_endpoint
+            self.list_endpoint, headers=self.get_headers(), name=self.list_endpoint  # type:ignore
         )
+
+    def _get_location(self, response: Response) -> str:
+        if "location" not in response.headers:
+            return ""
+
+        return response.headers["location"].split("/")[-1].strip()
 
     def _touch_post_endpoint(self):
         response = self.client.post(
             self.list_endpoint,
             data=json.dumps(self.get_payload()),
             headers=self.get_headers(),
-            name=self.list_endpoint,
+            name=self.list_endpoint,  # type: ignore
         )
-        return response.headers["Location"].split("/")[-1].strip()
+
+        return self._get_location(response)
 
     def _touch_get_detail_endpoint(self, resource_id):
         return self.client.get(
             self.detail_endpoint(resource_id),
             headers=self.get_headers(),
-            name=self.detail_endpoint_name,
+            name=self.detail_endpoint_name,  # type: ignore
         )
 
     def _touch_put_endpoint(self, resource_id):
@@ -98,9 +101,9 @@ class DescriptorPipecleanTestBase(TaskSet):
             self.detail_endpoint(resource_id),
             data=json.dumps(self.get_payload()),
             headers=self.get_headers(),
-            name=self.detail_endpoint_name,
+            name=self.detail_endpoint_name,  # type: ignore
         )
-        new_id = response.headers["Location"].split("/")[-1].strip()
+        new_id = self._get_location(response)
         assert new_id == resource_id
         return resource_id
 
@@ -108,7 +111,7 @@ class DescriptorPipecleanTestBase(TaskSet):
         response = self.client.delete(
             self.detail_endpoint(resource_id),
             headers=self.get_headers(),
-            name=self.detail_endpoint_name,
+            name=self.detail_endpoint_name,  # type: ignore
         )
         return response == 204
 
