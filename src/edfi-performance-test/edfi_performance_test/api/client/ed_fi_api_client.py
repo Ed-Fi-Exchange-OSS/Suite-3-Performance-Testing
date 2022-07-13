@@ -85,16 +85,15 @@ class EdFiAPIClient:
     token: str = ""
 
     def __init__(self, client: HttpSession, token: str = ""):
-        self.token = token
-        self.client = client
         self.api_prefix: str = get_config_value("PERF_API_PREFIX", DEFAULT_API_PREFIX)
         self.oauth_endpoint = get_config_value(
             "PERF_API_OAUTH_ENDPOINT", DEFAULT_OAUTH_ENDPOINT
         )
 
+        self.client = client
         # Suppress exceptions thrown in the Test Lab environment
         # when self-signed certificates are used.
-        self.client.verify = False
+        self.client.verify = not eval(get_config_value("ignoreCertificateErrors"))
 
         token = token or self.login()
 
@@ -133,12 +132,16 @@ class EdFiAPIClient:
     def detail_endpoint_nickname(self):
         return self.detail_endpoint("{id}")
 
-    def _get_response(self, method, *args, **kwargs):
-        method = getattr(self.client, method)
+    def _get_response(self, method_name, *args, **kwargs):
+        method = getattr(self.client, method_name)
         succeed_on = kwargs.pop("succeed_on", [])
         with method(
             *args, catch_response=True, allow_redirects=False, **kwargs
         ) as response:
+            if response.status_code == 401: # If token expired, re-login
+                self.token = self.login()
+                kwargs["headers"]=self.get_headers()
+                response = self._get_response(method_name, *args, **kwargs)
             if response.status_code in succeed_on:
                 # If told explicitly to succeed, mark success
                 response.success()
