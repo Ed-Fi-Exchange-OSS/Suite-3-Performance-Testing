@@ -24,6 +24,9 @@ directory:
 poetry run python edfi_performance_test -b "https://localhost:54746" -k "testkey" -s "testsecret"
 ```
 
+Test failure ratio is monitored throughout and run is stopped if more than 50% of the
+tests experience failures.
+
 ### Supported arguments
 
 | Command Line Argument                | Required                             | Description                                                                                                    |

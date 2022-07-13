@@ -12,6 +12,7 @@ from os import makedirs
 from locust.debug import run_single_user
 from locust.env import Environment
 from locust.stats import stats_history, StatsCSVFileWriter, PERCENTILES_TO_REPORT
+from locust.runners import STATE_STOPPING, STATE_STOPPED, STATE_CLEANUP, Runner
 
 from edfi_performance_test.helpers.main_arguments import MainArguments
 from edfi_performance_test.helpers.config import set_config_values
@@ -26,6 +27,14 @@ def prepare_for_output(args: MainArguments) -> str:
     return output_base_path
 
 
+def monitor_fail_ratio(runner: Runner):
+    while runner.state not in [STATE_STOPPING, STATE_STOPPED, STATE_CLEANUP]:
+        time.sleep(1)
+        if runner.stats.total.fail_ratio > 0.5:
+            runner.quit()
+            raise RuntimeError(f"fail ratio was {runner.stats.total.fail_ratio}, quitting")
+
+
 def spawn_pref_tests(args: MainArguments) -> None:
     # setup Environment and Runner
     env = Environment(user_classes=[DummyUser], host=args.baseUrl)
@@ -38,13 +47,16 @@ def spawn_pref_tests(args: MainArguments) -> None:
     )
     gevent.spawn(stats_writer)
 
-    # start a greenlet that save current stats to history
+    # start a greenlet that saves current stats to history
     gevent.spawn(stats_history, env.runner)
 
     # start the test
     if not env.runner:
         raise RuntimeError("Locust runner not configured correctly")
     runner = env.runner
+
+    # start a greenlet that monitors fail ratio
+    gevent.spawn(monitor_fail_ratio, env.runner)
 
     runner.start(args.clientCount, spawn_rate=args.spawnRate)
 
