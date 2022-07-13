@@ -138,9 +138,9 @@ class EdFiAPIClient:
         with method(
             *args, catch_response=True, allow_redirects=False, **kwargs
         ) as response:
-            if response.status_code == 401: # If token expired, re-login
+            if response.status_code == 401:  # If token expired, re-login
                 self.token = self.login()
-                kwargs["headers"]=self.get_headers()
+                kwargs["headers"] = self.get_headers()
                 response = self._get_response(method_name, *args, **kwargs)
             if response.status_code in succeed_on:
                 # If told explicitly to succeed, mark success
