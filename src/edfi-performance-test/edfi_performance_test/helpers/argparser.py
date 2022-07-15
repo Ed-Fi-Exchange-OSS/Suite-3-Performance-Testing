@@ -6,6 +6,7 @@
 from configargparse import ArgParser  # type: ignore
 
 from edfi_performance_test.helpers.log_level import LogLevel
+from edfi_performance_test.helpers.test_type import TestType
 from edfi_performance_test.helpers.main_arguments import MainArguments
 from edfi_performance_test.helpers.config import (
     DEFAULT_API_PREFIX,
@@ -60,6 +61,15 @@ def parse_main_arguments() -> MainArguments:
         env_var="IGNORE_TLS_CERTIFICATE",
     )
     parser.add(  # type: ignore
+        "-t",
+        "--testType",
+        help="Type of the performance tests to run: VOLUME, PIPECLEAN, CHANGE_QUERY",
+        type=TestType,
+        choices=list(TestType),
+        default=TestType.PIPECLEAN,
+        env_var="PERF_TEST_TYPE",
+    )
+    parser.add(  # type: ignore
         "-d",
         "--deleteResources",
         help="Delete resources during test run",
@@ -90,7 +100,7 @@ def parse_main_arguments() -> MainArguments:
         env_var="SPAWN_RATE",
     )
     parser.add(  # type: ignore
-        "-t",
+        "-m",
         "--runTimeInMinutes",
         help="Test Run Time",
         type=int,
@@ -144,6 +154,7 @@ def parse_main_arguments() -> MainArguments:
         args_parsed.key,
         args_parsed.secret,
         args_parsed.ignoreCertificateErrors,
+        args_parsed.testType,
         args_parsed.deleteResources,
         args_parsed.failDeliberately,
         args_parsed.clientCount,

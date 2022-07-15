@@ -6,6 +6,7 @@
 from dataclasses import dataclass
 
 from edfi_performance_test.helpers.log_level import LogLevel
+from edfi_performance_test.helpers.test_type import TestType
 
 
 @dataclass
@@ -18,6 +19,7 @@ class MainArguments:
     key: str
     secret: str
     ignoreCertificateErrors: bool
+    testType: TestType
     deleteResources: bool
     failDeliberately: bool
     clientCount: int

@@ -35,11 +35,12 @@ tests experience failures.
 | `-k` or `--key`                      | yes (no default)                     | The web API OAuth key                                                                                          |
 | `-s` or `--secret`                   | yes (no default)                     | The web API OAuth secret                                                                                       |
 | `-i` or `--ignoreCertificateErrors`  | no (default: false)                  | Ignore certificate errors                                                                                      |
+| `-t` or `--testType`                 | no (default: PIPECLEAN)              | Type of the performance tests to run: VOLUME, PIPECLEAN, CHANGE_QUERY                                          |
 | `-d` or `--deleteResources`          | no (default: true)                   | Delete resources during test run                                                                               |
 | `-f` or `--failDeliberately`         | no (default: true)                   | Deliberately introduce requests that result in failure                                                         |
 | `-c` or `--clientCount`              | no (default: 1000)                   | Total number of users spawned by locust tests                                                                  |
 | `-r` or `--spawnRate`                | no (default: 25)                     | Number of users spawned by locust tests per second                                                             |
-| `-t` or `--runTimeInMinutes`         | no (default: 30)                     | Test Run Time                                                                                                  |
+| `-m` or `--runTimeInMinutes`         | no (default: 30)                     | Test Run Time                                                                                                  |
 | `-g` or `--runInDebugMode  `         | no (default: false)                  | Runs tests in single user mode. When set to true, clientCount, spawnRate and runTimeInMinutes will be ignored  |
 | `-o` or `--output`                   | no (default: out)                    | Directory for writing results                                                                                  |
 | `-l` or `--logLevel`                 | no (default: INFO)                   | Override the console output log level: VERBOSE, DEBUG, INFO, WARN, ERROR                                       |

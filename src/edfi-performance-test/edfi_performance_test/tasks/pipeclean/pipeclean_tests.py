@@ -33,7 +33,7 @@ class EdFiPipecleanTestMixin(object):
     max_wait = 9000
 
 
-class DummyUser(HttpUser):
+class PipeCleanTestUser(HttpUser):
     def on_start(self):
         tasks_submodules = [
             name
