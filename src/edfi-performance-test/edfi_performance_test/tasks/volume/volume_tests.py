@@ -18,7 +18,7 @@ from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 
 
 class VolumeTestMixin(object):
-    min_wait = 2000
+    min_wait = 4000
     max_wait = 9000
 
 
