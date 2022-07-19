@@ -8,22 +8,26 @@ import sys
 import time
 import gevent
 from os import makedirs
+from typing import Type
 
-from locust.debug import run_single_user
+from locust.debug import run_single_user, User
 from locust.env import Environment
 from locust.stats import stats_history, StatsCSVFileWriter, PERCENTILES_TO_REPORT
 from locust.runners import STATE_STOPPING, STATE_STOPPED, STATE_CLEANUP, Runner
 
 from edfi_performance_test.helpers.main_arguments import MainArguments
 from edfi_performance_test.helpers.config import set_config_values
-from edfi_performance_test.tasks.pipeclean.pipeclean_tests import DummyUser
+from edfi_performance_test.tasks.pipeclean.pipeclean_tests import PipeCleanTestUser
+from edfi_performance_test.tasks.volume.volume_tests import VolumeTestUser
+from edfi_performance_test.helpers.test_type import TestType
+
 
 logger = logging.getLogger(__name__)
 
 
 def prepare_for_output(args: MainArguments) -> str:
     makedirs(args.output, exist_ok=True)
-    output_base_path = f"{args.output}/pipeclean"
+    output_base_path = f"{args.output}/{args.testType}"
     return output_base_path
 
 
@@ -35,9 +39,9 @@ def monitor_fail_ratio(runner: Runner):
             raise RuntimeError(f"fail ratio was {runner.stats.total.fail_ratio}, quitting")
 
 
-def spawn_pref_tests(args: MainArguments) -> None:
+def spawn_pref_tests(args: MainArguments, user_class: Type[User]) -> None:
     # setup Environment and Runner
-    env = Environment(user_classes=[DummyUser], host=args.baseUrl)
+    env = Environment(user_classes=[user_class], host=args.baseUrl)
     env.create_local_runner()
 
     # start a greenlet that periodically outputs the current stats
@@ -67,6 +71,30 @@ def spawn_pref_tests(args: MainArguments) -> None:
     env.runner.greenlet.join()
 
 
+def run_pipe_clean_tests(args: MainArguments) -> None:
+    if(args.runInDebugMode):
+        # for running tests in a debugger
+        PipeCleanTestUser.host = args.baseUrl
+        sys.argv = sys.argv[:1]
+        run_single_user(PipeCleanTestUser)
+    else:
+        spawn_pref_tests(args, PipeCleanTestUser)
+
+
+def run_volume_tests(args: MainArguments) -> None:
+    if(args.runInDebugMode):
+        # for running tests in a debugger
+        VolumeTestUser.host = args.baseUrl
+        sys.argv = sys.argv[:1]
+        run_single_user(VolumeTestUser)
+    else:
+        spawn_pref_tests(args, VolumeTestUser)
+
+
+def run_change_query_tests(args: MainArguments) -> None:
+    pass  # TODO: implement change query tests
+
+
 async def run(args: MainArguments) -> None:
 
     try:
@@ -75,13 +103,12 @@ async def run(args: MainArguments) -> None:
 
         set_config_values(args)
 
-        if(args.runInDebugMode):
-            # for running tests in a debugger
-            DummyUser.host = args.baseUrl
-            sys.argv = sys.argv[:1]
-            run_single_user(DummyUser)
-        else:
-            spawn_pref_tests(args)
+        if(args.testType == TestType.VOLUME):
+            run_volume_tests(args)
+        elif(args.testType == TestType.PIPECLEAN):
+            run_pipe_clean_tests(args)
+        elif(args.testType == TestType.CHANGE_QUERY):
+            run_change_query_tests(args)
 
         logger.info(
             f"Finished running performance tests in {time.time() - start} seconds."
