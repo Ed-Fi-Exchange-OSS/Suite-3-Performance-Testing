@@ -12,7 +12,11 @@ import traceback
 from urllib3.exceptions import InsecureRequestWarning
 from locust.clients import HttpSession
 
-from edfi_performance_test.helpers.config import get_config_value
+from edfi_performance_test.helpers.config import (
+    get_config_value,
+    DEFAULT_API_PREFIX,
+    DEFAULT_OAUTH_ENDPOINT,
+)
 
 logger = logging.getLogger("locust.runners")
 urllib3.disable_warnings(InsecureRequestWarning)
@@ -20,22 +24,25 @@ urllib3.disable_warnings(InsecureRequestWarning)
 
 class EdFiBasicAPIClient:
 
-    _token = None
+    token = None
     client: HttpSession
 
-    def __init__(self, api_prefix="/data/v3/ed-fi"):
-        self.API_PREFIX = api_prefix
-        self.host = get_config_value("baseUrl")
+    def __init__(self, client: HttpSession, token: str = "", api_prefix=""):
+        self.api_prefix: str = api_prefix or get_config_value("PERF_API_PREFIX", DEFAULT_API_PREFIX)
+        self.oauth_endpoint = get_config_value(
+            "PERF_API_OAUTH_ENDPOINT", DEFAULT_OAUTH_ENDPOINT
+        )
+        self.client = client
         # Suppress exceptions thrown in the Test Lab environment
         # when self-signed certificates are used.
         self.client.verify = not eval(get_config_value("ignoreCertificateErrors"))
-        if self._token is None:
-            self._token = self.login()
 
-    def login(self, succeed_on=None, name=None, **credentials_overrides):
+        token = token or self.login()
+
+    def login(self, succeed_on=None, name=None, **credentials_overrides) -> str:
         if succeed_on is None:
             succeed_on = []
-        name = name or "/oauth/token"
+        name = name or self.oauth_endpoint
         payload = {
             "client_id": get_config_value("key"),
             "client_secret": get_config_value("secret"),
@@ -43,21 +50,21 @@ class EdFiBasicAPIClient:
         }
         payload.update(credentials_overrides)
         response = self._get_response(
-            "post", "/oauth/token", payload, succeed_on=succeed_on, name=name
+            "post", self.oauth_endpoint, payload, succeed_on=succeed_on, name=name
         )
         self.log_response(response, ignore_error=response.status_code in succeed_on)
         try:
-            token = json.loads(response.text)["access_token"]
-            return token
+            self.token = json.loads(response.text)["access_token"]
+            return self.token
         except (KeyError, ValueError):
             # failed login
-            return None
+            raise RuntimeError("Login failed")
 
     def get_headers(self):
-        if self._token is None:
+        if self.token is None:
             raise ValueError("Need to log in before getting authorization headers!")
         return {
-            "Authorization": "Bearer {}".format(self._token),
+            "Authorization": "Bearer {}".format(self.token),
             "Accept": "application/json",
             "Content-Type": "application/json",
         }
@@ -96,17 +103,8 @@ class EdFiBasicAPIClient:
     @staticmethod
     def is_not_expected_result(response, expected_responses):
         if response.status_code not in expected_responses:
-            message = "Invalid response received"
-            try:
-                message = json.loads(response.text)["message"]
-            except Exception:
-                pass
             print(
-                response.request.method
-                + " "
-                + str(response.status_code)
-                + " : "
-                + message
+                f"{response.request.method} {response.request.url} - RESPONSE CODE: {response.status_code} : {response.text}"
             )
             return True
         return False
@@ -118,7 +116,7 @@ class EdFiBasicAPIClient:
         return False
 
     def list_endpoint(self, endpoint, query=""):
-        return "{}/{}{}".format(self.API_PREFIX, endpoint, query)
+        return "{}/{}{}".format(self.api_prefix, endpoint, query)
 
     def get_list(self, endpoint, query=""):
         response = self._get_response(
@@ -127,9 +125,6 @@ class EdFiBasicAPIClient:
             headers=self.get_headers(),
             name=self.list_endpoint(endpoint),
         )
-        if self.is_token_exipired_result(response):
-            self._token = self.login()
-            return self.get_list(endpoint, query)
         if self.is_not_expected_result(response, [200]):
             return
         self.log_response(response)

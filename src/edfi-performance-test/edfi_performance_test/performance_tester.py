@@ -19,6 +19,7 @@ from edfi_performance_test.helpers.main_arguments import MainArguments
 from edfi_performance_test.helpers.config import set_config_values
 from edfi_performance_test.tasks.pipeclean.pipeclean_tests import PipeCleanTestUser
 from edfi_performance_test.tasks.volume.volume_tests import VolumeTestUser
+from edfi_performance_test.tasks.change_query.change_query_tests import ChangeQueryTestUser
 from edfi_performance_test.helpers.test_type import TestType
 
 
@@ -92,7 +93,14 @@ def run_volume_tests(args: MainArguments) -> None:
 
 
 def run_change_query_tests(args: MainArguments) -> None:
-    pass  # TODO: implement change query tests
+    if(args.runInDebugMode):
+        # for running tests in a debugger
+        ChangeQueryTestUser.host = args.baseUrl
+        sys.argv = sys.argv[:1]
+        run_single_user(ChangeQueryTestUser)
+    else:
+        spawn_pref_tests(args, ChangeQueryTestUser)
+
 
 
 async def run(args: MainArguments) -> None:
