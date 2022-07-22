@@ -19,7 +19,8 @@ def get_config_value(key: str, default: str = "") -> str:
     if key == 'newest_change_version':
         change_version_file = _get_change_version_file_path()
         with open(change_version_file, 'r') as version_file:
-            return json.loads(version_file.read())[key]
+            os.environ[key] = str(json.loads(version_file.read())[key])  # set environment variable to avoid reading the file for each endpoint
+            return os.environ[key]
 
     if default != "":
         return default

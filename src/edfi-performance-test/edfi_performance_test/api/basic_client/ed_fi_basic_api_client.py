@@ -24,14 +24,15 @@ urllib3.disable_warnings(InsecureRequestWarning)
 
 class EdFiBasicAPIClient:
 
-    token = None
+    token: str
     client: HttpSession
 
-    def __init__(self, client: HttpSession, token: str = "", api_prefix=""):
+    def __init__(self, client: HttpSession, token: str = "", api_prefix="", endpoint=""):
         self.api_prefix: str = api_prefix or get_config_value("PERF_API_PREFIX", DEFAULT_API_PREFIX)
         self.oauth_endpoint = get_config_value(
             "PERF_API_OAUTH_ENDPOINT", DEFAULT_OAUTH_ENDPOINT
         )
+        self.endpoint = endpoint
         self.client = client
         # Suppress exceptions thrown in the Test Lab environment
         # when self-signed certificates are used.
@@ -115,15 +116,15 @@ class EdFiBasicAPIClient:
             return True
         return False
 
-    def list_endpoint(self, endpoint, query=""):
-        return "{}/{}{}".format(self.api_prefix, endpoint, query)
+    def list_endpoint(self, query=""):
+        return "{}/{}{}".format(self.api_prefix, self.endpoint, query)
 
-    def get_list(self, endpoint, query=""):
+    def get_list(self, query=""):
         response = self._get_response(
             "get",
-            self.list_endpoint(endpoint, query),
+            self.list_endpoint(query),
             headers=self.get_headers(),
-            name=self.list_endpoint(endpoint),
+            name=self.list_endpoint(),
         )
         if self.is_not_expected_result(response, [200]):
             return

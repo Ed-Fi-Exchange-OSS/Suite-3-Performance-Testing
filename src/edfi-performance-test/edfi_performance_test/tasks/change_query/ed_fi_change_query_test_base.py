@@ -34,7 +34,7 @@ class EdFiChangeQueryTestBase(TaskSet):
 
     def __init__(self, parent, *args, **kwargs):
         super(EdFiChangeQueryTestBase, self).__init__(parent, *args, **kwargs)
-        self.api_client = EdFiBasicAPIClient(EdFiBasicAPIClient.client, EdFiBasicAPIClient.token)
+        self.api_client = EdFiBasicAPIClient(EdFiBasicAPIClient.client, EdFiBasicAPIClient.token, endpoint= self.endpoint)
 
     @task
     def run_change_query_scenario(self):
@@ -52,7 +52,7 @@ class EdFiChangeQueryTestBase(TaskSet):
         offset = 0
         limit = 100
         time = 0
-        min_change_version = get_config_value('newest_change_version')
+        min_change_version = int(get_config_value('newest_change_version'))
         if min_change_version != 0:
             min_change_version += 1
 
@@ -61,8 +61,7 @@ class EdFiChangeQueryTestBase(TaskSet):
                 print ('Offset has reached: {}'.format(offset))
             query = "?offset={}&limit={}&minChangeVersion={}".format(offset, limit, min_change_version)
             start = timeit.default_timer()
-            endpoint = self.endpoint
-            results = self._touch_get_list_endpoint(endpoint, query)
+            results = self._touch_get_list_endpoint(query)
             stop = timeit.default_timer()
             time += (stop - start)
             if results is None:
@@ -72,11 +71,11 @@ class EdFiChangeQueryTestBase(TaskSet):
                 break
             offset += limit
 
-        print ('{} Sync: {} seconds'.format(endpoint, time))
-        print ('{} results returned for {}'.format(num_of_results, endpoint))
+        print ('{} Sync: {} seconds'.format(self.endpoint, time))
+        print ('{} results returned for {}'.format(num_of_results, self.endpoint))
 
-    def _touch_get_list_endpoint(self, endpoint, query):
-        return self.api_client.get_list(endpoint, query)
+    def _touch_get_list_endpoint(self, query):
+        return self.api_client.get_list(query)
 
     def _proceed_to_next_change_query_test(self):
         self.interrupt()
