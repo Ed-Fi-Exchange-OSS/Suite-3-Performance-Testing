@@ -67,7 +67,7 @@ class EdFiBasicAPIClient:
 
     def get_headers(self):
         if self.token is None:
-            raise ValueError("Need to log in before getting authorization headers!")
+            self.token = self.login()
         return {
             "Authorization": "Bearer {}".format(self.token),
             "Accept": "application/json",
@@ -111,12 +111,6 @@ class EdFiBasicAPIClient:
             print(
                 f"{response.request.method} {response.request.url} - RESPONSE CODE: {response.status_code} : {response.text}"
             )
-            return True
-        return False
-
-    @staticmethod
-    def is_token_exipired_result(response):
-        if response.status_code == "401":
             return True
         return False
 

@@ -7,10 +7,9 @@ import timeit
 import traceback
 
 from greenlet import GreenletExit
-from locust import task, SequentialTaskSet, TaskSet, runners
+from locust import task, SequentialTaskSet, TaskSet
 from locust.exception import StopUser, InterruptTaskSet
-from edfi_performance_test.tasks.ed_fi_task_set import EdFiTaskSet
-from edfi_performance_test.api.basic_client.ed_fi_basic_api_client import (
+from edfi_performance_test.api.client.ed_fi_basic_api_client import (
     EdFiBasicAPIClient,
 )
 from edfi_performance_test.helpers.config import (
@@ -98,8 +97,6 @@ class EdFiChangeQueryTaskSequence(SequentialTaskSet):
     The change_query_tests.py locustfile will automatically detect and append each
     child task set to be run to the `tasks` attribute.
     """
-
-    tasks = []
 
     def __init__(self, *args, **kwargs):
         super(EdFiChangeQueryTaskSequence, self).__init__(*args, **kwargs)
