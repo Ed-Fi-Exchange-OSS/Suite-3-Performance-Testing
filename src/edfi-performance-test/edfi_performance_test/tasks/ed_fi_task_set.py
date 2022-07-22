@@ -44,6 +44,7 @@ class EdFiTaskSet(TaskSet):
             self.student_client.delete(s_id)
     ```
     """
+
     def __init__(self, parent, *args, **kwargs):
         if type(self) is EdFiTaskSet:
             raise NotImplementedError(
@@ -52,7 +53,7 @@ class EdFiTaskSet(TaskSet):
 
         super(EdFiTaskSet, self).__init__(parent, *args, **kwargs)
 
-        self.client_class: 'EdFiTaskSet' = self.generate_client_class()
+        self.client_class: "EdFiTaskSet" = self.generate_client_class()
 
         self._api_client: EdFiAPIClient = self.client_class(
             client=EdFiAPIClient.client, token=EdFiAPIClient.token
@@ -126,7 +127,7 @@ class EdFiTaskSet(TaskSet):
         )
         return client_instance.delete_with_dependencies(reference)
 
-    def generate_client_class(self) -> 'EdFiTaskSet':
+    def generate_client_class(self) -> "EdFiTaskSet":
         if "pipeclean" in self.__class__.__module__:
             class_name = self.__class__.__name__.replace("PipecleanTest", "Client")
             class_path = (

@@ -10,8 +10,13 @@ from greenlet import GreenletExit
 from locust import task, SequentialTaskSet, TaskSet, runners
 from locust.exception import StopUser, InterruptTaskSet
 from edfi_performance_test.tasks.ed_fi_task_set import EdFiTaskSet
-from edfi_performance_test.api.basic_client.ed_fi_basic_api_client import EdFiBasicAPIClient
-from edfi_performance_test.helpers.config import get_config_value, set_change_version_value
+from edfi_performance_test.api.basic_client.ed_fi_basic_api_client import (
+    EdFiBasicAPIClient,
+)
+from edfi_performance_test.helpers.config import (
+    get_config_value,
+    set_change_version_value,
+)
 
 
 class EdFiChangeQueryTestBase(TaskSet):
@@ -34,7 +39,9 @@ class EdFiChangeQueryTestBase(TaskSet):
 
     def __init__(self, parent, *args, **kwargs):
         super(EdFiChangeQueryTestBase, self).__init__(parent, *args, **kwargs)
-        self.api_client = EdFiBasicAPIClient(EdFiBasicAPIClient.client, EdFiBasicAPIClient.token, endpoint= self.endpoint)
+        self.api_client = EdFiBasicAPIClient(
+            EdFiBasicAPIClient.client, EdFiBasicAPIClient.token, endpoint=self.endpoint
+        )
 
     @task
     def run_change_query_scenario(self):
@@ -52,18 +59,20 @@ class EdFiChangeQueryTestBase(TaskSet):
         offset = 0
         limit = 100
         time = 0
-        min_change_version = int(get_config_value('newest_change_version'))
+        min_change_version = int(get_config_value("newest_change_version"))
         if min_change_version != 0:
             min_change_version += 1
 
         while True:
             if offset > 0 and offset % 10000 == 0:
-                print ('Offset has reached: {}'.format(offset))
-            query = "?offset={}&limit={}&minChangeVersion={}".format(offset, limit, min_change_version)
+                print("Offset has reached: {}".format(offset))
+            query = "?offset={}&limit={}&minChangeVersion={}".format(
+                offset, limit, min_change_version
+            )
             start = timeit.default_timer()
             results = self._touch_get_list_endpoint(query)
             stop = timeit.default_timer()
-            time += (stop - start)
+            time += stop - start
             if results is None:
                 break
             num_of_results += len(results)
@@ -71,8 +80,8 @@ class EdFiChangeQueryTestBase(TaskSet):
                 break
             offset += limit
 
-        print ('{} Sync: {} seconds'.format(self.endpoint, time))
-        print ('{} results returned for {}'.format(num_of_results, self.endpoint))
+        print("{} Sync: {} seconds".format(self.endpoint, time))
+        print("{} results returned for {}".format(num_of_results, self.endpoint))
 
     def _touch_get_list_endpoint(self, query):
         return self.api_client.get_list(query)
@@ -89,12 +98,14 @@ class EdFiChangeQueryTaskSequence(SequentialTaskSet):
     The change_query_tests.py locustfile will automatically detect and append each
     child task set to be run to the `tasks` attribute.
     """
+
     tasks = []
 
     def __init__(self, *args, **kwargs):
         super(EdFiChangeQueryTaskSequence, self).__init__(*args, **kwargs)
         EdFiBasicAPIClient.client = self.client
         EdFiBasicAPIClient.token = None
+
 
 class EdFiChangeQueryTestTerminator(TaskSet):
     """
@@ -108,17 +119,21 @@ class EdFiChangeQueryTestTerminator(TaskSet):
     unpredictable behavior: the first client to hit this task will cause
     the entire Locust run to quit.
     """
+
     def __init__(self, parent, *args, **kwargs):
         super(EdFiChangeQueryTestTerminator, self).__init__(parent, *args, **kwargs)
-        self.api_client = EdFiBasicAPIClient(EdFiBasicAPIClient.client, EdFiBasicAPIClient.token, "/ChangeQueries/v1")
-
+        self.api_client = EdFiBasicAPIClient(
+            EdFiBasicAPIClient.client, EdFiBasicAPIClient.token, "/ChangeQueries/v1"
+        )
 
     def _update_newest_change_version(self):
-        available_change_versions = self.api_client.get_list('availableChangeVersions')
+        available_change_versions = self.api_client.get_list("availableChangeVersions")
         if available_change_versions is not None:
-            newest_change_version = available_change_versions['newestChangeVersion']
+            newest_change_version = available_change_versions["newestChangeVersion"]
             set_change_version_value(newest_change_version)
-            print ('Current value of NewestChangeVersion: {}'.format(newest_change_version))
+            print(
+                "Current value of NewestChangeVersion: {}".format(newest_change_version)
+            )
 
     @task
     def finish_change_query_test_run(self):

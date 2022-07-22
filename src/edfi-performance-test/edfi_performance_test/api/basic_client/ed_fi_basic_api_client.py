@@ -27,8 +27,12 @@ class EdFiBasicAPIClient:
     token: str
     client: HttpSession
 
-    def __init__(self, client: HttpSession, token: str = "", api_prefix="", endpoint=""):
-        self.api_prefix: str = api_prefix or get_config_value("PERF_API_PREFIX", DEFAULT_API_PREFIX)
+    def __init__(
+        self, client: HttpSession, token: str = "", api_prefix="", endpoint=""
+    ):
+        self.api_prefix: str = api_prefix or get_config_value(
+            "PERF_API_PREFIX", DEFAULT_API_PREFIX
+        )
         self.oauth_endpoint = get_config_value(
             "PERF_API_OAUTH_ENDPOINT", DEFAULT_OAUTH_ENDPOINT
         )

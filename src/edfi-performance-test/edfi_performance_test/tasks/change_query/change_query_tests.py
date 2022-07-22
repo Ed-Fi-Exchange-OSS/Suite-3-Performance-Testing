@@ -44,7 +44,7 @@ class ChangeQueryTestUser(HttpUser):
         # Collect *ChangeQueryTest classes and append them to
         # EdFiChangeQueryTaskSequence.tasks
         for subclass in EdFiChangeQueryTestBase.__subclasses__():
-                EdFiChangeQueryTaskSequence.tasks.append(subclass)
+            EdFiChangeQueryTaskSequence.tasks.append(subclass)
 
         EdFiChangeQueryTaskSequence.tasks.append(EdFiChangeQueryTestTerminator)
 

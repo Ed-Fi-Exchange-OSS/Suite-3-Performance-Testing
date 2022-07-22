@@ -16,10 +16,12 @@ def get_config_value(key: str, default: str = "") -> str:
     if key in os.environ:
         return os.environ[key]
 
-    if key == 'newest_change_version':
+    if key == "newest_change_version":
         change_version_file = _get_change_version_file_path()
-        with open(change_version_file, 'r') as version_file:
-            os.environ[key] = str(json.loads(version_file.read())[key])  # set environment variable to avoid reading the file for each endpoint
+        with open(change_version_file, "r") as version_file:
+            os.environ[key] = str(
+                json.loads(version_file.read())[key]
+            )  # set environment variable to avoid reading the file for each endpoint
             return os.environ[key]
 
     if default != "":
@@ -38,18 +40,22 @@ def set_config_values(args: MainArguments):
     os.environ["PERF_API_PREFIX"] = args.api_prefix
     os.environ["PERF_API_OAUTH_PREFIX"] = args.oauth_endpoint
 
+
 def _get_change_version_file_path():
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    current_dir = os.path.join(current_dir, '..')
-    current_dir = os.path.join(current_dir, '..')
-    change_version_file_path = os.path.join(current_dir, 'change_version_tracker.json')
+    current_dir = os.path.join(current_dir, "..")
+    current_dir = os.path.join(current_dir, "..")
+    change_version_file_path = os.path.join(current_dir, "change_version_tracker.json")
     if not os.path.isfile(change_version_file_path):
         with open(change_version_file_path, "w") as change_version_file:
             change_version_file.write('{\n    "newest_change_version": 0\n}')
     return change_version_file_path
 
 
-
 def set_change_version_value(value):
-    with open(_get_change_version_file_path(), 'w') as change_version_file:
-        change_version_file.write(json.dumps({'newest_change_version': value}, indent=4, separators=(',', ': ')))
+    with open(_get_change_version_file_path(), "w") as change_version_file:
+        change_version_file.write(
+            json.dumps(
+                {"newest_change_version": value}, indent=4, separators=(",", ": ")
+            )
+        )
