@@ -3,12 +3,14 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-from edfi_performance.tasks.change_query import EdFiChangeQueryTestBase
+from edfi_performance_test.tasks.change_query.ed_fi_change_query_test_base import (
+    EdFiChangeQueryTestBase,
+)
 
 
 class StaffChangeQueryTest(EdFiChangeQueryTestBase):
-    endpoint = 'staffs'
+    endpoint = "staffs"
 
 
 class StaffSectionAssociationChangeQueryTest(EdFiChangeQueryTestBase):
-    endpoint = 'staffSectionAssociations'
+    endpoint = "staffSectionAssociations"

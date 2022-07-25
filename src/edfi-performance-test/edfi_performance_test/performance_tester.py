@@ -19,6 +19,9 @@ from edfi_performance_test.helpers.main_arguments import MainArguments
 from edfi_performance_test.helpers.config import set_config_values
 from edfi_performance_test.tasks.pipeclean.pipeclean_tests import PipeCleanTestUser
 from edfi_performance_test.tasks.volume.volume_tests import VolumeTestUser
+from edfi_performance_test.tasks.change_query.change_query_tests import (
+    ChangeQueryTestUser,
+)
 from edfi_performance_test.helpers.test_type import TestType
 
 
@@ -36,7 +39,9 @@ def monitor_fail_ratio(runner: Runner):
         time.sleep(1)
         if runner.stats.total.fail_ratio > 0.5:
             runner.quit()
-            raise RuntimeError(f"fail ratio was {runner.stats.total.fail_ratio}, quitting")
+            raise RuntimeError(
+                f"fail ratio was {runner.stats.total.fail_ratio}, quitting"
+            )
 
 
 def spawn_pref_tests(args: MainArguments, user_class: Type[User]) -> None:
@@ -72,7 +77,7 @@ def spawn_pref_tests(args: MainArguments, user_class: Type[User]) -> None:
 
 
 def run_pipe_clean_tests(args: MainArguments) -> None:
-    if(args.runInDebugMode):
+    if args.runInDebugMode:
         # for running tests in a debugger
         PipeCleanTestUser.host = args.baseUrl
         sys.argv = sys.argv[:1]
@@ -82,7 +87,7 @@ def run_pipe_clean_tests(args: MainArguments) -> None:
 
 
 def run_volume_tests(args: MainArguments) -> None:
-    if(args.runInDebugMode):
+    if args.runInDebugMode:
         # for running tests in a debugger
         VolumeTestUser.host = args.baseUrl
         sys.argv = sys.argv[:1]
@@ -92,7 +97,13 @@ def run_volume_tests(args: MainArguments) -> None:
 
 
 def run_change_query_tests(args: MainArguments) -> None:
-    pass  # TODO: implement change query tests
+    if args.runInDebugMode:
+        # for running tests in a debugger
+        ChangeQueryTestUser.host = args.baseUrl
+        sys.argv = sys.argv[:1]
+        run_single_user(ChangeQueryTestUser)
+    else:
+        spawn_pref_tests(args, ChangeQueryTestUser)
 
 
 async def run(args: MainArguments) -> None:
@@ -103,11 +114,11 @@ async def run(args: MainArguments) -> None:
 
         set_config_values(args)
 
-        if(args.testType == TestType.VOLUME):
+        if args.testType == TestType.VOLUME:
             run_volume_tests(args)
-        elif(args.testType == TestType.PIPECLEAN):
+        elif args.testType == TestType.PIPECLEAN:
             run_pipe_clean_tests(args)
-        elif(args.testType == TestType.CHANGE_QUERY):
+        elif args.testType == TestType.CHANGE_QUERY:
             run_change_query_tests(args)
 
         logger.info(

@@ -70,7 +70,9 @@ class DescriptorPipecleanTestBase(TaskSet):
 
     def _touch_get_list_endpoint(self):
         return self.client.get(
-            self.list_endpoint, headers=self.get_headers(), name=self.list_endpoint  # type:ignore
+            self.list_endpoint,
+            headers=self.get_headers(),
+            name=self.list_endpoint,  # type:ignore
         )
 
     def _get_location(self, response: Response) -> str:
