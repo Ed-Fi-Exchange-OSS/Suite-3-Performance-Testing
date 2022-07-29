@@ -63,5 +63,4 @@ class PipeCleanTestUser(HttpUser):
         EdFiPipecleanTaskSequence.tasks.append(EdFiPipecleanTestTerminator)
 
         # assign all pipeclean tasks to HttpUser
-        # tasks = {EdFiPipecleanTaskSequence}
         self.tasks.append(EdFiPipecleanTaskSequence)
