@@ -18,7 +18,9 @@ class DescriptorPipecleanTestBase(EdFiPipecleanTestBase):
     def __init__(self, descriptor: str, parent, *args, **kwargs):
         super(DescriptorPipecleanTestBase, self).__init__(parent, *args, **kwargs)
         self.namespace = "{}{}".format(descriptor[0].upper(), descriptor[1:])
-        self._api_client.factory.namespace = "uri://ed-fi.org/{}Descriptor".format(descriptor.title())
+        self._api_client.factory.namespace = "uri://ed-fi.org/{}Descriptor".format(
+            descriptor.title()
+        )
         self._api_client.endpoint = "{}Descriptors".format(descriptor)
 
     def generate_client_class(self) -> Any:
