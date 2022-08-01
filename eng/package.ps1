@@ -57,6 +57,5 @@ main {
             --include=src/** `
             --include=TestRunner.psm1 `
             --include=run-tests.bat `
-            --include=.env `
     }
 }
