@@ -3,5 +3,5 @@
 echo "Running tests from %CD%"
 
 REM Launch the test run.
-powershell -NoProfile -ExecutionPolicy Bypass -Command ". .\TestRunner.ps1; Invoke-%1Tests"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module .\TestRunner.psm1 -Force; Invoke-%1Tests"
 

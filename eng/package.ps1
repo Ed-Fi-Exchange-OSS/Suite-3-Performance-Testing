@@ -46,20 +46,17 @@ main {
     $artifacts = "$(resolve-path .)\artifacts"
 
     remove-directory $artifacts
+    cd..
 
     execute {
         octo pack `
             --id=Suite-3-Performance-Testing `
             --version=$version `
             --outFolder=$artifacts `
-            --include=deploy.ps1 `
-            --include=volume_tests.py `
-            --include=pipeclean_tests.py `
-            --include=change_query_tests.py `
-            --include=requirements.txt `
-            --include=edfi_performance/** `
-            --include=TestRunner.ps1 `
+            --include=./eng/deploy.ps1 `
+            --include=src/** `
+            --include=TestRunner.psm1 `
             --include=run-tests.bat `
-            --include=test-config.json `
+            --include=.env`
     }
 }
