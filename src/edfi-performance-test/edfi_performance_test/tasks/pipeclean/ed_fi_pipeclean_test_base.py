@@ -149,4 +149,4 @@ class EdFiPipecleanTestTerminator(TaskSet):
 
     @task
     def finish_pipeclean_test_run(self):
-        self.interrupt()
+        self.user.environment.runner.quit()

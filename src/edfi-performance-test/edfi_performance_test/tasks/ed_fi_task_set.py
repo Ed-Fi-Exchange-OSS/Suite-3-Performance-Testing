@@ -4,6 +4,7 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 from locust import TaskSet
+from typing import Any
 
 from edfi_performance_test.api.client.ed_fi_api_client import (
     import_from_dotted_path,
@@ -53,7 +54,7 @@ class EdFiTaskSet(TaskSet):
 
         super(EdFiTaskSet, self).__init__(parent, *args, **kwargs)
 
-        self.client_class: "EdFiTaskSet" = self.generate_client_class()
+        self.client_class = self.generate_client_class()
 
         self._api_client: EdFiAPIClient = self.client_class(
             client=EdFiAPIClient.client, token=EdFiAPIClient.token
@@ -90,7 +91,7 @@ class EdFiTaskSet(TaskSet):
     def client(self, value: EdFiAPIClient) -> None:
         self._api_client = value
 
-    def create_with_dependencies(self, client_class=None, **kwargs):
+    def create_with_dependencies(self, **kwargs):
         """
         Atomically creates an instance of `client_class` with default values,
         including all dependencies.  Returns a reference (defined by client
@@ -103,14 +104,10 @@ class EdFiTaskSet(TaskSet):
         :param kwargs: Keyword arguments to `client_class.create_with_dependencies()`.
         :return: Reference which can be passed to `delete_from_reference`
         """
-        if client_class is None:
-            client_class = self.client_class
-        client_instance = client_class(
-            self._api_client.client, token=self._api_client.token
-        )
-        return client_instance.create_with_dependencies(**kwargs)
 
-    def delete_from_reference(self, reference, client_class=None):
+        return self._api_client.create_with_dependencies(**kwargs)
+
+    def delete_from_reference(self, reference):
         """
         Atomically deletes an instance of `client_class` from a reference
         returned from `create_with_dependencies` for the same client class.
@@ -120,14 +117,10 @@ class EdFiTaskSet(TaskSet):
         :return: Return value of client class's `delete_with_dependencies`, usually
           `None`.
         """
-        if client_class is None:
-            client_class = self.client_class
-        client_instance = client_class(
-            self._api_client.client, token=self._api_client.token
-        )
-        return client_instance.delete_with_dependencies(reference)
 
-    def generate_client_class(self) -> "EdFiTaskSet":
+        return self._api_client.delete_with_dependencies(reference)
+
+    def generate_client_class(self) -> Any:
         if "pipeclean" in self.__class__.__module__:
             class_name = self.__class__.__name__.replace("PipecleanTest", "Client")
             class_path = (

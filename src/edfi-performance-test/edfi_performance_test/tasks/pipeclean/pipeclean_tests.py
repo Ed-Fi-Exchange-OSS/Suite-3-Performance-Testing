@@ -49,7 +49,10 @@ class PipeCleanTestUser(HttpUser):
         # Collect *PipecleanTest classes and append them to
         # EdFiPipecleanTaskSequence.tasks
         for subclass in EdFiPipecleanTestBase.__subclasses__():
-            if subclass != EdFiCompositePipecleanTestBase:
+            if (
+                subclass != EdFiCompositePipecleanTestBase
+                and subclass != DescriptorPipecleanTestBase
+            ):
                 EdFiPipecleanTaskSequence.tasks.append(subclass)
 
         # Add composite pipeclean tests
@@ -63,5 +66,4 @@ class PipeCleanTestUser(HttpUser):
         EdFiPipecleanTaskSequence.tasks.append(EdFiPipecleanTestTerminator)
 
         # assign all pipeclean tasks to HttpUser
-        # tasks = {EdFiPipecleanTaskSequence}
         self.tasks.append(EdFiPipecleanTaskSequence)

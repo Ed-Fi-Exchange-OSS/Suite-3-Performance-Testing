@@ -21,7 +21,7 @@ Sample call using full integrated security, loading from the sample files
 directory:
 
 ```bash
-poetry run python edfi_performance_test -b "https://localhost:54746" -k "testkey" -s "testsecret"
+poetry run python edfi_performance_test -b "https://localhost:54746" -k "testkey" -s "testsecret" -t "volume"
 ```
 
 Test failure ratio is monitored throughout and run is stopped if more than 50% of the

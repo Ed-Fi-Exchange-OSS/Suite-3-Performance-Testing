@@ -305,7 +305,7 @@ function Invoke-TestRunner {
     param (
         $testSuite,
         $clientCount,
-        $hatchRate,
+        $spawnRate,
         $testType,
         $runTime,
         $Config
@@ -344,8 +344,19 @@ function Invoke-TestRunner {
         $url = Get-ConfigValue -Config $Config -Key "PERF_API_BASEURL"
         $key = Get-ConfigValue -Config $Config -Key "PERF_API_KEY"
         $secret = Get-ConfigValue -Config $Config -Key "PERF_API_SECRET"
-        $clientCount = Get-ConfigValue -Config $Config -Key "PERF_CONNECTION_LIMIT" -Optional
-        if ($null -eq $clientCount) { $clientCount = 5 }
+        if($null -eq $clientCount) {
+            $clientCount = Get-ConfigValue -Config $Config -Key "CLIENT_COUNT" -Optional
+        }
+        if($null -eq $spawnRate){
+            $spawnRate = Get-ConfigValue -Config $Config -Key "SPAWN_RATE" -Optional
+        }
+        if($null -eq $runTimeInMinutes){
+            $runTimeInMinutes = Get-ConfigValue -Config $Config -Key "RUN_TIME_IN_MINUTES" -Optional
+        }
+        $connectionLimit = Get-ConfigValue -Config $Config -Key "PERF_CONNECTION_LIMIT" -Optional
+        if ($null -eq $connectionLimit) {
+            $connectionLimit = 5
+        }
         $contentType = Get-ConfigValue -Config $Config -Key "PERF_CONTENT_TYPE" -Optional
         $resourceList = Get-ConfigValue -Config $Config -Key "PERF_RESOURCE_LIST" -Optional
         $pageSize = Get-ConfigValue -Config $Config -Key "PERF_API_PAGE_SIZE" -Optional
@@ -477,21 +488,12 @@ function Invoke-TestRunner {
             # request in the event that the number of volume test classes exceeds
             # the given client count.
 
-            # TODO: change this to use Start-Process instead of "cmd /c"
-            $command = & cmd /c "locust -f volume_tests.py --list 2>&1"
-            $minimumCount = $command.length-1
-            if($clientCount -lt $minimumCount) {
-                Write-InfoLog "An inadequate number of clients was provided. Changing client count from $clientCount to $minimumCount"
-                $clientCount = $minimumCount
-            }
         }
 
-        $runTimeArgument = ""
         if ($null -eq $runTime) {
             Write-InfoLog "Running $testSuite tests with $clientCount clients..."
         } else {
             Write-InfoLog "Running $testSuite tests with $clientCount clients for $runTime..."
-            $runTimeArgument = "--run-time $runTime"
         }
 
         if($testSuite -eq 'pagevolume') {
@@ -503,8 +505,8 @@ function Invoke-TestRunner {
                 &poetry install
 
                 $command = "poetry run python edfi_paging_test --baseUrl $url --key  $key --secret $secret --output $outputDir"
-                if ($clientCount) {
-                    $command += " --connectionLimit  $clientCount"
+                if ($connectionLimit) {
+                    $command += " --connectionLimit  $connectionLimit"
                 }
                 if ($contentType) {
                     $command += " --contentType  $contentType"
@@ -545,9 +547,43 @@ function Invoke-TestRunner {
             }
         }
         else{
-            $command = "locust -f $($testSuite)_tests.py -c $clientCount -r $hatchRate --no-web --csv $runnerOutputPath/$testType $runTimeArgument --only-summary"
-            Write-DebugLog "Executing: $command" -LogLevel $logLevel
-            Invoke-Expression -Command $command
+            $outputDir = Resolve-Path $testKitOutputPath
+            Push-Location ./src/edfi-performance-test
+            try {
+                $command = "poetry run python edfi_performance_test --baseUrl $url --key  $key --secret $secret --output $outputDir --testType $testSuite"
+                if ($clientCount) {
+                    $command += " --clientCount  $clientCount"
+                }
+                if ($spawnRate) {
+                    $command += " --spawnRate  $spawnRate"
+                }
+                if ($runTimeInMinutes) {
+                    $command += " --runTimeInMinutes  $runTimeInMinutes"
+                }
+                if ($logLevel) {
+                    $command += " --logLevel $logLevel"
+                }
+                if ($insecure) {
+                    $command += " --ignoreCertificateErrors"
+                }
+                Write-DebugLog "Executing: $command" -LogLevel $logLevel
+                Invoke-Expression -Command $command
+            }
+            catch {
+                Write-ErrorLog $_.Exception.Message
+                $formatstring = "{0} : {1}`n{2}`n" +
+                    "    + CategoryInfo          : {3}`n" +
+                    "    + FullyQualifiedErrorId : {4}`n"
+                $fields = $_.InvocationInfo.MyCommand.Name,
+                        $_.ErrorDetails.Message,
+                        $_.InvocationInfo.PositionMessage,
+                        $_.CategoryInfo.ToString(),
+                        $_.FullyQualifiedErrorId
+                Write-ErrorLog ($formatstring -f $fields)
+            }
+            finally {
+                Pop-Location
+            }
         }
         Write-InfoLog "Test runner process complete"
 
@@ -617,6 +653,24 @@ function Invoke-TestRunner {
     finally {
         Stop-Transcript
     }
+}
+
+function Set-ConfigValue {
+    param (
+        [Parameter(Mandatory=$True)]
+        [hashtable]
+        $Config,
+
+        [Parameter(Mandatory=$True)]
+        [string]
+        $Key,
+
+        [Parameter(Mandatory=$True)]
+        [string]
+        $Value
+    )
+
+    $Config[$Key] = $Value
 }
 
 function Get-ConfigValue {
@@ -768,70 +822,75 @@ function Invoke-PageVolumeTests {
 }
 
 # Removed in version 2.0 release, will be restored in the future
-# function Invoke-VolumeTests {
-#     $config = Initialize-TestRunner
-#     Invoke-TestRunner `
-#         -TestSuite volume `
-#         -ClientCount 50 `
-#         -HatchRate 1 `
-#         -RunTime 30m `
-#         -TestType volume `
-#         -Config $config
-# }
+function Invoke-VolumeTests {
+    $config = Initialize-TestRunner
+    Invoke-TestRunner `
+        -TestSuite volume `
+        -ClientCount 100 `
+        -SpawnRate 25 `
+        -RunTime 30m `
+        -TestType volume `
+        -Config $config
+}
 
-# function Invoke-PipecleanTests {
-#     $config = Initialize-TestRunner
-#     Invoke-TestRunner `
-#         -TestSuite pipeclean `
-#         -ClientCount 1 `
-#         -HatchRate 1 `
-#         -TestType pipeclean `
-#         -Config $config
-# }
+function Invoke-StressTests {
+    $config = Initialize-TestRunner
+    Invoke-TestRunner `
+        -TestSuite volume `
+        -ClientCount 1000 `
+        -SpawnRate 25 `
+        -RunTime 30m `
+        -TestType stress `
+        -Config $config
+}
 
-# function Invoke-StressTests {
-#     $config = Initialize-TestRunner
-#     Invoke-TestRunner `
-#         -TestSuite volume `
-#         -ClientCount 1000 `
-#         -HatchRate 25 `
-#         -RunTime 30m `
-#         -TestType stress `
-#         -Config $config
-# }
+function Invoke-SoakTests {
+    $config = Initialize-TestRunner
+    Invoke-TestRunner `
+        -TestSuite volume `
+        -ClientCount 500 `
+        -SpawnRate 1 `
+        -RunTime 48h `
+        -TestType soak `
+        -Config $config
+}
+function Invoke-PipecleanTests {
+    $config = Initialize-TestRunner
+    Invoke-TestRunner `
+        -TestSuite pipeclean `
+        -ClientCount 1 `
+        -SpawnRate 1 `
+        -TestType pipeclean `
+        -Config $config
+}
 
-# function Invoke-SoakTests {
-#     $config = Initialize-TestRunner
-#     Invoke-TestRunner `
-#         -TestSuite volume `
-#         -ClientCount 500 `
-#         -HatchRate 1 `
-#         -RunTime 48h `
-#         -TestType soak `
-#         -Config $config
-# }
+function Invoke-ChangeQueryTests {
+    $config = Initialize-TestRunner
 
-# function Invoke-ChangeQueryTests {
-#     $config = Initialize-TestRunner
+    Set-ChangeVersionTracker
+    $changeQueryBackupFilenames = Get-ConfigValue -Config $config -Key 'CHANGE_QUERY_BACKUP_FILE_NAMES'
 
-#     Set-ChangeVersionTracker
+    $iteration = 1
+    foreach ($changeQueryBackupFilename in $changeQueryBackupFilenames){
+        $testResultsPath = Get-OutputDir -Config $config
+        $testResultsPath = $testResultsPath + "_" + $iteration
+        Set-ConfigValue -Config $config -Key "PERF_OUTPUT_DIR" -Value $testResultsPath
+        $iteration = $iteration + 1
 
-#     $iteration = 1
-#     foreach ($changeQueryBackupFilename in $changeQueryBackupFilenames){
-#         # TODO: fix this path to use value from .env config file, instead of being hard-coded
-#         $global:testResultsPath = "TestResults/TestResult_$iteration"
-#         $iteration = $iteration + 1
-
-#         Initialize-Folder $runnerOutputPath
-
-#         Invoke-TestRunner `
-#             -TestSuite change_query `
-#             -ClientCount 1 `
-#             -HatchRate 1 `
-#             -TestType change_query `
-#             -Config $config
-#         Duplicate-ChangeVersionTracker
-#     }
-# }
+        Invoke-TestRunner `
+            -TestSuite change_query `
+            -ClientCount 1 `
+            -SpawnRate 1 `
+            -TestType change_query `
+            -Config $config
+        Duplicate-ChangeVersionTracker
+     }
+}
 
 Export-ModuleMember -Function Invoke-PageVolumeTests
+Export-ModuleMember -Function Invoke-PipecleanTests
+Export-ModuleMember -Function Invoke-VolumeTests
+Export-ModuleMember -Function Invoke-StressTests
+Export-ModuleMember -Function Invoke-SoakTests
+Export-ModuleMember -Function Invoke-ChangeQueryTests
+

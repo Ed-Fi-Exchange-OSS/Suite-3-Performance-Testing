@@ -12,11 +12,6 @@ WITH
     MOVE 'EdFi_Admin' TO 'F:\DATA\EdFi_Admin.mdf',
     MOVE 'EdFi_Admin_log' TO 'F:\DATA\EdFi_Admin_log.ldf';
 
-RESTORE DATABASE EdFi_Bulk FROM DISK = 'F:\Database Backups\EdFi_Bulk.bak'
-WITH
-    MOVE 'EdFi_Bulk' TO 'F:\DATA\EdFi_Bulk.mdf',
-    MOVE 'EdFi_Bulk_log' TO 'F:\DATA\EdFi_Bulk_log.ldf';
-
 RESTORE DATABASE EdFi_Security FROM DISK = 'F:\Database Backups\EdFi_Security.bak'
 WITH
     MOVE 'EdFi_Security' TO 'F:\DATA\EdFi_Security.mdf',

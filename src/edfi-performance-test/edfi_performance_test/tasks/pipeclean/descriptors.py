@@ -3,126 +3,34 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-import traceback
-from greenlet import GreenletExit
-from requests.models import Response
-
-import json
-
-from locust import TaskSet, task
-from locust.exception import StopUser, InterruptTaskSet
-
-from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
+from typing import Any
+from edfi_performance_test.api.client.ed_fi_api_client import import_from_dotted_path
 from edfi_performance_test.factories.utils import random_chars
-from edfi_performance_test.helpers.config import get_config_value, DEFAULT_API_PREFIX
+from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
+    EdFiPipecleanTestBase,
+)
 
 
-class DescriptorPipecleanTestBase(TaskSet):
-    def __init__(self, descriptor, parent, *args, **kwargs):
+class DescriptorPipecleanTestBase(EdFiPipecleanTestBase):
+    update_attribute_name = "codeValue"
+    update_attribute_value = random_chars(15)
+
+    def __init__(self, descriptor: str, parent, *args, **kwargs):
         super(DescriptorPipecleanTestBase, self).__init__(parent, *args, **kwargs)
-        descriptor_title = "{}{}".format(descriptor[0].upper(), descriptor[1:])
-        self.namespace = "uri://ed-fi.org/{}Descriptor".format(descriptor_title)
-        self.client = EdFiAPIClient.client
-        self.token = EdFiAPIClient.token
+        self.namespace = "{}{}".format(descriptor[0].upper(), descriptor[1:])
+        self._api_client.factory.namespace = "uri://ed-fi.org/{}Descriptor".format(
+            descriptor.title()
+        )
+        self._api_client.endpoint = "{}Descriptors".format(descriptor)
 
-        api_prefix: str = get_config_value("PERF_API_PREFIX", DEFAULT_API_PREFIX)
-        self.list_endpoint = "{}/{}Descriptors".format(api_prefix, descriptor)
-
-    @task
-    def run_descriptor_pipeclean_test(self):
-        try:
-            self._touch_get_list_endpoint()
-            resource_id = self._touch_post_endpoint()
-            if self.is_invalid_response(resource_id):
-                self._proceed_to_next_pipeclean_test()
-            self._touch_get_detail_endpoint(resource_id)
-            self._touch_put_endpoint(resource_id)
-            self._touch_delete_endpoint(resource_id)
-            self._proceed_to_next_pipeclean_test()
-        except (StopUser, GreenletExit, InterruptTaskSet, KeyboardInterrupt):
-            raise
-        except Exception:
-            traceback.print_exc()
-            self._proceed_to_next_pipeclean_test()
-
-    def detail_endpoint(self, resource_id):
-        return "{}/{}".format(self.list_endpoint, resource_id)
-
-    @property
-    def detail_endpoint_name(self):
-        return self.detail_endpoint("{id}")
-
-    def get_headers(self):
-        return {
-            "Authorization": "Bearer {}".format(self.token),
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-        }
-
-    def get_payload(self):
-        new_descriptor = random_chars(15)
-        return dict(
-            namespace=self.namespace,
-            codeValue=new_descriptor,
-            description=new_descriptor,
-            shortDescription=new_descriptor,
+    def generate_client_class(self) -> Any:
+        class_path = (
+            self.__class__.__module__.replace("tasks.pipeclean", "api.client")
+            + "."
+            + "DescriptorClient"
         )
 
-    def _touch_get_list_endpoint(self):
-        return self.client.get(
-            self.list_endpoint,
-            headers=self.get_headers(),
-            name=self.list_endpoint,  # type:ignore
-        )
-
-    def _get_location(self, response: Response) -> str:
-        if "location" not in response.headers:
-            return ""
-
-        return response.headers["location"].split("/")[-1].strip()
-
-    def _touch_post_endpoint(self):
-        response = self.client.post(
-            self.list_endpoint,
-            data=json.dumps(self.get_payload()),
-            headers=self.get_headers(),
-            name=self.list_endpoint,  # type: ignore
-        )
-
-        return self._get_location(response)
-
-    def _touch_get_detail_endpoint(self, resource_id):
-        return self.client.get(
-            self.detail_endpoint(resource_id),
-            headers=self.get_headers(),
-            name=self.detail_endpoint_name,  # type: ignore
-        )
-
-    def _touch_put_endpoint(self, resource_id):
-        response = self.client.put(
-            self.detail_endpoint(resource_id),
-            data=json.dumps(self.get_payload()),
-            headers=self.get_headers(),
-            name=self.detail_endpoint_name,  # type: ignore
-        )
-        new_id = self._get_location(response)
-        assert new_id == resource_id
-        return resource_id
-
-    def _touch_delete_endpoint(self, resource_id):
-        response = self.client.delete(
-            self.detail_endpoint(resource_id),
-            headers=self.get_headers(),
-            name=self.detail_endpoint_name,  # type: ignore
-        )
-        return response == 204
-
-    def _proceed_to_next_pipeclean_test(self):
-        self.interrupt()
-
-    @staticmethod
-    def is_invalid_response(response):
-        return response is None
+        return import_from_dotted_path(class_path)
 
 
 class AbsenceEventCategoryDescriptorPipecleanTest(DescriptorPipecleanTestBase):
