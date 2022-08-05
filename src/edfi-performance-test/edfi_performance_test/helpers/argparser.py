@@ -3,6 +3,7 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
+from email.policy import default
 from configargparse import ArgParser  # type: ignore
 
 from edfi_performance_test.helpers.log_level import LogLevel
@@ -82,6 +83,7 @@ def parse_main_arguments() -> MainArguments:
         help="Deliberately introduce requests that result in failure",
         action="store_true",  # default false
         env_var="PERF_FAIL_DELIBERATELY",
+        default=False
     )
     parser.add(  # type: ignore
         "-c",

@@ -168,7 +168,7 @@ class EdFiAPIClient(EdFiBasicAPIClient):
         return resource_id
 
     def delete_item(self, resource_id):
-        if get_config_value("deleteResources").lower() == "false":
+        if get_config_value("PERF_DELETE_RESOURCES").lower() == "false":
             logger.debug(
                 "Skipping delete of {} instance {} because"
                 " deleteResources=False".format(

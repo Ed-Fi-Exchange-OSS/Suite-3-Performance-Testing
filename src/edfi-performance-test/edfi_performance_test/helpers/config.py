@@ -31,12 +31,12 @@ def get_config_value(key: str, default: str = "") -> str:
 
 
 def set_config_values(args: MainArguments):
-    os.environ["key"] = args.key
-    os.environ["baseUrl"] = args.baseUrl
-    os.environ["deleteResources"] = str(args.deleteResources)
-    os.environ["failDeliberately"] = str(args.failDeliberately)
-    os.environ["ignoreCertificateErrors"] = str(args.ignoreCertificateErrors)
-    os.environ["secret"] = args.secret
+    os.environ["PERF_API_KEY"] = args.key
+    os.environ["PERF_API_BASEURL"] = args.baseUrl
+    os.environ["PERF_DELETE_RESOURCES"] = str(args.deleteResources)
+    os.environ["PERF_FAIL_DELIBERATELY"] = str(args.failDeliberately)
+    os.environ["IGNORE_TLS_CERTIFICATE"] = str(args.ignoreCertificateErrors)
+    os.environ["PERF_API_SECRET"] = args.secret
     os.environ["PERF_API_PREFIX"] = args.api_prefix
     os.environ["PERF_API_OAUTH_PREFIX"] = args.oauth_endpoint
 
