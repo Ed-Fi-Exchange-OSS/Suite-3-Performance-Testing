@@ -3,7 +3,6 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-from email.policy import default
 from configargparse import ArgParser  # type: ignore
 
 from edfi_performance_test.helpers.log_level import LogLevel
