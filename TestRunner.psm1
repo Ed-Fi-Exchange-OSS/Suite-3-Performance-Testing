@@ -544,7 +544,7 @@ function Invoke-TestRunner {
             }
         }
         else{
-            $outputDir = Resolve-Path $testKitOutputPath
+            $outputDir = Resolve-Path $runnerOutputPath
             Push-Location ./src/edfi-performance-test
             try {
                 $command = "poetry run python edfi_performance_test --baseUrl $url --key  $key --secret $secret --output $outputDir --testType $testSuite"
@@ -795,7 +795,7 @@ function Get-RunnerOutputDir {
         $Config
     )
     $outputDir = Get-OutputDir -Config $Config
-    $runnerDir = Join-Path -Path $outputDir -ChildPath "runner"
+    $runnerDir = Join-Path -Path $outputDir -ChildPath (Get-Date -Format "yyyy-MM-dd-HH-mm-ss")
     $runnerDir
 }
 
