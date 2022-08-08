@@ -1,6 +1,13 @@
 # Release Notes
 
-## Performance Testing 2.0 Release Notes
+## Version 2.1 Release Notes
+
+August, 2022
+
+* Restores support for SIS Certification-based **pipeclean**, **volume**, and **change
+  queries** tests on ODS/API Suite 3, Version 5.2 and Version 5.3.
+
+## Version 2.0 Release Notes
 
 May, 2022
 
@@ -23,7 +30,7 @@ For more information on the Paging Volume Tests, see:
 * [src/edfi-paging-test](../src/edfi-paging-test/README.md) - instructions for direct
   execution of the test kit (low level)
 
-## Performance Testing 1.2.0 Release Notes
+## Version 1.2.0 Release Notes
 
 * Support for Change Queries testing using `change_query_tests.py`.
 * Updates to the Assessment API due to changes in the data standard.

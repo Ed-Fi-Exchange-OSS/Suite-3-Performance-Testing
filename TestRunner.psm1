@@ -481,13 +481,10 @@ function Invoke-TestRunner {
             $backgroundJobs.Add($webServer, $collectStatsFromWeb)
         }
 
-        if($testSuite -eq 'volume') {
+        if($testSuite -eq 'volume' -and $clientCount -lt 5) {
             # If the number of clients is too low, locust will quit immediately
-            # without running any tests. A safe minimum client count is the count of
-            # the total number of volume test classes. This corrects the user's
-            # request in the event that the number of volume test classes exceeds
-            # the given client count.
-
+            # without running any tests.
+            $clientCount = 5
         }
 
         if ($null -eq $runTime) {
@@ -547,7 +544,7 @@ function Invoke-TestRunner {
             }
         }
         else{
-            $outputDir = Resolve-Path $testKitOutputPath
+            $outputDir = Resolve-Path $runnerOutputPath
             Push-Location ./src/edfi-performance-test
             try {
                 $command = "poetry run python edfi_performance_test --baseUrl $url --key  $key --secret $secret --output $outputDir --testType $testSuite"
@@ -798,7 +795,7 @@ function Get-RunnerOutputDir {
         $Config
     )
     $outputDir = Get-OutputDir -Config $Config
-    $runnerDir = Join-Path -Path $outputDir -ChildPath "runner"
+    $runnerDir = Join-Path -Path $outputDir -ChildPath (Get-Date -Format "yyyy-MM-dd-HH-mm-ss")
     $runnerDir
 }
 

@@ -1,34 +1,20 @@
 # Suite-3-Performance-Testing
 
-Performance testing framework for the Ed-Fi ODS technical suite 3
+Performance testing framework for the Ed-Fi ODS technical suite 3, including the
+following test paths:
 
-## Version 2.0
+1. [Paging Performance](src/edfi-paging-test), for timing retrieval of _all_
+   data in the API, or on selected resources.
+2. [SIS Certification Testing](src/edfi-performance-test/) covering all
+   endpoints used in the SIS certification process with these scenarios:
+   1. **Pipeclean**: simple POST, GET, PUT, and DELETE operations that prove the API
+      is fully operational.
+   2. **Volume**: runs a large volume of POST, PUT, and DELETE operations with
+      parallel clients and randomized workload.
+   3. **Change Queries**: executes the change queries process.
 
-May, 2022
-
-The [current release](docs/release-notes.md) temporarily removes support for the
-older performance tests, while adding support for Paging Volume Tests. These
-tests execute GET requests across all selected resources, paging through all
-available data. This functionality therefore supports running before/after
-comparison testing on GET requests, which can help identify missing indexes,
-assess performance changes in the .NET code, or validate the effects of
-infrastructure changes (such as adding webserver load balancing or upsizing a
-virtual machine).
-
-There are two ways to run these Paging Volume Tests:
-
-* Directly run the [edfi-paging-test](src/edfi-paging-test) package against any
-  ODS/API 5.1 or newer, running in any environment and with any database.
-  * See the [README](src/edfi-paging-test/README.md) for details on how to run
-    this tool.
-* Or, run `run-tests.ps1` to capture additional Windows Server metrics and
-  logging when running the ODS/API in IIS on Windows with SQL Server on the
-  backend.
-  * See the [User Guide](docs/user-guide.md) for a full description of
-    requirements and run instructions.
-
-Upcoming releases will re-introduce support for write-based tests, and _might_
-add support for executing the Paging Volume Tests on ODS/API 5.0 and older.
+See the [User Guide](docs/user-guide.md) for a full description of requirements
+and run instructions.
 
 ## Support
 

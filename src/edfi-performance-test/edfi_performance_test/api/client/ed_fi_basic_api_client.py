@@ -40,7 +40,7 @@ class EdFiBasicAPIClient:
         self.client = client
         # Suppress exceptions thrown in the Test Lab environment
         # when self-signed certificates are used.
-        self.client.verify = not eval(get_config_value("ignoreCertificateErrors"))
+        self.client.verify = not eval(get_config_value("IGNORE_TLS_CERTIFICATE"))
 
         token = token or self.login()
 
@@ -49,8 +49,8 @@ class EdFiBasicAPIClient:
             succeed_on = []
         name = name or self.oauth_endpoint
         payload = {
-            "client_id": get_config_value("key"),
-            "client_secret": get_config_value("secret"),
+            "client_id": get_config_value("PERF_API_KEY"),
+            "client_secret": get_config_value("PERF_API_SECRET"),
             "grant_type": "client_credentials",
         }
         payload.update(credentials_overrides)
