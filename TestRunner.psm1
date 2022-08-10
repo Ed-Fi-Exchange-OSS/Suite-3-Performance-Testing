@@ -547,6 +547,9 @@ function Invoke-TestRunner {
             $outputDir = Resolve-Path $runnerOutputPath
             Push-Location ./src/edfi-performance-test
             try {
+                Write-DebugLog "Executing: poetry install" -LogLevel $logLevel
+                &poetry install
+
                 $command = "poetry run python edfi_performance_test --baseUrl $url --key  $key --secret $secret --output $outputDir --testType $testSuite"
                 if ($clientCount) {
                     $command += " --clientCount  $clientCount"

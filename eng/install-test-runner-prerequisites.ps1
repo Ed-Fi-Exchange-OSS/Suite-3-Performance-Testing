@@ -52,13 +52,8 @@ function Install-Poetry {
     # Ensure pip is on the latest version
     python -m pip install --upgrade pip
 
-    # Install poetry
-    # Poetry's native installation process encounters SSL errors
-    # in some environments. `pip install` is a reasonable alternative
-    # that has been shown to work in our situation.
-    pip install --user poetry
     # Update local and global PATH variables
-    $addition = "$env:APPDATA\Python\Python39\Scripts\"
+    $addition = "$env:USERPROFILE\.pyenv\pyenv-win\versions\3.9.4\Scripts"
     $env:PATH="$env:PATH;$addition"
 
     $value = [Environment]::GetEnvironmentVariable("PATH", "Machine")
@@ -66,9 +61,11 @@ function Install-Poetry {
     [Environment]::SetEnvironmentVariable("PATH", $value, "Machine")
     refreshenv
 
-    Push-Location ..\src\edfi-paging-test
-    poetry install
-    Pop-Location
+    # Install poetry
+    # Poetry's native installation process encounters SSL errors
+    # in some environments. `pip install` is a reasonable alternative
+    # that has been shown to work in our situation.
+    pip install --user poetry
 }
 
 
