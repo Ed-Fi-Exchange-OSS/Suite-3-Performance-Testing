@@ -46,7 +46,7 @@ class EdFiVolumeTestBase(EdFiTaskSet):
 
     @task
     def run_unsuccessful_scenario(self, **kwargs):
-        if get_config_value("PERF_FAIL_DELIBERATELY") == "false":
+        if not eval(get_config_value("PERF_FAIL_DELIBERATELY")):
             return  # Skip this scenario if the config value is set to false
         # Create a bad POST request
         self._api_client.create(

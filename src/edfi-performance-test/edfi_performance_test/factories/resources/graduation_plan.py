@@ -7,6 +7,7 @@ import factory
 
 from edfi_performance_test.factories.resources.api_factory import APIFactory
 from edfi_performance_test.factories.descriptors.utils import build_descriptor
+from edfi_performance_test.factories.utils import RandomSchoolYearAttribute
 
 
 class GraduationPlanFactory(APIFactory):
@@ -16,5 +17,5 @@ class GraduationPlanFactory(APIFactory):
         dict(educationOrganizationId=None),
     )
     graduationSchoolYearTypeReference = factory.Dict(
-        dict(schoolYear=2014),
+        dict(schoolYear=RandomSchoolYearAttribute())
     )
