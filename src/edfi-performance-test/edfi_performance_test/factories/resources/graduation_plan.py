@@ -4,7 +4,7 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 import factory
-
+import random
 from edfi_performance_test.factories.resources.api_factory import APIFactory
 from edfi_performance_test.factories.descriptors.utils import build_descriptor
 from edfi_performance_test.factories.utils import RandomSchoolYearAttribute
@@ -12,7 +12,10 @@ from edfi_performance_test.factories.utils import RandomSchoolYearAttribute
 
 class GraduationPlanFactory(APIFactory):
     totalRequiredCredits = 28
-    graduationPlanTypeDescriptor = build_descriptor("GraduationPlanType", "Recommended")
+    graduationPlanTypeDescriptor = build_descriptor(
+        "GraduationPlanType",
+        random.choice(["Recommended", "Distinguished", "Minimum", "Standard"]),
+    )
     educationOrganizationReference = factory.Dict(
         dict(educationOrganizationId=None),
     )

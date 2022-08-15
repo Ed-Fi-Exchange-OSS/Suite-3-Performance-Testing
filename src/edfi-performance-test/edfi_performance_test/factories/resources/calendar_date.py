@@ -7,7 +7,6 @@ import factory
 
 from edfi_performance_test.api.client.school import SchoolClient
 from edfi_performance_test.factories.utils import (
-    RandomSchoolYearAttribute,
     RandomDateAttribute,
 )
 from edfi_performance_test.factories.resources.api_factory import APIFactory
@@ -19,7 +18,7 @@ class CalendarDateFactory(APIFactory):
         dict(
             calendarCode="107SS111111",
             schoolId=SchoolClient.shared_elementary_school_id(),
-            schoolYear=RandomSchoolYearAttribute(),
+            schoolYear=2014,
         )
     )
     calendarEvents = build_descriptor_dicts("CalendarEvent", ["Holiday"])

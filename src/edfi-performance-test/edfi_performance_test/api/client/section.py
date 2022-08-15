@@ -23,12 +23,14 @@ class SectionClient(EdFiAPIClient):
 
     def create_with_dependencies(self, **kwargs):
         school_id = kwargs.get("schoolId", SchoolClient.shared_elementary_school_id())
+        school_year = kwargs.get("schoolYear", 2014)
         custom_course_code = kwargs.pop("courseCode", "ELA-01")
 
         # Create a course offering and its dependencies
         course_offering_reference = (
             self.course_offering_client.create_with_dependencies(
                 schoolId=school_id,
+                schoolYear=school_year,
                 courseReference__courseCode=custom_course_code,
                 courseReference__educationOrganizationId=school_id,
                 schoolReference__schoolId=school_id,
@@ -57,6 +59,7 @@ class SectionClient(EdFiAPIClient):
                 "localCourseCode"
             ],
             courseOfferingReference__schoolId=school_id,
+            courseOfferingReference__schoolYear=school_year,
             courseOfferingReference__sessionName=course_offering_attrs[
                 "sessionReference"
             ]["sessionName"],
@@ -111,9 +114,10 @@ class SectionAttendanceTakenEventClient(EdFiAPIClient):
             schoolId=school_id,
         )
         calendar_date_attrs = calendar_date_reference["attributes"]
+        calendarSchoolYear = calendar_date_attrs["calendarReference"]["schoolYear"]
 
         section_reference = self.section_client.create_with_dependencies(
-            schoolId=school_id,
+            schoolId=school_id, schoolYear=calendarSchoolYear
         )
         section_attrs = section_reference["attributes"]
 
@@ -123,9 +127,11 @@ class SectionAttendanceTakenEventClient(EdFiAPIClient):
                 {"section_client": section_reference},
             ],
             calendarDateReference__schoolId=school_id,
+            calendarDateReference__schoolYear=calendarSchoolYear,
             calendarDateReference__calendarCode=calendar_date_attrs[
                 "calendarReference"
             ]["calendarCode"],
+            calendarDateReference__date=calendar_date_attrs["date"],
             sectionReference__sectionIdentifier=section_attrs["sectionIdentifier"],
             sectionReference__localCourseCode=section_attrs["courseOfferingReference"][
                 "localCourseCode"

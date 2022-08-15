@@ -7,12 +7,12 @@ import factory
 
 from edfi_performance_test.api.client.school import SchoolClient
 from edfi_performance_test.factories.resources.api_factory import APIFactory
-from edfi_performance_test.factories.utils import RandomSuffixAttribute
+from edfi_performance_test.factories.utils import UniqueIdAttribute
 from edfi_performance_test.factories.descriptors.utils import build_descriptor
 
 
 class CohortFactory(APIFactory):
-    cohortIdentifier = RandomSuffixAttribute("1")
+    cohortIdentifier = UniqueIdAttribute(num_chars=20)
     educationOrganizationReference = factory.Dict(
         {"educationOrganizationId": SchoolClient.shared_elementary_school_id()}
     )
