@@ -12,16 +12,17 @@ from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
 
 
 class DescriptorPipecleanTestBase(EdFiPipecleanTestBase):
-    update_attribute_name = "codeValue"
-    update_attribute_value = random_chars(15)
 
     def __init__(self, descriptor: str, parent, *args, **kwargs):
         super(DescriptorPipecleanTestBase, self).__init__(parent, *args, **kwargs)
-        self.namespace = "{}{}".format(descriptor[0].upper(), descriptor[1:])
-        self._api_client.factory.namespace = "uri://ed-fi.org/{}Descriptor".format(
-            descriptor.title()
-        )
-        self._api_client.endpoint = "{}Descriptors".format(descriptor)
+
+        self.update_attribute_name = "codeValue"
+        self.update_attribute_value = random_chars(15)
+
+        self.namespace = f"{descriptor[0].upper()}{descriptor[1:]}"
+
+        self._api_client.factory.namespace = f"uri://ed-fi.org/{descriptor.title()}Descriptor"
+        self._api_client.endpoint = f"{descriptor}Descriptors"
 
     def generate_client_class(self) -> Any:
         class_path = (
