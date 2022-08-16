@@ -131,7 +131,7 @@ class EdFiPipecleanTaskSequence(SequentialTaskSet):
     def __init__(self, *args, **kwargs):
         super(EdFiPipecleanTaskSequence, self).__init__(*args, **kwargs)
         EdFiAPIClient.client = self.client
-        EdFiAPIClient.token = None
+        EdFiAPIClient.token = ""
 
 
 class EdFiPipecleanTestTerminator(TaskSet):
@@ -149,4 +149,5 @@ class EdFiPipecleanTestTerminator(TaskSet):
 
     @task
     def finish_pipeclean_test_run(self):
-        self.user.environment.runner.quit()
+        if self.user.environment.runner is not None:
+            self.user.environment.runner.quit()
