@@ -1,5 +1,8 @@
 # Lab Exercise - Testing Extensions
 
+| ❗❗❗ These instructions are out of date, applicable to the original version of the performance testing. ❗❗❗ |
+| ---------------------------------------------------------------------------------------------------------- |
+
 This lab exercise, developed for the 2018 bootcamp, walks through the process of
 adding test cases for extensions to the API.
 
@@ -188,7 +191,7 @@ Some highlights:
 * Because Locust runs test clients in parallel, the total requests per second is
   not the average of the individual values. In this case we managed
   approximately 42 requests per second.
-  
+
 (!) These data are from a small-ish VM installed in single-server mode, which is far
 from ideal. In other words, these numbers are not reflective of what a good
 production setup can achieve.

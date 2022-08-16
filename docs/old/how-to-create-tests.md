@@ -1,5 +1,8 @@
 # How to Create Tests
 
+| ❗❗❗ These instructions are out of date, applicable to the original version of the performance testing. ❗❗❗ |
+| ---------------------------------------------------------------------------------------------------------- |
+
 ## Resource Tests
 
 When creating a test for a new resource, you will be creating 5 different classes:
@@ -41,7 +44,7 @@ Perform the following steps to create a factory (let's call our example resource
    from .. import APIFactory
    from ..descriptors.utils import build_descriptor
    from ..utils import RandomSuffixAttribute
-   
+
    class CourseFactory(APIFactory):
        courseTitle = 'Algebra I'
        educationOrganizationReference = factory.Dict(
@@ -242,7 +245,7 @@ Perform the following steps to create a simple volume test:
     * The method name must be decorated with `@task` so locust knows that it's a locust task
     * The first two parameters for `run_scenario()` include the name of the attribute to be updated and its corresponding value
     * Each additional argument must be formatted as shown above in the second scenario, since those are the values that differ from the first
-    * Note that if there were no values to update, you wouldn't pass any arguments 
+    * Note that if there were no values to update, you wouldn't pass any arguments
     * Normally, your first scenario would just take in the update values since the factory will have all of its attributes
     * The second scenario would take in the update values, along with any key-value pairs
 
