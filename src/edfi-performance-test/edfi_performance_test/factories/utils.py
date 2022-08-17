@@ -82,6 +82,15 @@ class RandomDateAttribute(declarations.BaseDeclaration):
         )
 
 
+class RandomSchoolYearAttribute(declarations.BaseDeclaration):
+    """
+    Returns a random date between 1991 & 2050.
+    """
+
+    def evaluate(self, instance, step, extra):
+        return random.randint(1991, 2050)
+
+
 class RandomSuffixAttribute(LazyAttribute):
     """
     Subclasses `factory.LazyAttribute` to append a random string of characters.

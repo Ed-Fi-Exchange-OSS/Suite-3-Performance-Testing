@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0
 # Licensed to the Ed-Fi Alliance under one or more agreements.
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
@@ -96,7 +96,7 @@ class StaffAbsenceEventFactory(APIFactory):
 
 
 class StaffCohortAssociationFactory(APIFactory):
-    beginDate = "2014-09-14"
+    beginDate = RandomDateAttribute()
     staffReference = factory.Dict(dict(staffUniqueId=None))  # Must be entered by user
     cohortReference = factory.Dict(
         dict(

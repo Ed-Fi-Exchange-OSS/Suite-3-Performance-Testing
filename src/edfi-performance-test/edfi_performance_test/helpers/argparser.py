@@ -82,7 +82,7 @@ def parse_main_arguments() -> MainArguments:
         help="Deliberately introduce requests that result in failure",
         action="store_true",  # default false
         env_var="PERF_FAIL_DELIBERATELY",
-        default=False
+        default=False,
     )
     parser.add(  # type: ignore
         "-c",

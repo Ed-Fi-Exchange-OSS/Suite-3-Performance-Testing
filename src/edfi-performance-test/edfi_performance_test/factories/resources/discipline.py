@@ -8,12 +8,12 @@ import factory
 from edfi_performance_test.api.client.school import SchoolClient
 from edfi_performance_test.factories.resources.api_factory import APIFactory
 from edfi_performance_test.factories.descriptors.utils import build_descriptor
-from edfi_performance_test.factories.utils import formatted_date, UniqueIdAttribute
+from edfi_performance_test.factories.utils import RandomDateAttribute, UniqueIdAttribute
 
 
 class DisciplineActionFactory(APIFactory):
     disciplineActionIdentifier = UniqueIdAttribute(num_chars=20)
-    disciplineDate = formatted_date(9, 20)
+    disciplineDate = RandomDateAttribute()
     disciplines = factory.List(
         [
             factory.Dict(
@@ -50,7 +50,7 @@ class DisciplineActionFactory(APIFactory):
 
 
 class DisciplineIncidentFactory(APIFactory):
-    incidentDate = formatted_date(9, 25)
+    incidentDate = RandomDateAttribute()
     incidentIdentifier = UniqueIdAttribute(num_chars=20)
     schoolReference = factory.Dict(
         dict(schoolId=SchoolClient.shared_elementary_school_id())

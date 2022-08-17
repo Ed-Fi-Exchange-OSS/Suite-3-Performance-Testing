@@ -107,7 +107,7 @@ class StudentCohortAssociationFactory(APIFactory):
             educationOrganizationId=SchoolClient.shared_elementary_school_id(),  # Prepopulated school
         )
     )
-    beginDate = formatted_date(9, 14)
+    beginDate = RandomDateAttribute()
 
 
 class StudentDisciplineIncidentAssociationFactory(APIFactory):
