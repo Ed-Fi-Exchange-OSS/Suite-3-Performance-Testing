@@ -48,6 +48,10 @@ main {
     remove-directory $artifacts
     cd..
 
+    If (-Not(Test-Path ".\.env")) {
+        Copy-Item -Path ".\.env.example" -Destination ".\.env"
+    }
+
     execute {
         octo pack `
             --id=Suite-3-Performance-Testing `
@@ -57,5 +61,6 @@ main {
             --include=src/** `
             --include=TestRunner.psm1 `
             --include=run-tests.bat `
+            --include=.env `
     }
 }
