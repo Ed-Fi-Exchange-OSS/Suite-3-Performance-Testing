@@ -49,7 +49,7 @@ main {
     cd..
 
     If (-Not(Test-Path ".\.env")) {
-        Copy-Item -Path ".\.env.example" -Destination ".\.env"
+        Copy-Item -Path ".\deploy.env" -Destination ".\.env"
     }
 
     execute {
