@@ -46,19 +46,27 @@ main {
     $artifacts = "$(resolve-path .)\artifacts"
 
     remove-directory $artifacts
-    cd..
 
-    Copy-Item -Path ".\deploy.env" -Destination ".\.env"
+    try {
 
-    execute {
-        octo pack `
-            --id=Suite-3-Performance-Testing `
-            --version=$version `
-            --outFolder=$artifacts `
-            --include=./eng/deploy.ps1 `
-            --include=src/** `
-            --include=TestRunner.psm1 `
-            --include=run-tests.bat `
-            --include=.env `
+        Push-Location ..
+
+        Copy-Item -Path ".\deploy.env" -Destination ".\.env" -Force | Out-Null
+
+        execute {
+            octo pack `
+                --id=Suite-3-Performance-Testing `
+                --version=$version `
+                --outFolder=$artifacts `
+                --include=./eng/deploy.ps1 `
+                --include=src/** `
+                --include=TestRunner.psm1 `
+                --include=run-tests.bat `
+                --include=.env `
+        }
     }
+    finally {
+        Pop-Location
+    }
+
 }
