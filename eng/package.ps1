@@ -21,16 +21,6 @@ function execute($command) {
     }
 }
 
-function ensure-nuget-repository-is-registered {
-    $nugetURL = "https://api.nuget.org/v3/index.json"
-    $packageSources = Get-PackageSource
-    if (@($packageSources).Where{$_.providerName -eq 'NuGet'}.count -eq 0 )
-    {
-      Register-PackageSource -name nuget.org -ProviderName NuGet -Trusted -Location $nugetURL
-      write-output "Registered nuget.org PackageSource"
-    }
-}
-
 function main($mainBlock) {
     try {
         &$mainBlock
@@ -63,7 +53,6 @@ main {
 
         Copy-Item -Path ".\deploy.env" -Destination ".\.env" -Force | Out-Null
 
-        ensure-nuget-repository-is-registered
         dotnet tool install octopus.dotnet.cli --global | Out-Null
 
         execute {
