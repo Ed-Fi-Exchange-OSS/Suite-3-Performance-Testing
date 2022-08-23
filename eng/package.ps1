@@ -48,9 +48,7 @@ main {
     remove-directory $artifacts
     cd..
 
-    If (-Not(Test-Path ".\.env")) {
-        Copy-Item -Path ".\deploy.env" -Destination ".\.env"
-    }
+    Copy-Item -Path ".\deploy.env" -Destination ".\.env"
 
     execute {
         octo pack `
