@@ -5,7 +5,6 @@
 
 $ErrorActionPreference = "Stop"
 
-$expectedPerformanceCounters = @("\SQLServer:Access Methods\Full Scans/sec", "\SQLServer:SQL Statistics\Batch Requests/sec", "\SQLServer:General Statistics\User Connections", "\ASP.NET\Requests Queued", "\SQLServer:Wait Statistics(*)\Network IO Waits", "\SQLServer:Wait Statistics(*)\Page IO Latch Waits")
 
 function Get-ServerMetrics {
     $result = [pscustomobject] @{
@@ -20,6 +19,10 @@ function Get-ServerMetrics {
         $result | Add-Member -Name "Drive $($item.Name) Free Space (GB)" -Value ([Math]::Round($item.FreeSpace /1GB,2)) -MemberType NoteProperty
 
     }
+
+    $expectedPerformanceCounters = @("\SQLServer:Access Methods\Full Scans/sec", "\SQLServer:SQL Statistics\Batch Requests/sec", "\SQLServer:General Statistics\User Connections", "\ASP.NET\Requests Queued", "\SQLServer:Wait Statistics(*)\Network IO Waits", "\SQLServer:Wait Statistics(*)\Page IO Latch Waits")
+    $actualPerformanceCounters = Compare-Object (typeperf -q) $expectedPerformanceCounters -PassThru -IncludeEqual -ExcludeDifferent
+
 
     $networkIO = Get-CimInstance Win32_perfformatteddata_tcpip_networkinterface
     $result | Add-Member -MemberType NoteProperty -Name "Bytes Received per second" -Value ($networkIO | Measure-Object -property BytesReceivedPersec -Sum).Sum
@@ -397,8 +400,6 @@ function Invoke-TestRunner {
 
                 $getMetricsBlock,
 
-                $expectedPerformanceCounters,
-
                 $runnerOutputPath,
 
                 $TestType,
@@ -455,7 +456,6 @@ function Invoke-TestRunner {
         $parms = @(
             $databaseServer,
             ${function:Get-ServerMetrics},
-            $expectedPerformanceCounters,
             $runnerOutputPath,
             $testType
         )
@@ -472,7 +472,6 @@ function Invoke-TestRunner {
             $parms = @(
                 $webServer,
                 ${function:Get-ServerMetrics},
-                $expectedPerformanceCounters,
                 $runnerOutputPath,
                 $testType
             )
