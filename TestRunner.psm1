@@ -764,16 +764,21 @@ function Get-CredentialOrDefault {
         throw "This shouldn't happen" + (Get-PSCallStack)
         return $null
     } else {
-        $credentials = Get-StoredCredential -Target $server
+        # First, attempt to load credentials previously registered with Register-Credentials.
+        # If there is no such registered credential, asks the user for credentials interactively.
 
-        if ($credentials) {
-            return $credentials
+        $folderPath = (Join-Path $env:LOCALAPPDATA "Suite-3-Performance-Testing")
+        $path = Join-Path $folderPath "credentials-$server.xml"
+
+        if (Test-Path $path) {
+            return Import-CliXml -Path $path
         }
 
-        $credentials = Get-Credential -Message "Please enter credentials for $server"
-        New-StoredCredential -Target $server -Credentials $credentials | Out-Null
-
-        return $credentials
+        Log "Requesting credentials for $server interactively"
+        credentials = Get-Credential -Message "Please enter credentials for $server"
+        $credential | Export-CliXml -Path $path
+        Write-Host "Saved to $path"
+        return $credential
     }
 }
 
