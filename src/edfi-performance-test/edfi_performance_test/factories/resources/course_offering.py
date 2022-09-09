@@ -7,11 +7,10 @@ import factory
 
 from edfi_performance_test.api.client.school import SchoolClient
 from edfi_performance_test.factories.resources.api_factory import APIFactory
-from edfi_performance_test.factories.utils import RandomSuffixAttribute
 
 
 class CourseOfferingFactory(APIFactory):
-    localCourseCode = RandomSuffixAttribute("ELA-01")
+    localCourseCode = "ELA-01"
     localCourseTitle = "English Language Arts GB Elementary"
     courseReference = factory.Dict(
         dict(
