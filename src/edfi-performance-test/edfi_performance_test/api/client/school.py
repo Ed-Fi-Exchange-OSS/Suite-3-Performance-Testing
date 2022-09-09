@@ -3,6 +3,7 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
+import threading
 from edfi_performance_test.api.client.ed_fi_api_client import (
     EdFiAPIClient,
     import_from_dotted_path,
@@ -14,23 +15,32 @@ class SchoolClient(EdFiAPIClient):
 
     _high_school_id = None
     _elementary_school_id = None
+    _lock = threading.Lock()
 
     @classmethod
     def shared_high_school_id(cls):
         if cls._high_school_id is not None:
             return cls._high_school_id
-        cls._high_school_id = cls.create_shared_resource("schoolId")
-        cls._create_school_course_code(cls._high_school_id, "ALG-2")
-        cls._create_school_graduation_plan(cls._high_school_id, 2020)
-        return cls._high_school_id
+        else:
+            with cls._lock:
+                if cls._high_school_id is not None:
+                    return cls._high_school_id
+                cls._high_school_id = cls.create_shared_resource("schoolId")
+                cls._create_school_course_code(cls._high_school_id, "ALG-2")
+                cls._create_school_graduation_plan(cls._high_school_id, 2020)
+            return cls._high_school_id
 
     @classmethod
     def shared_elementary_school_id(cls):
         if cls._elementary_school_id is not None:
             return cls._elementary_school_id
-        cls._elementary_school_id = cls.create_shared_resource("schoolId")
-        cls._create_school_course_code(cls._elementary_school_id, "ELA-01")
-        return cls._elementary_school_id
+        else:
+            with cls._lock:
+                if cls._elementary_school_id is not None:
+                    return cls._elementary_school_id
+                cls._elementary_school_id = cls.create_shared_resource("schoolId")
+                cls._create_school_course_code(cls._elementary_school_id, "ELA-01")
+            return cls._elementary_school_id
 
     @classmethod
     def _create_school_course_code(cls, school_id, course_code):
