@@ -1,8 +1,5 @@
 # How to Create Tests
 
-| ❗❗❗ These instructions are out of date, applicable to the original version of the performance testing. ❗❗❗ |
-| ---------------------------------------------------------------------------------------------------------- |
-
 ## Resource Tests
 
 When creating a test for a new resource, you will be creating 5 different classes:
@@ -20,13 +17,13 @@ The factory class contains all of the attributes and their corresponding values 
 Perform the following steps to create a factory (let's call our example resource 'Course'):
 
 1. Create the file for the resource factory:
-    * ~Suite-3-Performance-Testing\edfi_performance\factories\resources\course.py
+    * ~Suite-3-Performance-Testing\src\edfi-performance-test\edfi_performance_test\factories\resources\course.py
     * Replace 'course' with the name of your new resource
 2. Add the following import statements to the top of the file:
 
    ```python
    import factory
-   from .. import APIFactory
+   from edfi_performance_test.factories.resources.api_factory import APIFactory
    ```
 
 3. Add the class
@@ -41,9 +38,9 @@ Perform the following steps to create a factory (let's call our example resource
 
    ```python
    import factory
-   from .. import APIFactory
-   from ..descriptors.utils import build_descriptor
-   from ..utils import RandomSuffixAttribute
+   from edfi_performance_test.factories.resources.api_factory import APIFactory
+   from edfi_performance_test.factories.descriptors.utils import build_descriptor, build_descriptor_dicts
+   from edfi_performance_test.factories.utils import RandomSuffixAttribute
 
    class CourseFactory(APIFactory):
        courseTitle = 'Algebra I'
@@ -53,25 +50,24 @@ Perform the following steps to create a factory (let's call our example resource
            )
        )
        academicSubjectDescriptor = build_descriptor('AcademicSubject', 'Mathematics')
-       courseCode = RandomSuffixAttribute('ALG-1')
+       courseCode = RandomSuffixAttribute('03100500')
        numberOfParts = 1
-       identificationCodes = factory.List([
-           factory.Dict(
-               dict(
-                   courseIdentificationSystemDescriptor=build_descriptor('CourseIdentificationSystem',    'LEA course code'),
-                   identificationCode="ALG-1"
-               )
-           ),
-       ])
+       identificationCodes = factory.LazyAttribute(
+            lambda o: build_descriptor_dicts(
+                "courseIdentificationSystem",
+                [("State course code", {"identificationCode": o.courseCode})],
+            )
+        )
        ...
    ```
 
 6. Notice a few things:
     * The variable names must match the json attribute names from Swagger
     * For descriptors, use the build_descriptor method with the first argument being the descriptor name and the second argument being the code value of the specific descriptor
+    * For list containing dictionary of descriptors, you can use build_descriptor_dicts (as seen above)
     * For reference attributes (educationOrganizationReference), surround the inner attribute(s) with the Factory Boy style (as seen above)
     * For the primary key attribute (courseCode), set the variable equal to a random value. We used `RandomSuffixAttribute` for a random string
-    * We had to import `RandomSuffixAttribute` and `build_descriptor` to get access to those methods
+    * We had to import `RandomSuffixAttribute`, `build_descriptor` and `build_descriptor_dicts` to get access to those methods
     * For random integers, you can use `UniquePrimaryKeyAttribute`. For random dates, you can use `RandomDateAttribute`
 7. Your resource factory should now be finished. Remember to replace 'course' with the name of your new resource.
 
@@ -84,12 +80,12 @@ The client class contains an endpoint for the URL of the resource. This class cr
 Perform the following steps to create a simple (zero dependents) client:
 
 1. Create the file for the resource client:
-    * ~Suite-3-Performance-Testing\edfi_performance\api\client\course.py
+    * ~Suite-3-Performance-Testing\src\edfi-performance-test\edfi_performance_test\api\client\course.py
     * Replace 'course' with the name of your new resource
 2. Add the following import statements to the top of the file (Your import for the factory may look different):
 
    ```python
-   from edfi_performance.api.client import EdFiAPIClient
+  from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
    ```
 
 3. Add the class along with the endpoint value for the specific resource
@@ -106,12 +102,13 @@ Perform the following steps to create a simple (zero dependents) client:
 Perform the following steps to create a complex (1+ dependents) client:
 
 1. Create the file for the resource client (CalendarDate will be our example here):
-    * ~Ed-Fi-Performance\edfi_performance\api\client\calendar_date.py
+    * ~Suite-3-Performance-Testing\src\edfi-performance-test\edfi_performance_test\api\client\calendar_date.py
     * Replace 'calendar_date' with the name of your new resource
 2. Add the following import statements to the top of the file (Your import for the factory may look different):
 
    ```python
-   from edfi_performance.api.client import EdFiAPIClient
+   from typing import Dict
+   from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
    ```
 
 3. Add the class along with the endpoint value for the specific resource and the dependencies it needs for creation
@@ -120,8 +117,8 @@ Perform the following steps to create a complex (1+ dependents) client:
    class CalendarDateClient(EdFiAPIClient):
        endpoint = 'calendarDates'
 
-       dependencies = {
-           'edfi_performance.api.client.calendar.CalendarClient': {},
+       dependencies: Dict = {
+        "edfi_performance_test.api.client.calendar.CalendarClient": {},
        }
    ```
 
@@ -130,33 +127,41 @@ Perform the following steps to create a complex (1+ dependents) client:
 4. Next, we need to override the `create_with_dependencies()` method because we need to also create a dependency. Here's what that may look like:
 
    ```python
-   from edfi_performance.api.client import EdFiAPIClient
-   from edfi_performance.api.client.school import SchoolClient
-   from edfi_performance.factories.utils import RandomSuffixAttribute
+   from typing import Dict
+   from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
+   from edfi_performance_test.api.client.school import SchoolClient
+   from edfi_performance_test.factories.utils import RandomSuffixAttribute
 
 
    class CalendarDateClient(EdFiAPIClient):
        endpoint = 'calendarDates'
 
-       dependencies = {
-           'edfi_performance.api.client.calendar.CalendarClient': {},
+       dependencies: Dict = {
+        "edfi_performance_test.api.client.calendar.CalendarClient": {},
        }
 
        def create_with_dependencies(self, **kwargs):
-           school_id = kwargs.pop('schoolId', SchoolClient.shared_elementary_school_id())
-           custom_calendar_code = kwargs.pop('calendarCode', RandomSuffixAttribute("107SS111111"))
-           # Create a calendar
-           calendar_reference = self.calendar_client.create_with_dependencies(
-               schoolReference__schoolId=school_id,
-               calendarCode=custom_calendar_code)
+       school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
+       custom_calendar_code = kwargs.pop(
+            "calendarCode", RandomSuffixAttribute("107SS111111")
+       )
+       # Create a calendar
+       calendar_reference = self.calendar_client.create_with_dependencies(
+            schoolReference__schoolId=school_id, calendarCode=custom_calendar_code
+       )
 
-           # Create first calendar date
-           return self.create_using_dependencies(
-               calendar_reference,
-               calendarReference__calendarCode=calendar_reference['attributes']['calendarCode'],
-               calendarReference__schoolId=school_id,
-               calendarReference__schoolYear=2014,
-               **kwargs)
+       # Create first calendar date
+       return self.create_using_dependencies(
+            calendar_reference,
+            calendarReference__calendarCode=calendar_reference["attributes"][
+                "calendarCode"
+            ],
+            calendarReference__schoolId=school_id,
+            calendarReference__schoolYear=calendar_reference["attributes"][
+                "schoolYearTypeReference"
+            ]["schoolYear"],
+            **kwargs
+       )
    ```
 
     * Notice a few things:
@@ -175,12 +180,13 @@ The Pipeclean Test class methodically exercises all 5 endpoints for a given reso
 Perform the following steps to create a simple pipeclean test:
 
 1. Create the file for the resource pipeclean test:
-    * ~Suite-3-Performance-Testing\edfi_performance\tasks\pipeclean\course.py
+    * ~Suite-3-Performance-Testing\src\edfi-performance-test\edfi_performance_test\tasks\pipeclean\course.py
     * Replace 'course' with the name of your new resource
 2. Add the following import statements to the top of the file (Your import for the client may look different):
 
    ```python
-   from edfi_performance.tasks.pipeclean import EdFiPipecleanTestBase
+    from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import EdFiPipecleanTestBase
+
    ```
 
 3. Add the pipeclean test class along with the name and value for the resource attribute that will be updated
@@ -200,13 +206,13 @@ The Volume Test class exercises 3 endpoints for a given resource: POST, PUT and 
 Perform the following steps to create a simple volume test:
 
 1. Create the file for the resource volume test:
-    * ~Suite-3-Performance-Testing\edfi_performance\tasks\volume\course.py
+    * ~Suite-3-Performance-Testing\src\edfi-performance-test\edfi_performance_test\tasks\volume\course.py
     * Replace 'course' with the name of your new resource
 2. Add the following import statements to the top of the file (Your import for the client may look different):
 
    ```python
    from locust import task
-   from edfi_performance.tasks.volume import EdFiVolumeTestBase
+   from edfi_performance_test.tasks.volume.ed_fi_volume_test_base import EdFiVolumeTestBase
    ```
 
 3. Add the volume test class along with task method. Keep the task method empty for now.
@@ -214,7 +220,7 @@ Perform the following steps to create a simple volume test:
    ```python
    class CourseVolumeTest(EdFiVolumeTestBase):
        @task
-       def run_calendar_scenarios(self):
+       def run_course_scenarios(self):
            pass
    ```
 
@@ -223,21 +229,31 @@ Perform the following steps to create a simple volume test:
    ```python
    from locust import task
 
-   from edfi_performance.api.client.school import SchoolClient
-   from edfi_performance.factories.descriptors.utils import build_descriptor
-   from edfi_performance.factories.utils import RandomSuffixAttribute
-   from edfi_performance.tasks.volume import EdFiVolumeTestBase
+   from edfi_performance_test.api.client.school import SchoolClient
+   from edfi_performance_test.factories.descriptors.utils import build_descriptor
+   from edfi_performance_test.factories.utils import RandomSuffixAttribute
+   from edfi_performance_test.tasks.volume.ed_fi_volume_test_base import EdFiVolumeTestBase
 
 
    class CourseVolumeTest(EdFiVolumeTestBase):
        @task
        def run_course_scenarios(self):
-           self.run_scenario('courseTitle', "Algebra II")
-           self.run_scenario('levelCharacteristics', [{'courseLevelCharacteristicDescriptor':
-                                                       build_descriptor('courseLevelCharacteristic',    'Basic')}],
-                             academicSubjectDescriptor=build_descriptor('AcademicSubject', 'Fine and    Performing Arts'),
-                             courseTitle='Art, Grade 1',
-                             courseCode=RandomSuffixAttribute('ART 01'))
+           self.run_scenario("courseTitle", "Algebra II")
+           self.run_scenario(
+              "levelCharacteristics",
+              [
+                {
+                    "courseLevelCharacteristicDescriptor": build_descriptor(
+                        "courseLevelCharacteristic", "Basic"
+                    )
+                }
+              ],
+              academicSubjectDescriptor=build_descriptor(
+                "AcademicSubject", "Fine and Performing Arts"
+              ),
+              courseTitle="Art, Grade 1",
+              courseCode=RandomSuffixAttribute("ART 01"),
+           )
    ```
 
 5. Notice a few things:
@@ -254,25 +270,38 @@ Perform the following steps to create a simple volume test:
    ```python
    from locust import task
 
-   from edfi_performance.api.client.school import SchoolClient
-   from edfi_performance.factories.descriptors.utils import build_descriptor
-   from edfi_performance.factories.utils import RandomSuffixAttribute
-   from edfi_performance.tasks.volume import EdFiVolumeTestBase
+   from edfi_performance_test.api.client.school import SchoolClient
+   from edfi_performance_test.factories.descriptors.utils import build_descriptor
+   from edfi_performance_test.factories.utils import RandomSuffixAttribute
+   from edfi_performance_test.tasks.volume.ed_fi_volume_test_base import EdFiVolumeTestBase
+
 
    class CourseVolumeTest(EdFiVolumeTestBase):
        @task(weight=100)
        def run_course_scenarios(self):
-           self.run_scenario('courseTitle', "Algebra II")
-           self.run_scenario('levelCharacteristics', [{'courseLevelCharacteristicDescriptor':
-                                                       build_descriptor('courseLevelCharacteristic', 'Basic')}],
-                             academicSubjectDescriptor=build_descriptor('AcademicSubject', 'Fine and Performing Arts'),
-                             courseTitle='Art, Grade 1',
-                             courseCode=RandomSuffixAttribute('ART 01'))
+           self.run_scenario("courseTitle", "Algebra II")
+           self.run_scenario(
+              "levelCharacteristics",
+              [
+                {
+                    "courseLevelCharacteristicDescriptor": build_descriptor(
+                        "courseLevelCharacteristic", "Basic"
+                    )
+                }
+              ],
+              academicSubjectDescriptor=build_descriptor(
+                "AcademicSubject", "Fine and Performing Arts"
+              ),
+              courseTitle="Art, Grade 1",
+              courseCode=RandomSuffixAttribute("ART 01"),
+           )
 
        @task(weight=1)
        def deliberate_failure_scenario(self):
-           self.run_unsuccessful_scenario(educationOrganizationReference__educationOrganizationId='INVALID ID',
-                                          succeed_on=[403])
+           self.run_unsuccessful_scenario(
+                educationOrganizationReference__educationOrganizationId='INVALID ID',
+                succeed_on=[403]
+           )
    ```
 
 7. Notice a few things:
@@ -291,16 +320,18 @@ Naturally, only a limited set of resources may be applicable for such a nightly 
 Perform the following steps to create a change query test:
 
 1. Create the file for the resource change query test:
-    * ~Suite-3-Performance-Testing\edfi_performance\tasks\change_query\course.py
+    * ~Suite-3-Performance-Testing\src\edfi-performance-test\edfi_performance_test\tasks\change_query\course.py
     * Replace 'course' with the name of your new resource
 
 2. Add the following import statements to the top of the file:
 
    ```python
-   from edfi_performance.tasks.change_query import EdFiChangeQueryTestBase
+   from edfi_performance_test.tasks.change_query.ed_fi_change_query_test_base import (
+    EdFiChangeQueryTestBase,
+   )
    ```
 
-3. Add the change query test class, using `pass` to signify that there is no content in the class.
+3. Add the change query test class.
 
    ```python
    class CourseChangeQueryTest(EdFiChangeQueryTestBase):
@@ -325,10 +356,10 @@ The client classes for a composite include one specific client class for each di
 Perform the following steps to create clients for a composite:
 
 1. Create the file for the composite clients:
-    * ~Suite-3-Performance-Testing\edfi_performance\api\client\enrollment.py
+    * ~Suite-3-Performance-Testing\src\edfi-performance-test\edfi_performance_test\api\client\enrollment.py
     * Replace 'enrollment' with the name of your new composite
 
-2. Refer to `~Suite-3-Performance-Testing\edfi_performance\api\client\enrollment.py` to see how these clients are implemented. Notice a few things:
+2. Refer to `~Suite-3-Performance-Testing\src\edfi-performance-test\edfi_performance_test\api\client\enrollment.py` to see how these clients are implemented. Notice a few things:
     * The general client, `EnrollmentCompositeClient`, contains the URL prefix and the json object of constants, as expected. Your attributes will differ since it's for a different composite with different resources
     * The specific clients contain an endpoint and they inherit from `EnrollmentCompositeClient`, as expected. There are 5 specific clients here since the enrollment composite is composed of 5 resources.
 
@@ -348,10 +379,10 @@ In this case, these are all special GET requests for the school resource in the 
 Perform the following steps to create a pipeclean test for a composite:
 
 1. Create the file for the composite pipeclean test:
-    * ~Suite-3-Performance-Testing\edfi_performance\tasks\pipeclean\enrollment.py
+    * ~Suite-3-Performance-Testing\src\edfi-performance-test\edfi_performance_test\tasks\pipeclean\enrollment.py
     * Replace 'enrollment' with the name of your new composite
 
-2. Refer to `~Suite-3-Performance-Testing\edfi_performance\tasks\pipeclean\enrollment.py` to see how these pipeclean tests are implemented. Notice a few things:
+2. Refer to `~Suite-3-Performance-Testing\src\edfi-performance-test\edfi_performance_test\tasks\pipeclean\enrollment.py` to see how these pipeclean tests are implemented. Notice a few things:
     * The `LocalEducationAgencyEnrollmentCompositePipecleanTest` class overrides the `_run_pipeclean_scenario(...)` method since it only needs to perform the 2 basic GET requests: GET all and GET by id
     * The remaining pipeclean tests contain the list of the enrollment composite resources and inherit from `EdFiCompositePipecleanTestBase`, as expected.
     * The list of composite resources is located near the top since it is shared by most of the pipeclean tests
