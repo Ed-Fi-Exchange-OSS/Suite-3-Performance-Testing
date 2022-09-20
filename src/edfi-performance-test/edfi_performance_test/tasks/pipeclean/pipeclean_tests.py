@@ -37,8 +37,12 @@ class EdFiPipecleanTestMixin(object):
 class PipeCleanTestUser(HttpUser):
 
     test_list: List[str]
+    is_initialized: bool = False
 
     def on_start(self):
+        if PipeCleanTestUser.is_initialized:
+            return
+
         tasks_submodules = [
             name
             for _, name, _ in pkgutil.iter_modules(
@@ -80,3 +84,5 @@ class PipeCleanTestUser(HttpUser):
 
         # assign all pipeclean tasks to HttpUser
         self.tasks.append(EdFiPipecleanTaskSequence)
+
+        PipeCleanTestUser.is_initialized = True

@@ -26,8 +26,12 @@ class VolumeTestMixin(object):
 class VolumeTestUser(HttpUser):
 
     test_list: List[str]
+    is_initialized: bool = False
 
     def on_start(self):
+        if VolumeTestUser.is_initialized:
+            return
+
         EdFiAPIClient.client = self.client
         EdFiAPIClient.token = None
 
@@ -51,3 +55,5 @@ class VolumeTestUser(HttpUser):
                 or subclass.__name__ in VolumeTestUser.test_list
             ):
                 self.tasks.append(subclass)
+
+        VolumeTestUser.is_initialized = True

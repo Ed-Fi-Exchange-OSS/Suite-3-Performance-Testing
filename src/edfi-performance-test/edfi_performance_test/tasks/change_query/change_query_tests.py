@@ -31,8 +31,12 @@ class EdFiChangeQueryTestMixin(object):
 class ChangeQueryTestUser(HttpUser):
 
     test_list: List[str]
+    is_initialized: bool = False
 
     def on_start(self):
+        if ChangeQueryTestUser.is_initialized:
+            return
+
         tasks_submodules = [
             name
             for _, name, _ in pkgutil.iter_modules(
@@ -57,3 +61,4 @@ class ChangeQueryTestUser(HttpUser):
 
         # assign all change query tasks to HttpUser
         self.tasks.append(EdFiChangeQueryTaskSequence)
+        ChangeQueryTestUser.is_initialized = True
