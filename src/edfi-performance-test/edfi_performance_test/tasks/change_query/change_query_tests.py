@@ -14,7 +14,7 @@ import pkgutil
 import edfi_performance_test.tasks.change_query
 
 from locust import HttpUser
-
+from typing import List
 
 from edfi_performance_test.tasks.change_query.ed_fi_change_query_test_base import (
     EdFiChangeQueryTestBase,
@@ -29,6 +29,9 @@ class EdFiChangeQueryTestMixin(object):
 
 
 class ChangeQueryTestUser(HttpUser):
+
+    test_list: List[str]
+
     def on_start(self):
         tasks_submodules = [
             name
@@ -44,7 +47,11 @@ class ChangeQueryTestUser(HttpUser):
         # Collect *ChangeQueryTest classes and append them to
         # EdFiChangeQueryTaskSequence.tasks
         for subclass in EdFiChangeQueryTestBase.__subclasses__():
-            EdFiChangeQueryTaskSequence.tasks.append(subclass)
+            if (
+                not ChangeQueryTestUser.test_list
+                or subclass.__name__ in ChangeQueryTestUser.test_list
+            ):
+                EdFiChangeQueryTaskSequence.tasks.append(subclass)
 
         EdFiChangeQueryTaskSequence.tasks.append(EdFiChangeQueryTestTerminator)
 

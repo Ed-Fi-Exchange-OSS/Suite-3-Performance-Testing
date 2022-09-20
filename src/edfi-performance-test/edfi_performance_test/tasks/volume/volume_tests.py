@@ -11,6 +11,7 @@ individual testing scenarios, run `locust -f volume_test.py --list`.
 import importlib
 import os
 import pkgutil
+from typing import List
 from locust import HttpUser
 import edfi_performance_test.tasks.volume
 from edfi_performance_test.tasks.volume.ed_fi_volume_test_base import EdFiVolumeTestBase
@@ -23,6 +24,9 @@ class VolumeTestMixin(object):
 
 
 class VolumeTestUser(HttpUser):
+
+    test_list: List[str]
+
     def on_start(self):
         EdFiAPIClient.client = self.client
         EdFiAPIClient.token = None
@@ -42,4 +46,8 @@ class VolumeTestUser(HttpUser):
 
         # Dynamically create VolumeTest locust classes for all scenarios
         for subclass in EdFiVolumeTestBase.__subclasses__():
-            self.tasks.append(subclass)
+            if (
+                not VolumeTestUser.test_list
+                or subclass.__name__ in VolumeTestUser.test_list
+            ):
+                self.tasks.append(subclass)

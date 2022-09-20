@@ -70,6 +70,13 @@ def parse_main_arguments() -> MainArguments:
         env_var="PERF_TEST_TYPE",
     )
     parser.add(  # type: ignore
+        "-tl",
+        "--testList",
+        help="(Optional) List of test files to run - if not provided, all tests will be run",
+        nargs="+",
+        env_var="PERF_TEST_LIST",
+    )
+    parser.add(  # type: ignore
         "-d",
         "--deleteResources",
         help="Delete resources during test run",
@@ -156,6 +163,7 @@ def parse_main_arguments() -> MainArguments:
         args_parsed.secret,
         args_parsed.ignoreCertificateErrors,
         args_parsed.testType,
+        args_parsed.testList,
         args_parsed.deleteResources,
         args_parsed.failDeliberately,
         args_parsed.clientCount,

@@ -55,6 +55,7 @@ def describe_when_parsing_from_command_line_args() -> None:
                 "-k", "populatedTemplateX",
                 "-s", "populatedSecretX",
                 "-o", "test_outputX",
+                "-tl", "academicWeeks", "students",
                 "-l", "debug",
             ]
 
@@ -74,6 +75,9 @@ def describe_when_parsing_from_command_line_args() -> None:
 
         def it_sets_delete_resources(main_arguments: MainArguments) -> None:
             assert main_arguments.deleteResources is False
+
+        def it_sets_resource_list(main_arguments: MainArguments) -> None:
+            assert main_arguments.testList == ["academicWeeks", "students"]
 
         def it_sets_fail_deliberately(main_arguments: MainArguments) -> None:
             assert main_arguments.failDeliberately is False
@@ -132,6 +136,7 @@ def describe_when_parsing_from_env_vars() -> None:
         os.environ["PERF_DESCRIPTION"] = "page run"
         os.environ["IGNORE_TLS_CERTIFICATE"] = "True"
         os.environ["PERF_DELETE_RESOURCES"] = "True"
+        os.environ["PERF_TEST_LIST"] = '["a", "b"]'
         os.environ["PERF_FAIL_DELIBERATELY"] = "True"
         sys.argv = ["pytest"]
 
@@ -151,6 +156,9 @@ def describe_when_parsing_from_env_vars() -> None:
 
     def it_sets_delete_resources(main_arguments: MainArguments) -> None:
         assert main_arguments.deleteResources is True
+
+    def it_sets_resource_list(main_arguments: MainArguments) -> None:
+        assert main_arguments.testList == ["a", "b"]
 
     def it_sets_fail_deliberately(main_arguments: MainArguments) -> None:
         assert main_arguments.failDeliberately is True

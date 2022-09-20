@@ -13,6 +13,7 @@ import os
 import pkgutil
 import edfi_performance_test.tasks.pipeclean
 
+from typing import List
 from locust import HttpUser
 
 from edfi_performance_test.tasks.pipeclean.composite import (
@@ -34,6 +35,9 @@ class EdFiPipecleanTestMixin(object):
 
 
 class PipeCleanTestUser(HttpUser):
+
+    test_list: List[str]
+
     def on_start(self):
         tasks_submodules = [
             name
@@ -62,6 +66,15 @@ class PipeCleanTestUser(HttpUser):
         # Add descriptor pipeclean tests
         for descriptorSubclass in DescriptorPipecleanTestBase.__subclasses__():
             EdFiPipecleanTaskSequence.tasks.append(descriptorSubclass)
+
+        # If a list of tests were given, filter out the rest
+        if PipeCleanTestUser.test_list:
+            EdFiPipecleanTaskSequence.tasks = list(
+                filter(
+                    lambda x: (x.__name__ in PipeCleanTestUser.test_list),
+                    EdFiPipecleanTaskSequence.tasks,
+                )
+            )
 
         EdFiPipecleanTaskSequence.tasks.append(EdFiPipecleanTestTerminator)
 
