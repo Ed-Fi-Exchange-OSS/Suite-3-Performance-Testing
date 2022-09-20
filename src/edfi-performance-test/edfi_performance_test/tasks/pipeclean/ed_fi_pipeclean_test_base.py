@@ -4,6 +4,7 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 import traceback
+import time
 from greenlet import GreenletExit
 
 from locust import task, SequentialTaskSet, TaskSet
