@@ -52,3 +52,10 @@ class EdFiVolumeTestBase(EdFiTaskSet):
         self._api_client.create(
             name=self._api_client.list_endpoint() + " [Deliberate Failure]", **kwargs
         )
+
+    @task
+    def stop(self):
+        # Interrupt the TaskSet and hand over execution control back to the parent TaskSet.
+        # Without interruption, TaskSet will never stop executing its tasks and hand over
+        # execution back to the parent.
+        self.interrupt()
