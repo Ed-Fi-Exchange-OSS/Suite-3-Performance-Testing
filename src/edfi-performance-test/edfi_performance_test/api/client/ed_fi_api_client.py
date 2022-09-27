@@ -80,8 +80,10 @@ class EdFiAPIClient(EdFiBasicAPIClient):
     dependencies: Dict = {}
     token: str = ""
 
-    def __init__(self, client: HttpSession, token: str = ""):
-        super(EdFiAPIClient, self).__init__(client, token, endpoint=self.endpoint)
+    def __init__(self, client: HttpSession, token: str = "", api_prefix: str = ""):
+        super(EdFiAPIClient, self).__init__(
+            client, token, api_prefix, endpoint=self.endpoint
+        )
 
         EdFiAPIClient.token = token
         EdFiAPIClient.client = client

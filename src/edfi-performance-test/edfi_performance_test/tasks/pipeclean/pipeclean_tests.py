@@ -13,6 +13,7 @@ import os
 import pkgutil
 import edfi_performance_test.tasks.pipeclean
 
+from typing import List
 from locust import HttpUser
 
 from edfi_performance_test.tasks.pipeclean.composite import (
@@ -34,7 +35,14 @@ class EdFiPipecleanTestMixin(object):
 
 
 class PipeCleanTestUser(HttpUser):
+
+    test_list: List[str]
+    is_initialized: bool = False
+
     def on_start(self):
+        if PipeCleanTestUser.is_initialized:
+            return
+
         tasks_submodules = [
             name
             for _, name, _ in pkgutil.iter_modules(
@@ -63,7 +71,18 @@ class PipeCleanTestUser(HttpUser):
         for descriptorSubclass in DescriptorPipecleanTestBase.__subclasses__():
             EdFiPipecleanTaskSequence.tasks.append(descriptorSubclass)
 
+        # If a list of tests were given, filter out the rest
+        if PipeCleanTestUser.test_list:
+            EdFiPipecleanTaskSequence.tasks = list(
+                filter(
+                    lambda x: (x.__name__ in PipeCleanTestUser.test_list),
+                    EdFiPipecleanTaskSequence.tasks,
+                )
+            )
+
         EdFiPipecleanTaskSequence.tasks.append(EdFiPipecleanTestTerminator)
 
         # assign all pipeclean tasks to HttpUser
         self.tasks.append(EdFiPipecleanTaskSequence)
+
+        PipeCleanTestUser.is_initialized = True

@@ -77,6 +77,8 @@ def spawn_pref_tests(args: MainArguments, user_class: Type[User]) -> None:
 
 
 def run_pipe_clean_tests(args: MainArguments) -> None:
+    PipeCleanTestUser.test_list = args.testList
+
     if args.runInDebugMode:
         # for running tests in a debugger
         PipeCleanTestUser.host = args.baseUrl
@@ -87,6 +89,8 @@ def run_pipe_clean_tests(args: MainArguments) -> None:
 
 
 def run_volume_tests(args: MainArguments) -> None:
+    VolumeTestUser.test_list = args.testList
+
     if args.runInDebugMode:
         # for running tests in a debugger
         VolumeTestUser.host = args.baseUrl
@@ -97,6 +101,8 @@ def run_volume_tests(args: MainArguments) -> None:
 
 
 def run_change_query_tests(args: MainArguments) -> None:
+    ChangeQueryTestUser.test_list = args.testList
+
     if args.runInDebugMode:
         # for running tests in a debugger
         ChangeQueryTestUser.host = args.baseUrl

@@ -1,9 +1,10 @@
-﻿# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0
 # Licensed to the Ed-Fi Alliance under one or more agreements.
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
 import traceback
+import time
 from greenlet import GreenletExit
 
 from locust import task, SequentialTaskSet, TaskSet
@@ -150,4 +151,6 @@ class EdFiPipecleanTestTerminator(TaskSet):
     @task
     def finish_pipeclean_test_run(self):
         if self.user.environment.runner is not None:
+            # Wait a little for reports to catch up before stopping
+            time.sleep(5)
             self.user.environment.runner.quit()

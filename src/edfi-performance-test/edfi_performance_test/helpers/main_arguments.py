@@ -4,6 +4,7 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 from dataclasses import dataclass
+from typing import List
 
 from edfi_performance_test.helpers.log_level import LogLevel
 from edfi_performance_test.helpers.test_type import TestType
@@ -20,6 +21,7 @@ class MainArguments:
     secret: str
     ignoreCertificateErrors: bool
     testType: TestType
+    testList: List[str]
     deleteResources: bool
     failDeliberately: bool
     clientCount: int
