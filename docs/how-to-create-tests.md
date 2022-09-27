@@ -85,7 +85,7 @@ Perform the following steps to create a simple (zero dependents) client:
 2. Add the following import statements to the top of the file (Your import for the factory may look different):
 
    ```python
-  from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
+   from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
    ```
 
 3. Add the class along with the endpoint value for the specific resource
