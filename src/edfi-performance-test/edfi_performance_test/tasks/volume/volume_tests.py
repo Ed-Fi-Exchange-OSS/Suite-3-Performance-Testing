@@ -12,7 +12,7 @@ import importlib
 import os
 import pkgutil
 from typing import List
-from locust import HttpUser
+from locust import FastHttpUser
 import edfi_performance_test.tasks.volume
 from edfi_performance_test.tasks.volume.ed_fi_volume_test_base import EdFiVolumeTestBase
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
@@ -23,7 +23,7 @@ class VolumeTestMixin(object):
     max_wait = 9000
 
 
-class VolumeTestUser(HttpUser):
+class VolumeTestUser(FastHttpUser):
 
     test_list: List[str]
     is_initialized: bool = False
