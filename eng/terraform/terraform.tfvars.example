@@ -1,0 +1,17 @@
+# prefix for analytics resources
+apt_prefix = ""
+# prefix for ods and di resources
+tools_prefix = ""
+
+base_rg_name=""
+at_vnet_name=""
+tools_vnet_name=""
+at_base_subnet_name=""
+tools_base_subnet_name=""
+
+at_vm_admin_username="exampleadmin"
+at_vm_admin_password="Password1234!"
+ods_vm_admin_username="exampleadmin"
+ods_vm_admin_password="Password1234!"
+di_vm_admin_username="exampleadmin"
+di_vm_admin_password="Password1234!"
