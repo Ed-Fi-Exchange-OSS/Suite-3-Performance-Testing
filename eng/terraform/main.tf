@@ -29,7 +29,7 @@ module "sql_vm_at" {
   base_subnet = var.at_base_subnet_name
   admin_username = var.at_vm_admin_username
   admin_password = var.at_vm_admin_password
-  location = "us-south-central"
+  location = "southcentralus"
 }
 # tools di perf testing ODS VM
 # SqlVirtualMachine | microsoftsqlserver - sql2019-ws2019 - sqldev | Standard_DS11_v2 | Central US
@@ -43,7 +43,7 @@ module "sql_vm_ods" {
   base_subnet = var.tools_base_subnet_name
   admin_username = var.ods_vm_admin_username
   admin_password = var.ods_vm_admin_password
-  location = "us-central"
+  location = "centralus"
 }
 # tools di perf testing di VM
 # SqlVirtualMachine | microsoftsqlserver - sql2019-ws2019 - sqldev | Standard_DS11_v2 | Central US
@@ -57,7 +57,7 @@ module "sql_vm_di" {
   base_subnet = var.tools_base_subnet_name
   admin_username = var.di_vm_admin_username
   admin_password = var.di_vm_admin_password
-  location = "us-central"
+  location = "centralus"
 }
 
 
