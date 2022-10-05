@@ -48,7 +48,7 @@ module "sql_vm_ods" {
 # tools di perf testing di VM
 # SqlVirtualMachine | microsoftsqlserver - sql2019-ws2019 - sqldev | Standard_DS11_v2 | Central US
 # NIC, PIP, 1 8 GB data disk
-module "sql_vm_ods" {
+module "sql_vm_di" {
   source = "./modules/gen_vm"
   prefix = var.tools_prefix
   application = "di"
