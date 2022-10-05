@@ -68,3 +68,11 @@ First, plan and apply the Terraform
 2. Run `terraform init` to retrieve remote modules.
 3. Run `terraform plan` to review pending changes.
 4. Run `terraform apply` to deploy the resources.
+
+Finally, migrate the state into the newly created Terraform remote state azure storage account.
+
+1. Create a copy of the `backend.tf.example` file renamed to `backend.tf`
+2. Look up the Terraform remote state bucket using `terraform output azure_storage_tfstate`. Note this value for later use.
+3. Copy the value from the previous step into the placeholder for the storage account name.
+4. Enter the resource group name from your `terraform.tfvars` file in the placeholder for the resource group name.
+5. Run `terraform init` and when prompted, allow the state to be copied to the bucket.

@@ -59,8 +59,17 @@ module "sql_vm_di" {
   admin_password = var.di_vm_admin_password
   location = "centralus"
 }
+resource "random_id" "rand_storage" {
+  byte_length = 3
+}
+resource "azurerm_storage_account" "tf-state" {
+  name                     = "${var.tools_prefix}-tfstate-${random_id.rand_storage.hex}"
+  resource_group_name      = var.base_rg_name
+  location = "southcentralus"
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
 
-
+}
 # analyticsteam App Service plan
 # F1 - Linux - Central US
 
