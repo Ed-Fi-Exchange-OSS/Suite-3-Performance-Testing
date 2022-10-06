@@ -5,6 +5,3 @@
  * See the LICENSE and NOTICES files in the project root for more information.
  */
 
-output "azure_storage_tfstate" {
-  value = azurerm_storage_account.tf-state.name
-}

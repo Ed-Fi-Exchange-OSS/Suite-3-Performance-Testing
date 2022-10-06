@@ -4,55 +4,23 @@ Terraform scripts to deploy performance testing infrastructure into Azure.
 
 # Description
 
-This terraform script is a recreation of the Ed-Fi performance testing Azure environment. This script assumes that you will at start with a resource group for all resources, and VPC(s)/subnet(s) for the VMs and other resources to reside in and connect to.
+This terraform script creates resources to deploy the Ed-Fi performance testing Azure environment. This script assumes that you will at start with a resource group for all resources, and VPC(s)/subnet(s) for the VMs and other resources to reside in and connect to.
 
-The resources created are:
+The main script uses a common module to deploy 3 VMs.
 
-- analytics perf testing VM
-  - network security group
-    - allow port 3389 from anywhere
-  - public IP
-  - network interface
-  - VM
-    - Standard DS11 v2 - 2 vCPU | 14GB
-    - SQL2017-WS2016 image
-  - OS disk
-    - 127 GB
-  - 2 data disks
-    - 1024 GB
-  - Azure "SqlVirtualMachine" and attachment
-    - SQL Server 2017 - developer
-  - *attached to the analytics-perf-test VNET*
-- ODS perf testing VM
-  - network security group
-    - allow port 3389 from anywhere
-  - public IP
-  - network interface
-  - VM
-    - Standard DS11 v2 - 2 vCPU | 14GB
-    - sql2019-ws2019 image
-  - OS disk
-    - 127 GB
-  - data disk
-    - 8 GB
-  - Azure "SqlVirtualMachine" and attachment
-    - SQL Server 2019 - developer
-  - *attached to the tools-di-perf-test VNET*
-- DI perf testing VM
-  - network security group
-    - allow port 3389 from anywhere
-  - public IP
-  - network interface
-  - VM
-    - Standard DS11 v2 - 2 vCPU | 14GB
-    - sql2019-ws2019 image
-  - OS disk
-    - 127 GB
-  - data disk
-    - 8 GB
-  - Azure "SqlVirtualMachine" and attachment
-    - SQL Server 2019 - developer
-  - *attached to the tools-di-perf-test VNET*
+The common resources created in this module regardless of given variables are:
+
+- network security group
+  - allow port 3389 from anywhere
+  - attached to VM
+- public IP
+- network interface
+- VM
+  - of variable size and image
+- OS disk
+  - of variable size
+
+A storage account to store the terraform stage is also created.
 
 ## Prerequisites
 
