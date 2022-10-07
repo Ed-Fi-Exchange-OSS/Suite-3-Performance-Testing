@@ -6,32 +6,32 @@
  */
 
 variable "resource_group_name" {
-  type = string
+  type        = string
   description = "Name of the existing resource group to deploy into."
 }
 variable "location" {
-  type = string
+  type        = string
   description = "The location to deploy into."
-  default = "centralus"
+  default     = "centralus"
 }
 variable "subnet_id" {
-  type = string
+  type        = string
   description = "Name of the existing subnet to deploy into."
-  default = "default"
+  default     = "default"
 }
 
 variable "prefix" {
-  type = string
+  type        = string
   description = "Naming prefix for resources."
 }
 variable "application" {
-  type = string
+  type        = string
   description = "Short description of the resources."
 }
 
 variable "vm_sg_id" {
   description = "ID of the security group to attach the vm to."
-  type = string
+  type        = string
 }
 variable "admin_username" {
   description = "VM administrator username"
@@ -46,31 +46,31 @@ variable "admin_password" {
 }
 
 variable "vm_size" {
-  type = string
+  type        = string
   description = "Size of the VM to deploy."
-  default = "Standard_D2s_v3"
+  default     = "Standard_D2s_v3"
 }
 
 variable "vm_image_publisher" {
-  default = "MicrosoftWindowsServer"
+  default     = "MicrosoftWindowsServer"
   description = "Publisher of the VM image."
-  type = string
+  type        = string
 }
 variable "vm_image_offer" {
-  default = "WindowsServer"
+  default     = "WindowsServer"
   description = "Offer of the VM image."
-  type = string
+  type        = string
 }
 
 variable "vm_image_sku" {
-  default = "2022-datacenter-azure-edition"
+  default     = "2022-datacenter-azure-edition"
   description = "SKU of the VM image."
-  type = string
+  type        = string
 }
 
 
 variable "os_disk_size" {
-  type = number
+  type        = number
   description = "Size of the OS disk to create."
-  default = 16
+  default     = 16
 }

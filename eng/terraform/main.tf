@@ -13,8 +13,8 @@ provider "azurerm" {
 
 locals {
   full_prefix = "${var.prefix}-${var.label}"
-  rg_name = "${var.prefix}-${var.label}"
-  vnet_name = "${local.full_prefix}-vnet"
+  rg_name     = "${var.prefix}-${var.label}"
+  vnet_name   = "${local.full_prefix}-vnet"
 }
 
 # Create RG
@@ -33,12 +33,12 @@ module "network" {
   source = "./modules/network"
 
   resource_group_name = azurerm_resource_group.base_rg.name
-  location = azurerm_resource_group.base_rg.location
-  prefix = local.full_prefix
-  vnet_name = local.vnet_name
-  subnet_name = var.base_subnet
-  vnet_cidr = "10.1.0.0/16"
-  subnet_cidr = "10.1.0.0/24"
+  location            = azurerm_resource_group.base_rg.location
+  prefix              = local.full_prefix
+  vnet_name           = local.vnet_name
+  subnet_name         = var.base_subnet
+  vnet_cidr           = "10.1.0.0/16"
+  subnet_cidr         = "10.1.0.0/24"
 }
 
 # or find networking
@@ -55,19 +55,19 @@ data "azurerm_subnet" "base_subnet" {
 */
 # Database VM
 module "sql_vm" {
-  source = "./modules/vm"
+  source              = "./modules/vm"
   resource_group_name = azurerm_resource_group.base_rg.name
-  location = azurerm_resource_group.base_rg.location
-  subnet_id = module.network.vnet_subnet_id[0]
-  vm_sg_id = module.network.vm_sg_id
-  prefix = local.full_prefix
+  location            = azurerm_resource_group.base_rg.location
+  subnet_id           = module.network.vnet_subnet_id[0]
+  vm_sg_id            = module.network.vm_sg_id
+  prefix              = local.full_prefix
 
-  application = "sql"
-  vm_size = var.sql_vm_size
-  os_disk_size = var.sql_vm_os_disk_size
+  application        = "sql"
+  vm_size            = var.sql_vm_size
+  os_disk_size       = var.sql_vm_os_disk_size
   vm_image_publisher = var.sql_vm_image_publisher
-  vm_image_offer = var.sql_vm_image_offer
-  vm_image_sku = var.sql_vm_image_sku
+  vm_image_offer     = var.sql_vm_image_offer
+  vm_image_sku       = var.sql_vm_image_sku
 
   admin_username = var.admin_username
   admin_password = var.admin_password
@@ -75,19 +75,19 @@ module "sql_vm" {
 
 # Web VM
 module "web_vm" {
-  source = "./modules/vm"
+  source              = "./modules/vm"
   resource_group_name = azurerm_resource_group.base_rg.name
-  location = azurerm_resource_group.base_rg.location
-  subnet_id = module.network.vnet_subnet_id[0]
-  vm_sg_id = module.network.vm_sg_id
-  prefix = local.full_prefix
+  location            = azurerm_resource_group.base_rg.location
+  subnet_id           = module.network.vnet_subnet_id[0]
+  vm_sg_id            = module.network.vm_sg_id
+  prefix              = local.full_prefix
 
-  application = "web"
-  vm_size = var.web_vm_size
-  os_disk_size = var.web_vm_os_disk_size
+  application        = "web"
+  vm_size            = var.web_vm_size
+  os_disk_size       = var.web_vm_os_disk_size
   vm_image_publisher = var.web_vm_image_publisher
-  vm_image_offer = var.web_vm_image_offer
-  vm_image_sku = var.web_vm_image_sku
+  vm_image_offer     = var.web_vm_image_offer
+  vm_image_sku       = var.web_vm_image_sku
 
   admin_username = var.admin_username
   admin_password = var.admin_password
@@ -96,19 +96,19 @@ module "web_vm" {
 # Test Runner VM
 
 module "runner_vm" {
-  source = "./modules/vm"
+  source              = "./modules/vm"
   resource_group_name = azurerm_resource_group.base_rg.name
-  location = azurerm_resource_group.base_rg.location
-  subnet_id = module.network.vnet_subnet_id[0]
-  vm_sg_id = module.network.vm_sg_id
-  prefix = local.full_prefix
+  location            = azurerm_resource_group.base_rg.location
+  subnet_id           = module.network.vnet_subnet_id[0]
+  vm_sg_id            = module.network.vm_sg_id
+  prefix              = local.full_prefix
 
-  application = "runner"
-  vm_size = var.web_vm_size
-  os_disk_size = var.web_vm_os_disk_size
+  application        = "runner"
+  vm_size            = var.web_vm_size
+  os_disk_size       = var.web_vm_os_disk_size
   vm_image_publisher = var.web_vm_image_publisher
-  vm_image_offer = var.web_vm_image_offer
-  vm_image_sku = var.web_vm_image_sku
+  vm_image_offer     = var.web_vm_image_offer
+  vm_image_sku       = var.web_vm_image_sku
 
   admin_username = var.admin_username
   admin_password = var.admin_password
@@ -117,10 +117,10 @@ module "runner_vm" {
 resource "random_id" "rand_storage" {
   byte_length = 3
 }
-resource "azurerm_storage_account" "tf-state" {
+resource "azurerm_storage_account" "tf_state" {
   name                     = "${local.full_prefix}-tfstate-${random_id.rand_storage.hex}"
-  resource_group_name = azurerm_resource_group.base_rg.name
-  location = azurerm_resource_group.base_rg.location
+  resource_group_name      = azurerm_resource_group.base_rg.name
+  location                 = azurerm_resource_group.base_rg.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
 
