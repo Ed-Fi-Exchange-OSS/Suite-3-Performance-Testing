@@ -23,24 +23,7 @@ resource "azurerm_public_ip" "vm_pip" {
   resource_group_name = var.resource_group_name
   allocation_method   = "Dynamic"
 }
-resource "azurerm_network_security_group" "vm_sg" {
-  name                = "${local.base_vm_name}-nsg"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-}
-resource "azurerm_network_security_rule" "RDPRule" {
-  name                        = "RDPRule"
-  resource_group_name         = var.resource_group_name
-  priority                    = 1000
-  direction                   = "Inbound"
-  access                      = "Allow"
-  protocol                    = "Tcp"
-  source_port_range           = "*"
-  destination_port_range      = 3389
-  source_address_prefix       = "*"
-  destination_address_prefix  = "*"
-  network_security_group_name = azurerm_network_security_group.vm_sg.name
-}
+
 resource "azurerm_network_interface" "vm_nic" {
   name                = "${local.base_vm_name}-nic"
   location            = var.location
@@ -55,7 +38,7 @@ resource "azurerm_network_interface" "vm_nic" {
 }
 resource "azurerm_network_interface_security_group_association" "vm_nsg_assoc" {
   network_interface_id      = azurerm_network_interface.vm_nic.id
-  network_security_group_id = azurerm_network_security_group.vm_sg.id
+  network_security_group_id = var.vm_sg_id
 }
 resource "azurerm_windows_virtual_machine" "vm" {
   name                = "${local.base_vm_name}-vm"

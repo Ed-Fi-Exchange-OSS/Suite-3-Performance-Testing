@@ -13,13 +13,6 @@ output "vm_nic_name" {
 output "vm_nic_id" {
   value = azurerm_network_interface.vm_nic.id
 }
-output "vm_sg_name" {
-  value = azurerm_network_security_group.vm_sg.name
-}
-
-output "vm_sg_id" {
-  value = azurerm_network_security_group.vm_sg.id
-}
 
 output "vm_pip_id" {
   value = azurerm_public_ip.vm_pip.id

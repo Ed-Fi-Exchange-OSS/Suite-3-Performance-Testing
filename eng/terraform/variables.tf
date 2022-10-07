@@ -4,42 +4,23 @@
  * The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
  * See the LICENSE and NOTICES files in the project root for more information.
  */
-
-variable "base_rg_name" {
+variable "location" {
   type = string
-  description = "Name of the existing resource group to deploy into."
+  default = "centralus"
+}
+variable "prefix" {
+  type = string
+  description = "First part of the naming prefix for resources."
+}
+variable "label" {
+  type = string
+  description = "Descriptive label. Secnd part of the naming prefix for resources."
 }
 variable "base_subnet" {
   type = string
   description = "Name of the existing tools subnet to deploy into."
   default = "default"
 }
-variable "base_vnet" {
-  type = string
-  description = "Name of the existing tools vnet to deploy into."
-}
-
-variable "prefix" {
-  type = string
-  description = "Naming prefix for tools resources."
-}
-variable "admin_username" {
-  description = "VM administrator username"
-  type        = string
-  sensitive   = true
-}
-
-variable "admin_password" {
-  description = "VM administrator password"
-  type        = string
-  sensitive   = true
-}
-
-variable "location" {
-  type = string
-  default = "centralus"
-}
-
 variable "web_vm_size" {
   type = string
   default = "Standard_D2s_v3"
@@ -84,4 +65,16 @@ variable "sql_vm_image_offer" {
 variable "sql_vm_image_sku" {
   default = "sqldev-gen2"
   type = string
+}
+
+variable "admin_username" {
+  description = "VM administrator username"
+  type        = string
+  sensitive   = true
+}
+
+variable "admin_password" {
+  description = "VM administrator password"
+  type        = string
+  sensitive   = true
 }

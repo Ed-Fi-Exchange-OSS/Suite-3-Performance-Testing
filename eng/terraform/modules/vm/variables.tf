@@ -23,6 +23,11 @@ variable "application" {
   type = string
   description = "Short description of the resources."
 }
+
+variable "vm_sg_id" {
+  description = "ID of the security group to attach the vm to."
+  type = string
+}
 variable "admin_username" {
   description = "VM administrator username"
   type        = string

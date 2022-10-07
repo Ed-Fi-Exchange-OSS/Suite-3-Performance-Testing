@@ -1,0 +1,27 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Licensed to the Ed-Fi Alliance under one or more agreements.
+ * The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
+ * See the LICENSE and NOTICES files in the project root for more information.
+ */
+location="centralus"
+prefix = "jar"
+label = "ods-perf-test"
+base_subnet="default"
+
+#base_vnet="tools-di-perf-test"
+
+web_vm_size="Standard_D2s_v3"
+web_vm_os_disk_size=16
+web_vm_image_publisher="MicrosoftWindowsServer"
+web_vm_image_offer="WindowsServer"
+web_vm_image_sku="2022-datacenter-azure-edition"
+
+sql_vm_size="DS11_v2"
+sql_vm_os_disk_size=28
+sql_vm_image_publisher="microsoftsqlserver"
+sql_vm_image_offer="sql2022-ws2022"
+sql_vm_image_sku="sqldev-gen2"
+
+admin_username="exampleadmin"
+admin_password="Password1234!"
