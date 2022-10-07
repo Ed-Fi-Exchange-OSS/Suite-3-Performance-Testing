@@ -56,3 +56,17 @@ resource "azurerm_windows_virtual_machine" "vm" {
     version   = "latest"
   }
 }
+resource "azurerm_managed_disk" "vm_data" {
+  name                 = "${local.base_vm_name}-VM_Data_0"
+  location             = var.location
+  resource_group_name  = var.resource_group_name
+  storage_account_type = "Standard_LRS"
+  create_option        = "Empty"
+  disk_size_gb         = var.data_disk_size
+}
+resource "azurerm_virtual_machine_data_disk_attachment" "vm_data" {
+  managed_disk_id    = azurerm_managed_disk.vm_data.id
+  virtual_machine_id = azurerm_windows_virtual_machine.vm.id
+  lun                = "1"
+  caching            = "ReadOnly"
+}

@@ -45,7 +45,7 @@ variable "admin_password" {
   sensitive   = true
 }
 variable "computer_name" {
-  type = string
+  type        = string
   description = "VM computer name"
   validation {
     condition     = length(var.computer_name) < 16
@@ -76,8 +76,8 @@ variable "vm_image_sku" {
 }
 
 
-variable "os_disk_size" {
+variable "data_disk_size" {
   type        = number
-  description = "Size of the OS disk to create."
+  description = "Size of the data disk to create."
   default     = 16
 }

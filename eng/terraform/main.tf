@@ -51,7 +51,7 @@ module "sql_vm" {
   application        = "sql"
   computer_name      = var.sql_vm_computer_name
   vm_size            = var.sql_vm_size
-  os_disk_size       = var.sql_vm_os_disk_size
+  data_disk_size     = var.sql_vm_data_disk_size
   vm_image_publisher = var.sql_vm_image_publisher
   vm_image_offer     = var.sql_vm_image_offer
   vm_image_sku       = var.sql_vm_image_sku
@@ -72,7 +72,7 @@ module "web_vm" {
   application        = "web"
   computer_name      = var.web_vm_computer_name
   vm_size            = var.web_vm_size
-  os_disk_size       = var.web_vm_os_disk_size
+  data_disk_size     = var.web_vm_data_disk_size
   vm_image_publisher = var.web_vm_image_publisher
   vm_image_offer     = var.web_vm_image_offer
   vm_image_sku       = var.web_vm_image_sku
@@ -94,7 +94,7 @@ module "runner_vm" {
   application        = "runner"
   computer_name      = var.runner_vm_computer_name
   vm_size            = var.web_vm_size
-  os_disk_size       = var.web_vm_os_disk_size
+  data_disk_size     = var.web_vm_data_disk_size
   vm_image_publisher = var.web_vm_image_publisher
   vm_image_offer     = var.web_vm_image_offer
   vm_image_sku       = var.web_vm_image_sku

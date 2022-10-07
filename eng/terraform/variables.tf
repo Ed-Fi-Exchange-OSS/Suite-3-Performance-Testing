@@ -33,14 +33,14 @@ variable "sql_vm_size" {
   default     = "DS11_v2"
 }
 
-variable "web_vm_os_disk_size" {
+variable "web_vm_data_disk_size" {
   type        = number
-  description = "OS disk size for the web and runner VM"
+  description = "Data disk size for the web and runner VM"
   default     = 16
 }
-variable "sql_vm_os_disk_size" {
+variable "sql_vm_data_disk_size" {
   type        = number
-  description = "OS disk size for the sql VM"
+  description = "Data disk size for the sql VM"
   default     = 28
 }
 
