@@ -4,10 +4,6 @@
  * The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
  * See the LICENSE and NOTICES files in the project root for more information.
  */
-provider "azurerm" {
-  features {}
-  skip_provider_registration = "true"
-}
 resource "azurerm_network_security_group" "vm_sg" {
   name                = "${var.prefix}-nsg"
   location            = var.location

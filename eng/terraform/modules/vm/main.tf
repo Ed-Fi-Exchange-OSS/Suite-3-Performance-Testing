@@ -4,13 +4,6 @@
  * The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
  * See the LICENSE and NOTICES files in the project root for more information.
  */
-
-# Configure the Microsoft Azure Provider
-provider "azurerm" {
-  features {}
-  skip_provider_registration = "true"
-}
-
 locals {
   base_vm_name = "${var.prefix}-${var.application}"
 }
@@ -43,8 +36,8 @@ resource "azurerm_windows_virtual_machine" "vm" {
   location            = var.location
   resource_group_name = var.resource_group_name
   size                = var.vm_size
-  admin_username = var.admin_username
-  admin_password = var.admin_password
+  admin_username      = var.admin_username
+  admin_password      = var.admin_password
   network_interface_ids = [
     azurerm_network_interface.vm_nic.id,
   ]
@@ -52,7 +45,7 @@ resource "azurerm_windows_virtual_machine" "vm" {
   os_disk {
     caching              = "ReadWrite"
     storage_account_type = "Standard_LRS"
-    disk_size_gb = 16
+    disk_size_gb         = var.os_disk_size
   }
 
   source_image_reference {
