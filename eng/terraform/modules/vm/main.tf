@@ -33,6 +33,7 @@ resource "azurerm_network_interface_security_group_association" "vm_nsg_assoc" {
 }
 resource "azurerm_windows_virtual_machine" "vm" {
   name                = "${local.base_vm_name}-vm"
+  computer_name       = var.computer_name
   location            = var.location
   resource_group_name = var.resource_group_name
   size                = var.vm_size
@@ -45,7 +46,7 @@ resource "azurerm_windows_virtual_machine" "vm" {
   os_disk {
     caching              = "ReadWrite"
     storage_account_type = "Standard_LRS"
-    disk_size_gb         = var.os_disk_size
+    #disk_size_gb         = var.os_disk_size
   }
 
   source_image_reference {
@@ -55,4 +56,3 @@ resource "azurerm_windows_virtual_machine" "vm" {
     version   = "latest"
   }
 }
-# Test Runner VM

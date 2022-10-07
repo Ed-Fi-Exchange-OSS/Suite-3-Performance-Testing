@@ -8,13 +8,16 @@
 # Configure the Microsoft Azure Provider
 provider "azurerm" {
   features {}
-  skip_provider_registration = "true"
+  #skip_provider_registration = "true"
 }
 
 locals {
-  full_prefix = "${var.prefix}-${var.label}"
-  rg_name     = "${var.prefix}-${var.label}"
-  vnet_name   = "${local.full_prefix}-vnet"
+  full_prefix          = "${var.prefix}-${var.label}"
+  rg_name              = "${var.prefix}-${var.label}"
+  vnet_name            = "${local.full_prefix}-vnet"
+  short_label          = replace(var.label, "-", "")
+  long_sa_name         = "${local.short_label}tfstate${random_id.rand_storage.hex}"
+  storage_account_name = substr(local.long_sa_name, 0, 24)
 }
 
 # Create RG
@@ -22,12 +25,7 @@ resource "azurerm_resource_group" "base_rg" {
   name     = local.rg_name
   location = var.location
 }
-# Or find rg
-/*
-data "azurerm_resource_group" "base_rg" {
-  name     = var.base_rg_name
-}
-*/
+
 # Create networking
 module "network" {
   source = "./modules/network"
@@ -41,18 +39,6 @@ module "network" {
   subnet_cidr         = "10.1.0.0/24"
 }
 
-# or find networking
-/*
-data "azurerm_virtual_network" "base_vnet" {
-  name                = var.base_vnet
-  resource_group_name = data.azurerm_resource_group.base_rg.name
-}
-data "azurerm_subnet" "base_subnet" {
-  name                 = var.base_subnet
-  virtual_network_name = data.azurerm_virtual_network.base_vnet.name
-  resource_group_name  = data.azurerm_resource_group.base_rg.name
-}
-*/
 # Database VM
 module "sql_vm" {
   source              = "./modules/vm"
@@ -63,6 +49,7 @@ module "sql_vm" {
   prefix              = local.full_prefix
 
   application        = "sql"
+  computer_name      = var.sql_vm_computer_name
   vm_size            = var.sql_vm_size
   os_disk_size       = var.sql_vm_os_disk_size
   vm_image_publisher = var.sql_vm_image_publisher
@@ -83,6 +70,7 @@ module "web_vm" {
   prefix              = local.full_prefix
 
   application        = "web"
+  computer_name      = var.web_vm_computer_name
   vm_size            = var.web_vm_size
   os_disk_size       = var.web_vm_os_disk_size
   vm_image_publisher = var.web_vm_image_publisher
@@ -104,6 +92,7 @@ module "runner_vm" {
   prefix              = local.full_prefix
 
   application        = "runner"
+  computer_name      = var.runner_vm_computer_name
   vm_size            = var.web_vm_size
   os_disk_size       = var.web_vm_os_disk_size
   vm_image_publisher = var.web_vm_image_publisher
@@ -118,10 +107,9 @@ resource "random_id" "rand_storage" {
   byte_length = 3
 }
 resource "azurerm_storage_account" "tf_state" {
-  name                     = "${local.full_prefix}-tfstate-${random_id.rand_storage.hex}"
+  name                     = local.storage_account_name
   resource_group_name      = azurerm_resource_group.base_rg.name
   location                 = azurerm_resource_group.base_rg.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
-
 }

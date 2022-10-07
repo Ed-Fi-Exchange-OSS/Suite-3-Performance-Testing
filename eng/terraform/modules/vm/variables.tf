@@ -44,7 +44,14 @@ variable "admin_password" {
   type        = string
   sensitive   = true
 }
-
+variable "computer_name" {
+  type = string
+  description = "VM computer name"
+  validation {
+    condition     = length(var.computer_name) < 16
+    error_message = "computer_name can be at most 15 characters"
+  }
+}
 variable "vm_size" {
   type        = string
   description = "Size of the VM to deploy."

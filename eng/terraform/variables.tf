@@ -89,3 +89,33 @@ variable "admin_password" {
   type        = string
   sensitive   = true
 }
+
+variable "web_vm_computer_name" {
+  type        = string
+  description = "Computer name for the ODS Web VM"
+  default     = "EDFI-ODS"
+  validation {
+    condition     = length(var.web_vm_computer_name) < 16
+    error_message = "computer_name can be at most 15 characters"
+  }
+}
+
+variable "runner_vm_computer_name" {
+  type        = string
+  description = "Computer name for the Runner VM"
+  default     = "EDFI-RUNNER"
+  validation {
+    condition     = length(var.runner_vm_computer_name) < 16
+    error_message = "computer_name can be at most 15 characters"
+  }
+}
+
+variable "sql_vm_computer_name" {
+  type        = string
+  description = "Computer name for the SQL Web VM"
+  default     = "EDFI-DB"
+  validation {
+    condition     = length(var.sql_vm_computer_name) < 16
+    error_message = "computer_name can be at most 15 characters"
+  }
+}
