@@ -30,7 +30,7 @@ variable "web_vm_size" {
 variable "sql_vm_size" {
   type        = string
   description = "VM size for the sql VM"
-  default     = "DS11_v2"
+  default     = "Standard_DS11_v2"
 }
 
 variable "web_vm_data_disk_size" {
