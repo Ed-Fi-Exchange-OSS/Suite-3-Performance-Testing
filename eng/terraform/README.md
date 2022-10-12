@@ -8,6 +8,10 @@ This terraform script creates resources to deploy the Ed-Fi performance testing 
 
 The main script uses a common module to deploy 3 VMs.
 
+- ODS Web VM
+- Runner VM
+- SQL Server VM
+
 The common resources created in this module regardless of given variables are:
 
 - network security group
