@@ -8,6 +8,7 @@ import logging
 import urllib3
 import json
 import traceback
+from os import _exit
 
 from urllib3.exceptions import InsecureRequestWarning
 from locust.clients import HttpSession
@@ -54,11 +55,17 @@ class EdFiBasicAPIClient:
             "grant_type": "client_credentials",
         }
 
-        response = self._post(self.oauth_endpoint, payload)
+        try:
+            response = self._post(self.oauth_endpoint, payload)
 
-        if response.status_code != 200:
-            logger.fatal("Login failed with status code %s for URL %s %s", response.status_code, response.url, response.text)
-            exit()
+            if response.status_code != 200:
+                logger.fatal("Login failed with status code %s for URL %s %s", response.status_code, response.url, response.text)
+
+                # Stop the application, not just the running thread, by using _exit() instead of exit()
+                _exit(1)
+        except BaseException as e:
+            logger.fatal("Login failed %s", e)
+            _exit(1)
 
         # Let any exception bubble up
         self.token = json.loads(response.text)["access_token"]
@@ -83,8 +90,8 @@ class EdFiBasicAPIClient:
 
         self.log_response(response)
 
-        if response.status_code == 401:
-            # If token expired, re-login
+        if response.status_code == 401 and "/token" not in response.url:
+            # If token expired, re-login. But 401 on the token endpoint should NOT cause a retry.
             self.token = self.login()
             response = self._post(endpoint, payload)
 
