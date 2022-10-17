@@ -15,6 +15,7 @@ from edfi_performance_test.factories.utils import (
     RandomSuffixAttribute,
     UniquePrimaryKeyAttribute,
 )
+from edfi_performance_test.helpers.config import get_config_value
 
 
 class SchoolFactory(APIFactory):
@@ -45,7 +46,7 @@ class SchoolFactory(APIFactory):
         [("Main", {"telephoneNumber": "(950) 325-9465"})],
     )
     localEducationAgencyReference = {
-        "localEducationAgencyId": "255901"  # LocalEducationAgencyClient.shared_education_organization_id(),
+        "localEducationAgencyId": get_config_value("PERF_LOCAL_EDUCATION_ORGANIZATION_ID", "255901")
     }
 
 

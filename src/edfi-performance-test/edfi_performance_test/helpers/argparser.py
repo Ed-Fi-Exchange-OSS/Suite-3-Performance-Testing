@@ -11,6 +11,7 @@ from edfi_performance_test.helpers.main_arguments import MainArguments
 from edfi_performance_test.helpers.config import (
     DEFAULT_API_PREFIX,
     DEFAULT_OAUTH_ENDPOINT,
+    DEFAULT_LEA_ID,
 )
 
 
@@ -155,6 +156,14 @@ def parse_main_arguments() -> MainArguments:
         env_var="PERF_API_OAUTH_ENDPOINT",
         default=DEFAULT_OAUTH_ENDPOINT,
     )
+    parser.add(  # type: ignore
+        "-e",
+        "--localEducationOrganizationId",
+        help="Override the default LEA education organization ID",
+        type=int,
+        env_var="PERF_LOCAL_EDUCATION_ORGANIZATION_ID",
+        default=DEFAULT_LEA_ID
+    )
     args_parsed = parser.parse_args()
 
     arguments = MainArguments(
@@ -173,6 +182,7 @@ def parse_main_arguments() -> MainArguments:
         args_parsed.output,
         args_parsed.apiPrefix,
         args_parsed.oauthEndpoint,
+        args_parsed.localEducationOrganizationId,
         args_parsed.logLevel,
     )
 
