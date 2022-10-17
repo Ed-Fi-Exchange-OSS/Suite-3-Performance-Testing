@@ -46,6 +46,11 @@ def monitor_fail_ratio(runner: Runner):
 
 def spawn_pref_tests(args: MainArguments, user_class: Type[User]) -> None:
     # setup Environment and Runner
+
+    # These tests expect that the base URL does NOT end with a slash
+    if args.baseUrl.endswith("/"):
+        args.baseUrl = args.baseUrl[1:]
+
     env = Environment(user_classes=[user_class], host=args.baseUrl)
     env.create_local_runner()
 
