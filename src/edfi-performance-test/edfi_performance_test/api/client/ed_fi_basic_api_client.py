@@ -11,6 +11,7 @@ import traceback
 
 from urllib3.exceptions import InsecureRequestWarning
 from locust.clients import HttpSession
+from requests import Response
 
 from edfi_performance_test.helpers.config import (
     get_config_value,
@@ -23,9 +24,6 @@ urllib3.disable_warnings(InsecureRequestWarning)
 
 
 class EdFiBasicAPIClient:
-
-    token: str
-    client: HttpSession
 
     def __init__(
         self, client: HttpSession, token: str = "", api_prefix="", endpoint=""
@@ -42,28 +40,29 @@ class EdFiBasicAPIClient:
         # when self-signed certificates are used.
         self.client.verify = not eval(get_config_value("IGNORE_TLS_CERTIFICATE"))
 
-        token = token or self.login()
+        self.token = token or self.login()
 
-    def login(self, succeed_on=None, name=None, **credentials_overrides) -> str:
-        if succeed_on is None:
-            succeed_on = []
-        name = name or self.oauth_endpoint
+    def login(self) -> str:
+        """
+        Attempt to login to the Ed-Fi API. If login fails, exit the program in
+        order to avoid an infinite loop of login attempts.
+        """
+
         payload = {
             "client_id": get_config_value("PERF_API_KEY"),
             "client_secret": get_config_value("PERF_API_SECRET"),
             "grant_type": "client_credentials",
         }
-        payload.update(credentials_overrides)
-        response = self._get_response(
-            "post", self.oauth_endpoint, payload, succeed_on=succeed_on, name=name
-        )
-        self.log_response(response, ignore_error=response.status_code in succeed_on)
-        try:
-            self.token = json.loads(response.text)["access_token"]
-            return self.token
-        except (KeyError, ValueError):
-            # failed login
-            raise RuntimeError("Login failed")
+
+        response = self._post(self.oauth_endpoint, payload)
+
+        if response.status_code != 200:
+            logger.fatal("Login failed with status code %s for URL %s %s", response.status_code, response.url, response.text)
+            exit()
+
+        # Let any exception bubble up
+        self.token = json.loads(response.text)["access_token"]
+        return self.token
 
     def get_headers(self):
         if self.token is None:
@@ -73,6 +72,24 @@ class EdFiBasicAPIClient:
             "Accept": "application/json",
             "Content-Type": "application/json",
         }
+
+    def _post(self, endpoint: str, payload: dict) -> Response:
+
+        # Make sure the endpoint begins with a slash
+        if not endpoint.endswith("/"):
+            endpoint = f"{endpoint}/"
+
+        response: Response = self.client.request("post", endpoint, data=payload)
+
+        self.log_response(response)
+
+        if response.status_code == 401:
+            # If token expired, re-login
+            self.token = self.login()
+            response = self._post(endpoint, payload)
+
+        # All other status codes are treated normally
+        return response
 
     def _get_response(self, method_name, *args, **kwargs):
         method = getattr(self.client, method_name)
