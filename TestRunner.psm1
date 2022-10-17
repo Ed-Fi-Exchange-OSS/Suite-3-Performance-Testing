@@ -775,7 +775,7 @@ function Get-CredentialOrDefault {
         }
 
         Write-InfoLog "Requesting credentials for $server interactively"
-        credentials = Get-Credential -Message "Please enter credentials for $server"
+        $credentials = Get-Credential -Message "Please enter credentials for $server"
         $credential | Export-CliXml -Path $path
         Write-Host "Saved to $path"
         return $credential
