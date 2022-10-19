@@ -31,4 +31,5 @@ class MainArguments:
     output: str
     api_prefix: str
     oauth_endpoint: str
+    localEducationOrganizationId: int
     log_level: LogLevel = LogLevel.INFO

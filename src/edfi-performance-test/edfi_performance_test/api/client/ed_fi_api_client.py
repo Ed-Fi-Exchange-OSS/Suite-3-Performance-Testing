@@ -78,14 +78,13 @@ class EdFiAPIClient(EdFiBasicAPIClient):
     factory: Any = None
     endpoint: str = ""
     dependencies: Dict = {}
-    token: str = ""
 
     def __init__(self, client: HttpSession, token: str = "", api_prefix: str = ""):
         super(EdFiAPIClient, self).__init__(
             client, token, api_prefix, endpoint=self.endpoint
         )
 
-        EdFiAPIClient.token = token
+        EdFiAPIClient.token = self.token
         EdFiAPIClient.client = client
 
         for subclient_class, options in self.dependencies.items():
@@ -96,7 +95,7 @@ class EdFiAPIClient(EdFiBasicAPIClient):
                 # Default to FooClient => foo_client
                 subclient_name = _title_case_to_snake_case(subclient_class.__name__)
 
-            subclient = subclient_class(client, token=token)
+            subclient = subclient_class(client, token=self.token)
             setattr(self, subclient_name, subclient)
 
         self.generate_factory_class()

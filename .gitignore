@@ -42,3 +42,5 @@ venv/
 ENV/
 
 .python-version
+
+*.log
