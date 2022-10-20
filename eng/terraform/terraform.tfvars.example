@@ -12,16 +12,21 @@ base_subnet="default"
 #base_vnet="tools-di-perf-test"
 
 web_vm_size="Standard_D2s_v3"
-web_vm_os_disk_size=16
+runner_vm_size="Standard_D2s_v3"
 web_vm_image_publisher="MicrosoftWindowsServer"
 web_vm_image_offer="WindowsServer"
 web_vm_image_sku="2022-datacenter-azure-edition"
 
 sql_vm_size="Standard_DS11_v2"
-sql_vm_os_disk_size=28
 sql_vm_image_publisher="microsoftsqlserver"
 sql_vm_image_offer="sql2022-ws2022"
 sql_vm_image_sku="sqldev-gen2"
 
-admin_username="exampleadmin"
-admin_password="Password1234!"
+web_admin_username="exampleadmin"
+web_admin_password="Password1234!"
+
+runner_admin_username="exampleadmin"
+runner_admin_password="Password1234!"
+
+sql_admin_username="exampleadmin"
+sql_admin_password="Password1234!"

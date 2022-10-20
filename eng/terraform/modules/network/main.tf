@@ -5,7 +5,7 @@
  * See the LICENSE and NOTICES files in the project root for more information.
  */
 resource "azurerm_network_security_group" "vm_sg" {
-  name                = "${var.prefix}-nsg"
+  name                = "${var.prefix}-web-nsg"
   location            = var.location
   resource_group_name = var.resource_group_name
 }
@@ -22,6 +22,11 @@ resource "azurerm_network_security_rule" "rdp_rule" {
   destination_address_prefix  = "*"
   network_security_group_name = azurerm_network_security_group.vm_sg.name
 }
+resource "azurerm_network_security_group" "sql_sg" {
+  name                = "${var.prefix}-sql-nsg"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+}
 resource "azurerm_network_security_rule" "sql_rule" {
   name                        = "MSSQLRule"
   resource_group_name         = var.resource_group_name
@@ -33,7 +38,7 @@ resource "azurerm_network_security_rule" "sql_rule" {
   destination_port_range      = 1433
   source_address_prefix       = "*"
   destination_address_prefix  = "*"
-  network_security_group_name = azurerm_network_security_group.vm_sg.name
+  network_security_group_name = azurerm_network_security_group.sql_sg.name
 }
 resource "azurerm_virtual_network" "base_vnet" {
   name                = var.vnet_name

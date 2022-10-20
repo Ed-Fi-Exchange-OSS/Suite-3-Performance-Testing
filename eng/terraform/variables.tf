@@ -24,7 +24,12 @@ variable "base_subnet" {
 }
 variable "web_vm_size" {
   type        = string
-  description = "VM size for the web and runner VMs"
+  description = "VM size for the web VM"
+  default     = "Standard_D2s_v3"
+}
+variable "runner_vm_size" {
+  type        = string
+  description = "VM size for the runner VM"
   default     = "Standard_D2s_v3"
 }
 variable "sql_vm_size" {
@@ -78,14 +83,36 @@ variable "sql_vm_image_sku" {
   type        = string
 }
 
-variable "admin_username" {
-  description = "VM administrator username"
+variable "web_admin_username" {
+  description = "Web VM administrator username"
   type        = string
   sensitive   = true
 }
 
-variable "admin_password" {
-  description = "VM administrator password"
+variable "web_admin_password" {
+  description = "Web VM administrator password"
+  type        = string
+  sensitive   = true
+}
+variable "runner_admin_username" {
+  description = "Runner VM administrator username"
+  type        = string
+  sensitive   = true
+}
+
+variable "runner_admin_password" {
+  description = "Runner VM administrator password"
+  type        = string
+  sensitive   = true
+}
+variable "sql_admin_username" {
+  description = "SQL VM administrator username"
+  type        = string
+  sensitive   = true
+}
+
+variable "sql_admin_password" {
+  description = "SQL VM administrator password"
   type        = string
   sensitive   = true
 }

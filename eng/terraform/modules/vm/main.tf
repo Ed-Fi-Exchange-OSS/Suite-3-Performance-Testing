@@ -12,7 +12,7 @@ resource "azurerm_public_ip" "vm_pip" {
   name                = "${local.base_vm_name}-ip"
   location            = var.location
   resource_group_name = var.resource_group_name
-  allocation_method   = "Dynamic"
+  allocation_method   = "Static"
 }
 
 resource "azurerm_network_interface" "vm_nic" {

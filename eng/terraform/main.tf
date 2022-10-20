@@ -45,7 +45,7 @@ module "sql_vm" {
   resource_group_name = azurerm_resource_group.base_rg.name
   location            = azurerm_resource_group.base_rg.location
   subnet_id           = module.network.vnet_subnet_id[0]
-  vm_sg_id            = module.network.vm_sg_id
+  vm_sg_id            = module.network.sql_sg_id
   prefix              = local.full_prefix
 
   application        = "sql"
@@ -56,8 +56,8 @@ module "sql_vm" {
   vm_image_offer     = var.sql_vm_image_offer
   vm_image_sku       = var.sql_vm_image_sku
 
-  admin_username = var.admin_username
-  admin_password = var.admin_password
+  admin_username = var.sql_admin_username
+  admin_password = var.sql_admin_password
 }
 
 # Web VM
@@ -77,8 +77,8 @@ module "web_vm" {
   vm_image_offer     = var.web_vm_image_offer
   vm_image_sku       = var.web_vm_image_sku
 
-  admin_username = var.admin_username
-  admin_password = var.admin_password
+  admin_username = var.web_admin_username
+  admin_password = var.web_admin_password
 }
 
 # Test Runner VM
@@ -93,14 +93,14 @@ module "runner_vm" {
 
   application        = "runner"
   computer_name      = var.runner_vm_computer_name
-  vm_size            = var.web_vm_size
+  vm_size            = var.runner_vm_size
   data_disk_size     = var.web_vm_data_disk_size
   vm_image_publisher = var.web_vm_image_publisher
   vm_image_offer     = var.web_vm_image_offer
   vm_image_sku       = var.web_vm_image_sku
 
-  admin_username = var.admin_username
-  admin_password = var.admin_password
+  admin_username = var.runner_admin_username
+  admin_password = var.runner_admin_password
 }
 
 resource "random_id" "rand_storage" {

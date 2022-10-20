@@ -38,11 +38,20 @@ output "vnet_subnet_id" {
 
 output "vm_sg_name" {
   value       = azurerm_network_security_group.vm_sg.name
-  description = "Name of the security group that was deployed."
+  description = "Name of the Web security group that was deployed."
 }
 
 output "vm_sg_id" {
   value       = azurerm_network_security_group.vm_sg.id
-  description = "ID of the security group that was deployed."
+  description = "ID of the Web security group that was deployed."
 }
 
+output "sql_sg_name" {
+  value       = azurerm_network_security_group.sql_sg.name
+  description = "Name of the SQL security group that was deployed."
+}
+
+output "sql_sg_id" {
+  value       = azurerm_network_security_group.sql_sg.id
+  description = "ID of the SQL security group that was deployed."
+}
