@@ -43,6 +43,7 @@ ENV/
 
 .python-version
 
+*.log
 
 # Terraform
 # Local .terraform directories
@@ -52,9 +53,6 @@ ENV/
 *.tfstate
 *.tfstate.*
 
-# Crash log files
-crash.log
-crash.*.log
 
 # Exclude all .tfvars files, which are likely to contain sensitive data, such as
 # password, private keys, and other secrets. These should not be part of version
