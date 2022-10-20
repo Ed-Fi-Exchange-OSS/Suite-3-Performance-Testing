@@ -19,6 +19,8 @@ class AccountClient(EdFiAPIClient):
     }
 
     def create_with_dependencies(self, **kwargs):
+        # TODO: this is the only reference to account_code_client anywhere in
+        # the code base, so the next line should fail if it is ever called.
         account_code_reference = self.account_code_client.create_with_dependencies()
         account_code_attrs = account_code_reference["attributes"]
 

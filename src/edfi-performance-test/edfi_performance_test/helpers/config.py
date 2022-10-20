@@ -10,6 +10,7 @@ from edfi_performance_test.helpers.main_arguments import MainArguments
 
 DEFAULT_API_PREFIX = "/data/v3/ed-fi"
 DEFAULT_OAUTH_ENDPOINT = "/oauth/token"
+DEFAULT_LEA_ID = 255901
 
 
 def get_config_value(key: str, default: str = "") -> str:
@@ -39,6 +40,7 @@ def set_config_values(args: MainArguments):
     os.environ["PERF_API_SECRET"] = args.secret
     os.environ["PERF_API_PREFIX"] = args.api_prefix
     os.environ["PERF_API_OAUTH_PREFIX"] = args.oauth_endpoint
+    os.environ["PERF_LOCAL_EDUCATION_ORGANIZATION_ID"] = str(args.localEducationOrganizationId)
 
 
 def _get_change_version_file_path():
