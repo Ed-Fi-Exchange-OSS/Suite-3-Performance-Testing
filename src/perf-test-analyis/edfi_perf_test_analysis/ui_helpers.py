@@ -55,7 +55,9 @@ def select_directory() -> str:
     root.destroy()
 
     if not path.exists(file_path):
-        raise RuntimeError(f"Directory `{file_path}` does not exist or could not be read.")
+        raise RuntimeError(
+            f"Directory `{file_path}` does not exist or could not be read."
+        )
 
     directories = sorted([f.path for f in scandir(file_path) if f.is_dir()])
 
@@ -69,4 +71,4 @@ def select_directory() -> str:
 
     log_info(f"Running analysis on {path.abspath(results_dir)}")
 
-    return file_path
+    return path.abspath(results_dir)

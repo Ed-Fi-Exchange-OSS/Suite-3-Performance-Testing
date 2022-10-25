@@ -25,7 +25,7 @@ def display_failures(results_dir: str, test_type: str) -> None:
     display_df(failures, 10)
 
 
-def display_stats(results_dir: str, test_type: str) -> None:
+def get_and_prep_stats(results_dir: str, test_type: str) -> pd.DataFrame:
     stats = pd.read_csv(path.join(results_dir, f"{test_type}_stats.csv"))
 
     # Remove the "Aggregated" row
@@ -39,25 +39,40 @@ def display_stats(results_dir: str, test_type: str) -> None:
     # https://online.stat.psu.edu/stat200/lesson/2/2.2/2.2.7
     stats["Approx Std Dev"] = (stats["95%"] - stats["Average Response Time"]) / 2
 
+    # Keep only the columns we care about
     stats = stats[
         ["Average Response Time", "Request Count", "Failure Count", "Approx Std Dev"]
     ]
     stats.rename(columns={"Average Response Time": "Response Time"}, inplace=True)
 
+    return stats
+
+
+def get_summary_stats(df: pd.DataFrame) -> pd.DataFrame:
+    return df.aggregate(
+        {
+            "Request Count": ["sum"],
+            "Failure Count": ["sum"],
+            "Response Time": ["mean", "min", "max"],
+            "Approx Std Dev": ["mean", "min", "max"],
+        }
+    )
+
+
+def display_stats(results_dir: str, test_type: str) -> pd.DataFrame:
+
+    stats = get_and_prep_stats(results_dir, test_type)
+
+    if stats.shape[1] == 0:
+        raise RuntimeError(f"No {test_type} data available in {results_dir}")
+
     markdown("### Summary Stats")
-    if stats.shape[1] > 0:
-        summary_stats = stats.aggregate(
-            {
-                "Request Count": ["sum"],
-                "Failure Count": ["sum"],
-                "Response Time": ["mean", "min", "max"],
-                "Approx Std Dev": ["mean", "min", "max"],
-            }
-        )
-        display_df(summary_stats)
+    display_df(get_summary_stats(stats))
 
     markdown("### Ten Worst Average Response Times")
     display_df(stats.sort_values(by=["Response Time"], ascending=False), 10)
 
     markdown("### Ten Best Average Response Times")
     display_df(stats.sort_values(by=["Response Time"], ascending=True), 10)
+
+    return stats
