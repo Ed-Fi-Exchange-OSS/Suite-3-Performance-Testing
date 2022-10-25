@@ -4,11 +4,12 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 from os import path, scandir
-from typing import Optional, Callable
+from typing import Optional
+from tkinter import Tk, filedialog
 
 from IPython.display import display, Markdown, HTML
-import ipywidgets as widgets
 import pandas as pd
+
 
 def markdown(message: str) -> None:
     display(Markdown(message))
@@ -32,50 +33,41 @@ def display_df(df: pd.DataFrame, max_rows: Optional[int] = None) -> None:
         log_warning("No data to display")
         return
 
-    display(HTML(
-      df.fillna("")
-        .style
-        .format(precision=2)
-        .set_properties(**{'text-align': 'left'})
-        .set_table_styles([dict(selector='th', props=[('text-align', 'left')])])
-        .to_html(index=False, max_rows=max_rows)
-    ))
-
-
-def select_dir_and_run(callback: Callable[[str], None]) -> None:
-    results_path = widgets.Text(value="../../../testResults", description="Results Path:")
-    run = widgets.Button(
-        description="Run", button_style="primary"
+    display(
+        HTML(
+            df.fillna("")
+            .style.format(precision=2)
+            .set_properties(**{"text-align": "left"})
+            .set_table_styles([dict(selector="th", props=[("text-align", "left")])])
+            .to_html(index=False, max_rows=max_rows)
+        )
     )
 
-    output: widgets.Output = widgets.Output()
-    display(results_path, run, output)
 
-    def __on_click(_: widgets.Button) -> None:
-        with output:
-            output.clear_output()
-            file_path = results_path.value
+def select_directory() -> str:
+    root = Tk()
+    # Hide the main window
+    root.withdraw()
+    # Raise the root to the top of all windows.
+    root.call("wm", "attributes", ".", "-topmost", True)
 
-            if not path.exists(file_path):
-                log_error(f"Directory `{file_path}` does not exist or could not be read.")
-                return
+    file_path = filedialog.askdirectory()
+    root.destroy()
 
-            directories = sorted([
-                f.path
-                for f in scandir(file_path)
-                if f.is_dir()
-            ])
+    if not path.exists(file_path):
+        log_error(f"Directory `{file_path}` does not exist or could not be read.")
+        return
 
-            results_dir: str
-            if len(directories) == 0:
-                # Assume this directory has the test results
-                results_dir = file_path
-            else:
-                # Sorted oldest to newest, so analyze the _last_ item as newest
-                results_dir = directories[-1]
+    directories = sorted([f.path for f in scandir(file_path) if f.is_dir()])
 
-            log_info(f"Running analysis on {path.abspath(results_dir)}")
+    results_dir: str
+    if len(directories) == 0:
+        # Assume this directory has the test results
+        results_dir = file_path
+    else:
+        # Sorted oldest to newest, so analyze the _last_ item as newest
+        results_dir = directories[-1]
 
-            callback(file_path)
+    log_info(f"Running analysis on {path.abspath(results_dir)}")
 
-    run.on_click(__on_click)
+    return file_path
