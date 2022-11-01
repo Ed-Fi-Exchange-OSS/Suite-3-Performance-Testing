@@ -34,5 +34,6 @@ jobs:
 
       - name: Dependency Review ("Dependabot on PR")
         uses: actions/dependency-review-action@0efb1d1d84fc9633afcdaad14c485cbbc90ef46c  # v2.5.1
-        allow-ghsas:
-            - GHSA-w596-4wvx-j9j6  # this refers a potential attack via Subversion; ignoring since we only use Git.
+        with:
+            allow-ghsas:
+              - GHSA-w596-4wvx-j9j6  # this refers a potential attack via Subversion; ignoring since we only use Git.
