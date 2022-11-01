@@ -49,7 +49,7 @@ def spawn_pref_tests(args: MainArguments, user_class: Type[User]) -> None:
 
     # These tests expect that the base URL does NOT end with a slash
     if args.baseUrl.endswith("/"):
-        args.baseUrl = args.baseUrl[1:]
+        args.baseUrl = args.baseUrl[0:(len(args.baseUrl)-1)]
 
     env = Environment(user_classes=[user_class], host=args.baseUrl)
     env.create_local_runner()
