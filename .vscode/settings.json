@@ -70,5 +70,6 @@
         "exclude": [
             "css", "json", "xml", "config", "plaintext", "markdown", "batch"
         ]
-    }
+    },
+    "python.formatting.provider": "black"
 }

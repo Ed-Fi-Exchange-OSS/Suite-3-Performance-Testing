@@ -33,3 +33,13 @@ class MainArguments:
     oauth_endpoint: str
     localEducationOrganizationId: int
     log_level: LogLevel = LogLevel.INFO
+
+    def __str__(self) -> str:
+        def _masked(key: str) -> str:
+            return getattr(self, key) if key != "secret" else "****"
+
+        return ", ".join([
+            f"({key}, {_masked(key)})"
+            for key in dir(self)
+            if not callable(key) and not key.startswith("__")
+        ])
