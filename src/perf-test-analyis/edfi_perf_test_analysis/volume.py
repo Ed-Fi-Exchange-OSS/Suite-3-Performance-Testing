@@ -103,7 +103,7 @@ def run_comparison(left_dir: str, df_left: pd.DataFrame) -> None:
 
     merged = df_left.merge(df_right, on=["Request"], suffixes=("_l", "_r"))
 
-    mean = "Response Time"
+    mean = "Avg Response Time"
     stdev = "Approx Std Dev"
     count = "Request Count"
 
@@ -112,8 +112,12 @@ def run_comparison(left_dir: str, df_left: pd.DataFrame) -> None:
     # Perform a Welch's T-Test using the statistics from the CSV files
     # https://en.wikipedia.org/wiki/Welch%27s_t-test
     # Should only perform T-Test on samples of 30 or more (Central Limit Theorem)
-    large_enough = merged[(merged[f"{count}_l"] >= 30) & (merged[f"{count}_l"] >= 30)]
-    too_few = merged[(merged[f"{count}_l"] < 30) | (merged[f"{count}_l"] < 30)]
+    large_enough = merged[
+        (merged[f"{count}_l"] >= 30) & (merged[f"{count}_l"] >= 30)
+    ].copy()
+    too_few = merged[(merged[f"{count}_l"] < 30) | (merged[f"{count}_l"] < 30)].copy()
+    # force garbage collection
+    merged = None
 
     _, p_value = scipy.stats.ttest_ind_from_stats(
         mean1=large_enough[f"{mean}_l"],
@@ -135,6 +139,12 @@ def run_comparison(left_dir: str, df_left: pd.DataFrame) -> None:
     worse = large_enough[
         (large_enough["T p-value"] < 0.05) & (large_enough["diff"] < 0)
     ]
+    display_df(worse)
+
+    markdown("### Same")
+    markdown("95% confident that the response times are the same.")
+
+    worse = large_enough[(large_enough["T p-value"] >= 0.05)]
     display_df(worse)
 
     markdown("### Better")
