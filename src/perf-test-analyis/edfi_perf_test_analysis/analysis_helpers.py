@@ -41,9 +41,16 @@ def get_and_prep_stats(results_dir: str, test_type: str) -> pd.DataFrame:
 
     # Keep only the columns we care about
     stats = stats[
-        ["Average Response Time", "Request Count", "Failure Count", "Approx Std Dev"]
+        [
+            "Average Response Time",
+            "Request Count",
+            "Failure Count",
+            "Approx Std Dev",
+            "Min Response Time",
+            "Max Response Time",
+        ]
     ]
-    stats.rename(columns={"Average Response Time": "Response Time"}, inplace=True)
+    stats.rename(columns={"Average Response Time": "Avg Response Time"}, inplace=True)
 
     return stats
 
@@ -53,7 +60,7 @@ def get_summary_stats(df: pd.DataFrame) -> pd.DataFrame:
         {
             "Request Count": ["sum"],
             "Failure Count": ["sum"],
-            "Response Time": ["mean", "min", "max"],
+            "Avg Response Time": ["mean", "min", "max"],
             "Approx Std Dev": ["mean", "min", "max"],
         }
     )
@@ -70,9 +77,9 @@ def display_stats(results_dir: str, test_type: str) -> pd.DataFrame:
     display_df(get_summary_stats(stats))
 
     markdown("### Ten Worst Average Response Times")
-    display_df(stats.sort_values(by=["Response Time"], ascending=False), 10)
+    display_df(stats.sort_values(by=["Avg Response Time"], ascending=False), 10)
 
     markdown("### Ten Best Average Response Times")
-    display_df(stats.sort_values(by=["Response Time"], ascending=True), 10)
+    display_df(stats.sort_values(by=["Avg Response Time"], ascending=True), 10)
 
     return stats
