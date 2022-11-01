@@ -25,10 +25,7 @@ def regression_plot(df: pd.DataFrame, x: str, y: str) -> None:
 
     plt.show()
 
-    slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(
+    slope, intercept, r_value, _p, _stdErr = scipy.stats.linregress(
         x=regression.get_lines()[0].get_xdata(), y=regression.get_lines()[0].get_ydata()
     )
-    markdown(
-        f"y=({round(slope, 4)})x + {round(intercept,4)}, r={round(r_value,4)}"
-        f", p={round(p_value,4)}, std_err={round(std_err, 4)}"
-    )
+    markdown(f"y=({round(slope, 4)})x + {round(intercept,4)}, r={round(r_value,4)}")
