@@ -16,5 +16,8 @@ terraform {
     random = {
       version = "~> 3.4"
     }
+    template = {
+      version = "~> 2.2.0"
+    }
   }
 }
