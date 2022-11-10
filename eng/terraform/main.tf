@@ -180,6 +180,6 @@ resource "azurerm_storage_account" "tf_state" {
   account_replication_type = "LRS"
 }
 resource "azurerm_storage_container" "tf_state" {
-  name                  = "tfstate"
-  storage_account_name  = azurerm_storage_account.tf_state.name
+  name                 = "tfstate"
+  storage_account_name = azurerm_storage_account.tf_state.name
 }
