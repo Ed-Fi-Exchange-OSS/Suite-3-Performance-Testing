@@ -77,11 +77,9 @@ function Install-DotNet {
         $LogFile
     )
     Start-Transcript -Path $LogFile -Append
-
     &choco install dotnetcore-sdk @common_args
-    Test-ExitCode
-
     Stop-Transcript
+    Restart-Computer -Force
 }
 ###### Run
 $ConfirmPreference="high"
