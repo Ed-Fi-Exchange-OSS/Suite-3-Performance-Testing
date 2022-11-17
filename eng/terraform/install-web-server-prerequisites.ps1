@@ -111,4 +111,3 @@ Enable-LongFileNames
 Install-Choco
 $applicationSetupLog = "$PSScriptRoot/application-setup.log"
 Install-DotNet -LogFile $applicationSetupLog
-exit 0

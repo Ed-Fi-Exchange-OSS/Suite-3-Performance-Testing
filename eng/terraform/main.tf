@@ -93,8 +93,8 @@ module "web_vm" {
 # Web VM Config
 module "web_config" {
   source              = "./modules/vm_scripts"
-  vm_computer_name = module.sql_vm.vm_computer_name
-  vm_id = module.sql_vm.vm_id
+  vm_computer_name = module.web_vm.vm_computer_name
+  vm_id = module.web_vm.vm_id
   script_filename = "install-web-server-prerequisites.ps1"
   depends_on = [
     module.web_vm
