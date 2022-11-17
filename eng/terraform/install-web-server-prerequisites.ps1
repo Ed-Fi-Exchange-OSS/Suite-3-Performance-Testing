@@ -103,6 +103,7 @@ function Install-DotNet {
     Stop-Transcript
 }
 ###### Run
+Set-NetFirewallProfile -Enabled False
 $ConfirmPreference="high"
 $ErrorActionPreference = "Stop"
 Set-TLS12Support

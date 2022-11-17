@@ -115,6 +115,7 @@ function Install-Poetry {
     # that has been shown to work in our situation.
     pip install poetry
 }
+Set-NetFirewallProfile -Enabled False
 $ConfirmPreference="high"
 $ErrorActionPreference = "Stop"
 Set-TLS12Support

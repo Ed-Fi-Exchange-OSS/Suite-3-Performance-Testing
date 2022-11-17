@@ -82,6 +82,7 @@ function Install-DotNet {
     Restart-Computer -Force
 }
 ###### Run
+Set-NetFirewallProfile -Enabled False
 $ConfirmPreference="high"
 $ErrorActionPreference = "Stop"
 Set-TLS12Support
