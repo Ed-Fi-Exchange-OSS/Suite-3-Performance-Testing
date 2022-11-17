@@ -1,4 +1,11 @@
-$ConfirmPreference="high"
+# SPDX-License-Identifier: Apache-2.0
+# Licensed to the Ed-Fi Alliance under one or more agreements.
+# The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
+# See the LICENSE and NOTICES files in the project root for more information.
+
+# Run this script as an administrator to install Chocolatey, Pyenv, Python 3.9.4, and Poetry.
+# This script should be run should be run once for environments that do not
+# already have these prerequisites set up.
 ####### Tools-Helper.psm1
 function Invoke-RefreshPath {
     # Some of the installs in this process do not set the immediate path correctly.
@@ -74,25 +81,29 @@ function Install-DotNet {
     # install will be handled by the Ed-Fi custom installers
     Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServerRole -NoRestart | Out-Null
 
-    &choco install dotnetcore-sdk @common_args
-    Test-ExitCode
+    #&choco install dotnetcore-sdk @common_args
+    #Test-ExitCode
 
     &choco install dotnetcore-windowshosting @common_args
     Test-ExitCode
     &refreshenv
 
-    &choco install dotnet-windowshosting @common_args
+    &choco install dotnet-6.0-windowshosting @common_args
     Test-ExitCode
     &refreshenv
 
-    &choco install dotnet-5.0-windowshosting @common_args
+    #&choco install dotnet-5.0-windowshosting @common_args
+    #Test-ExitCode
+    #&refreshenv
+
+    &choco install dotnetfx @common_args
     Test-ExitCode
     &refreshenv
 
     Stop-Transcript
 }
 ###### Run
-
+$ConfirmPreference="high"
 $ErrorActionPreference = "Stop"
 Set-TLS12Support
 Invoke-RefreshPath
@@ -100,4 +111,3 @@ Enable-LongFileNames
 Install-Choco
 $applicationSetupLog = "$PSScriptRoot/application-setup.log"
 Install-DotNet -LogFile $applicationSetupLog
-exit 0

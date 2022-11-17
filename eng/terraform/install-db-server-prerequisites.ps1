@@ -2,11 +2,6 @@
 # Licensed to the Ed-Fi Alliance under one or more agreements.
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
-
-# Run this script as an administrator to install Chocolatey, Pyenv, Python 3.9.4, and Poetry.
-# This script should be run should be run once for environments that do not
-# already have these prerequisites set up.
-$ConfirmPreference="high"
 function Install-PowerShellTools {
     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
     Install-PackageProvider -Name NuGet -Force
@@ -83,23 +78,19 @@ function Install-DotNet {
     )
     Start-Transcript -Path $LogFile -Append
 
-    # Need to install a minimal IIS component for next steps. Detailed IIS
-    # install will be handled by the Ed-Fi custom installers
-    #Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServerRole -NoRestart | Out-Null
-
     &choco install dotnetcore-sdk @common_args
     Test-ExitCode
 
     Stop-Transcript
 }
 ###### Run
-
+$ConfirmPreference="high"
 $ErrorActionPreference = "Stop"
 Set-TLS12Support
 Invoke-RefreshPath
 Enable-LongFileNames
 Install-Choco
+Install-PowerShellTools
 $applicationSetupLog = "$PSScriptRoot/application-setup.log"
 Install-DotNet -LogFile $applicationSetupLog
-Install-PowerShellTools
-exit 0
+

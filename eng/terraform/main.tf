@@ -60,26 +60,14 @@ module "sql_vm" {
   admin_password = var.sql_admin_password
 }
 # DB VM Config
-data "template_file" "sql_prereqs" {
-
-  template = "${file("./install-db-server-prerequisites.ps1")}"
-}
-
-resource "azurerm_virtual_machine_extension" "sql_install" {
-  name                 = module.sql_vm.vm_computer_name
-  virtual_machine_id   = module.sql_vm.vm_id
-  publisher            = "Microsoft.Compute"
-  type                 = "CustomScriptExtension"
-  type_handler_version = "1.9"
+module "sql_config" {
+  source              = "./modules/vm_scripts"
+  vm_computer_name = module.sql_vm.vm_computer_name
+  vm_id = module.sql_vm.vm_id
+  script_filename = "install-db-server-prerequisites.ps1"
   depends_on = [
     module.sql_vm
   ]
-  settings = <<SETTINGS
- {
-  "commandToExecute": "powershell -command \"[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${base64encode(data.template_file.sql_prereqs.rendered)}')) | Out-File -filepath install-db-server-prerequisites.ps1\" && powershell -ExecutionPolicy Unrestricted -File install-db-server-prerequisites.ps1"
- }
-SETTINGS
-
 }
 
 # Web VM
@@ -103,29 +91,16 @@ module "web_vm" {
   admin_password = var.web_admin_password
 }
 # Web VM Config
-data "template_file" "web_prereqs" {
-
-  template = "${file("./install-web-server-prerequisites.ps1")}"
-}
-
-resource "azurerm_virtual_machine_extension" "web_install" {
-  name                 = module.web_vm.vm_computer_name
-  virtual_machine_id   = module.web_vm.vm_id
-  publisher            = "Microsoft.Compute"
-  type                 = "CustomScriptExtension"
-  type_handler_version = "1.9"
+module "web_config" {
+  source              = "./modules/vm_scripts"
+  vm_computer_name = module.sql_vm.vm_computer_name
+  vm_id = module.sql_vm.vm_id
+  script_filename = "install-web-server-prerequisites.ps1"
   depends_on = [
     module.web_vm
   ]
-  settings = <<SETTINGS
- {
-  "commandToExecute": "powershell -command \"[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${base64encode(data.template_file.web_prereqs.rendered)}')) | Out-File -filepath install-web-server-prerequisites.ps1\" && powershell -ExecutionPolicy Unrestricted -File install-web-server-prerequisites.ps1"
- }
-SETTINGS
-
 }
-# Test Runner VM
-
+# # Test Runner VM
 module "runner_vm" {
   source              = "./modules/vm"
   resource_group_name = azurerm_resource_group.base_rg.name
@@ -146,26 +121,14 @@ module "runner_vm" {
   admin_password = var.runner_admin_password
 }
 # Runner VM Config
-data "template_file" "runner_prereqs" {
-
-  template = "${file("./install-test-runner-prerequisites.ps1")}"
-}
-
-resource "azurerm_virtual_machine_extension" "runner_install" {
-  name                 = module.runner_vm.vm_computer_name
-  virtual_machine_id   = module.runner_vm.vm_id
-  publisher            = "Microsoft.Compute"
-  type                 = "CustomScriptExtension"
-  type_handler_version = "1.9"
+module "runner_config" {
+  source              = "./modules/vm_scripts"
+  vm_computer_name = module.runner_vm.vm_computer_name
+  vm_id = module.runner_vm.vm_id
+  script_filename = "install-test-runner-prerequisites.ps1"
   depends_on = [
     module.runner_vm
   ]
-  settings = <<SETTINGS
- {
-  "commandToExecute": "powershell -command \"[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${base64encode(data.template_file.runner_prereqs.rendered)}')) | Out-File -filepath install-test-runner-prerequisites.ps1\" && powershell -ExecutionPolicy Unrestricted -File install-test-runner-prerequisites.ps1"
- }
-SETTINGS
-
 }
 
 ### Terraform state Buckets

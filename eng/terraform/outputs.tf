@@ -35,7 +35,7 @@ output "sql_vm" {
     vm_computer_name = module.sql_vm.vm_computer_name
     vm_private_ip    = module.sql_vm.vm_private_ip
     vm_public_ip     = module.sql_vm.vm_public_ip
-    vm_extension_id  = azurerm_virtual_machine_extension.sql_install.id
+    vm_extension_id  = module.sql_config.vm_extension_id
   }
   description = "SQL VM values"
 }
@@ -45,7 +45,7 @@ output "web_vm" {
     vm_computer_name = module.web_vm.vm_computer_name
     vm_private_ip    = module.web_vm.vm_private_ip
     vm_public_ip     = module.web_vm.vm_public_ip
-    vm_extension_id  = azurerm_virtual_machine_extension.web_install.id
+    vm_extension_id  = module.web_config.vm_extension_id
   }
   description = "Web VM values"
 }
@@ -56,7 +56,7 @@ output "runner_vm" {
     vm_computer_name = module.runner_vm.vm_computer_name
     vm_private_ip    = module.runner_vm.vm_private_ip
     vm_public_ip     = module.runner_vm.vm_public_ip
-    vm_extension_id  = azurerm_virtual_machine_extension.runner_install.id
+    vm_extension_id  = module.runner_config.vm_extension_id
   }
   description = "Runner VM values"
 }
