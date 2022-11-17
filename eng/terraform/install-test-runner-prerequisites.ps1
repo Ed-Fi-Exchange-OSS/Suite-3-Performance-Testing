@@ -126,3 +126,4 @@ Install-Pyenv
 Invoke-RefreshPath
 Install-Python
 Install-Poetry
+exit 0

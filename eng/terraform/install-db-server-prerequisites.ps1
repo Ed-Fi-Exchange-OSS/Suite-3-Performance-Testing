@@ -93,4 +93,4 @@ Install-Choco
 Install-PowerShellTools
 $applicationSetupLog = "$PSScriptRoot/application-setup.log"
 Install-DotNet -LogFile $applicationSetupLog
-
+exit 0
