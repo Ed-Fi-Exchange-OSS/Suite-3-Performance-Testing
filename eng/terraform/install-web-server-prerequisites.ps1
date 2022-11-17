@@ -81,9 +81,6 @@ function Install-DotNet {
     # install will be handled by the Ed-Fi custom installers
     Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServerRole -NoRestart | Out-Null
 
-    #&choco install dotnetcore-sdk @common_args
-    #Test-ExitCode
-
     &choco install dotnetcore-windowshosting @common_args
     Test-ExitCode
     &refreshenv
@@ -91,10 +88,6 @@ function Install-DotNet {
     &choco install dotnet-6.0-windowshosting @common_args
     Test-ExitCode
     &refreshenv
-
-    #&choco install dotnet-5.0-windowshosting @common_args
-    #Test-ExitCode
-    #&refreshenv
 
     &choco install dotnetfx @common_args
     Test-ExitCode
@@ -112,3 +105,5 @@ Enable-LongFileNames
 Install-Choco
 $applicationSetupLog = "$PSScriptRoot/application-setup.log"
 Install-DotNet -LogFile $applicationSetupLog
+&choco install vcredist140 @common_args
+Restart-Computer -Force
