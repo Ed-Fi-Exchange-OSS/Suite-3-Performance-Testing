@@ -70,3 +70,16 @@ resource "azurerm_virtual_machine_data_disk_attachment" "vm_data" {
   lun                = "1"
   caching            = "ReadOnly"
 }
+
+# Shutdown at 7:00pm daily
+resource "azurerm_dev_test_global_vm_shutdown_schedule" "shutdown_7pm" {
+  virtual_machine_id = azurerm_windows_virtual_machine.vm.id
+  location           = var.location
+  enabled            = true
+
+  daily_recurrence_time = "1900"
+  timezone              = "Central Standard Time"
+  notification_settings {
+    enabled         = false
+  }
+}
