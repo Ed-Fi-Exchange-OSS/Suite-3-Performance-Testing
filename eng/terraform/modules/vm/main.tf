@@ -44,7 +44,7 @@ resource "azurerm_windows_virtual_machine" "vm" {
   ]
 
   os_disk {
-    caching = "ReadWrite"
+    caching              = "ReadWrite"
     storage_account_type = "StandardSSD_LRS"
     #disk_size_gb         = var.os_disk_size
   }
@@ -57,9 +57,9 @@ resource "azurerm_windows_virtual_machine" "vm" {
   }
 }
 resource "azurerm_managed_disk" "vm_data" {
-  name                = "${local.base_vm_name}-VM_Data_0"
-  location            = var.location
-  resource_group_name = var.resource_group_name
+  name                 = "${local.base_vm_name}-VM_Data_0"
+  location             = var.location
+  resource_group_name  = var.resource_group_name
   storage_account_type = "StandardSSD_LRS"
   create_option        = "Empty"
   disk_size_gb         = var.data_disk_size
