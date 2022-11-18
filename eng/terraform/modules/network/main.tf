@@ -25,7 +25,7 @@ resource "azurerm_network_security_rule" "rdp_rule" {
 resource "azurerm_network_security_rule" "http_rule" {
   name                        = "HTTP"
   resource_group_name         = var.resource_group_name
-  priority                    = 1000
+  priority                    = 1100
   direction                   = "Inbound"
   access                      = "Allow"
   protocol                    = "Tcp"
@@ -38,7 +38,7 @@ resource "azurerm_network_security_rule" "http_rule" {
 resource "azurerm_network_security_rule" "https_rule" {
   name                        = "HTTPS"
   resource_group_name         = var.resource_group_name
-  priority                    = 1000
+  priority                    = 1200
   direction                   = "Inbound"
   access                      = "Allow"
   protocol                    = "Tcp"
