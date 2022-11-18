@@ -80,6 +80,6 @@ resource "azurerm_dev_test_global_vm_shutdown_schedule" "shutdown_7pm" {
   daily_recurrence_time = "1900"
   timezone              = "Central Standard Time"
   notification_settings {
-    enabled         = false
+    enabled = false
   }
 }
