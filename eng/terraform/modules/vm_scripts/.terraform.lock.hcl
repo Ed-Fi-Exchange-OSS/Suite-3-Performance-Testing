@@ -2,7 +2,8 @@
 # Manual edits may be lost in future updates.
 
 provider "registry.terraform.io/hashicorp/azurerm" {
-  version = "3.32.0"
+  version     = "3.32.0"
+  constraints = "3.32.0"
   hashes = [
     "h1:Rl31vGl2LBhpmFRaZ3bTq21VG8W1eZOuP90VpwNw9fM=",
     "zh:3ee1992144e6bf9801c44df0ed1e10413fa83ad605e3ce751cb342dd46904c41",
@@ -21,7 +22,8 @@ provider "registry.terraform.io/hashicorp/azurerm" {
 }
 
 provider "registry.terraform.io/hashicorp/template" {
-  version = "2.2.0"
+  version     = "2.2.0"
+  constraints = "~> 2.2.0"
   hashes = [
     "h1:LN84cu+BZpVRvYlCzrbPfCRDaIelSyEx/W9Iwwgbnn4=",
     "zh:01702196f0a0492ec07917db7aaa595843d8f171dc195f4c988d2ffca2a06386",
