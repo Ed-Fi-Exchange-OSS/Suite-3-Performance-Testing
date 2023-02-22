@@ -246,7 +246,7 @@ class EdFiAPIClient(EdFiBasicAPIClient):
             "attributes": resource_attrs,
         }
 
-    def delete_with_dependencies(self, reference, **kwargs):
+    def delete_with_dependencies(self, reference):
         """
         Atomically delete an instance of this resource along with all
         dependencies.  The `reference` parameter will contain the necessary
