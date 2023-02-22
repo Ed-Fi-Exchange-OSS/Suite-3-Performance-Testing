@@ -32,7 +32,7 @@ class SchoolFactory(APIFactory):
     educationOrganizationCategories = ListOfDescriptors(
         "EducationOrganizationCategory", ["School"]
     )
-    educationOrganizationCodes = factory.LazyAttribute(
+    identificationCodes = factory.LazyAttribute(
         lambda o: build_descriptor_dicts(
             "EducationOrganizationIdentificationSystem",
             [("SEA", {"identificationCode": str(o.schoolId)})],
