@@ -26,7 +26,7 @@ class EducationOrganizationInterventionPrescriptionAssociationClient(EdFiAPIClie
     }
 
     def create_with_dependencies(self, **kwargs):
-        rx_reference = self.prescription_client.create_with_dependencies()
+        rx_reference = self.prescription_client.create_with_dependencies()  # type: ignore
 
         return self.create_using_dependencies(
             rx_reference,
@@ -52,7 +52,7 @@ class EducationOrganizationNetworkAssociationClient(EdFiAPIClient):
     }
 
     def create_with_dependencies(self, **kwargs):
-        network_reference = self.network_client.create_with_dependencies()
+        network_reference = self.network_client.create_with_dependencies()  # type: ignore
 
         return self.create_using_dependencies(
             network_reference,
@@ -73,7 +73,7 @@ class EducationOrganizationPeerAssociationClient(EdFiAPIClient):
     }
 
     def create_with_dependencies(self, **kwargs):
-        school_reference = self.school_client.create_with_dependencies()
+        school_reference = self.school_client.create_with_dependencies()  # type: ignore
 
         return self.create_using_dependencies(
             school_reference,
@@ -103,7 +103,7 @@ class LocalEducationAgencyClient(EdFiAPIClient):
     }
 
     def create_with_dependencies(self, **kwargs):
-        service_center_reference = self.service_center_client.create_with_dependencies()
+        service_center_reference = self.service_center_client.create_with_dependencies()  # type: ignore
 
         return self.create_using_dependencies(
             service_center_reference,
@@ -136,7 +136,7 @@ class FeederSchoolAssociationClient(EdFiAPIClient):
     }
 
     def create_with_dependencies(self, **kwargs):
-        feeder_school_reference = self.school_client.create_with_dependencies()
+        feeder_school_reference = self.school_client.create_with_dependencies()  # type: ignore
 
         return self.create_using_dependencies(
             feeder_school_reference,

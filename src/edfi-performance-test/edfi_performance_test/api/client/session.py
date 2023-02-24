@@ -19,11 +19,11 @@ class SessionClient(EdFiAPIClient):
         school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
         school_year = kwargs.get("schoolYear", 2014)
         # Create two grading periods
-        period_1_reference = self.grading_period_client.create_with_dependencies(
+        period_1_reference = self.grading_period_client.create_with_dependencies(  # type: ignore
             schoolReference__schoolId=school_id,
             schoolYearTypeReference__schoolYear=school_year,
         )
-        period_2_reference = self.grading_period_client.create_with_dependencies(
+        period_2_reference = self.grading_period_client.create_with_dependencies(  # type: ignore
             schoolReference__schoolId=school_id,
             schoolYearTypeReference__schoolYear=school_year,
             beginDate="2014-10-06",
@@ -57,9 +57,9 @@ class SessionClient(EdFiAPIClient):
 
     def delete_with_dependencies(self, reference, **kwargs):
         self.delete_item(reference["resource_id"])
-        self.grading_period_client.delete_with_dependencies(
+        self.grading_period_client.delete_with_dependencies(  # type: ignore
             reference["dependency_ids"]["period_1_reference"]
         )
-        self.grading_period_client.delete_with_dependencies(
+        self.grading_period_client.delete_with_dependencies(  # type: ignore
             reference["dependency_ids"]["period_2_reference"]
         )

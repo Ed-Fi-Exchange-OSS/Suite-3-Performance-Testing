@@ -20,7 +20,7 @@ class CommunityProviderClient(EdFiAPIClient):
     }
 
     def create_with_dependencies(self, **kwargs):
-        org_reference = self.org_client.create_with_dependencies()
+        org_reference = self.org_client.create_with_dependencies()  # type: ignore
 
         return self.create_using_dependencies(
             org_reference,
@@ -41,7 +41,7 @@ class CommunityProviderLicenseClient(EdFiAPIClient):
     }
 
     def create_with_dependencies(self, **kwargs):
-        provider_reference = self.provider_client.create_with_dependencies()
+        provider_reference = self.provider_client.create_with_dependencies()  # type: ignore
 
         return self.create_using_dependencies(
             provider_reference,

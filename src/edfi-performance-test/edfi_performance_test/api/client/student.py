@@ -24,7 +24,7 @@ class StudentParentAssociationClient(EdFiAPIClient):
 
     def create_with_dependencies(self, **kwargs):
         # Create enrolled student
-        student_reference = self.student_client.create_with_dependencies()
+        student_reference = self.student_client.create_with_dependencies()  # type: ignore
 
         # Create parent
         parent_unique_id = kwargs.pop("parentUniqueId", ParentClient.shared_parent_id())
@@ -60,7 +60,7 @@ class StudentClient(EdFiAPIClient):
         student_id = self.create(**student_attrs)
 
         # Associate student with existing school to allow updates
-        assoc_id = self.assoc_client.create(
+        assoc_id = self.assoc_client.create(  # type: ignore
             studentReference__studentUniqueId=student_unique_id,
             schoolReference__schoolId=school_id,
             studentUniqueId=student_unique_id,
@@ -75,7 +75,7 @@ class StudentClient(EdFiAPIClient):
         }
 
     def delete_with_dependencies(self, reference, **kwargs):
-        self.assoc_client.delete_item(reference["dependency_ids"]["assoc_id"])
+        self.assoc_client.delete_item(reference["dependency_ids"]["assoc_id"])  # type: ignore
         self.delete_item(reference["resource_id"])
 
     @classmethod
@@ -116,7 +116,7 @@ class StudentEducationOrganizationAssociationClient(EdFiAPIClient):
         school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
 
         # Create enrolled student
-        student_reference = self.student_client.create_with_dependencies(
+        student_reference = self.student_client.create_with_dependencies(  # type: ignore
             schoolId=school_id
         )
 
@@ -142,12 +142,12 @@ class StudentCohortAssociationClient(EdFiAPIClient):
         school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
 
         # Create enrolled student
-        student_reference = self.student_client.create_with_dependencies(
+        student_reference = self.student_client.create_with_dependencies(  # type: ignore
             schoolId=school_id
         )
 
         # Create a cohort
-        cohort_reference = self.cohort_client.create_with_dependencies(
+        cohort_reference = self.cohort_client.create_with_dependencies(  # type: ignore
             educationOrganizationReference__educationOrganizationId=school_id
         )
 
@@ -179,7 +179,7 @@ class StudentTitleIPartAProgramAssociationClient(EdFiAPIClient):
         school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
 
         # Create enrolled student
-        student_reference = self.student_client.create_with_dependencies(
+        student_reference = self.student_client.create_with_dependencies(  # type: ignore
             schoolId=school_id
         )
 
@@ -204,7 +204,7 @@ class StudentSpecialEducationProgramAssociationClient(EdFiAPIClient):
         school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
 
         # Create enrolled student
-        student_reference = self.student_client.create_with_dependencies(
+        student_reference = self.student_client.create_with_dependencies(  # type: ignore
             schoolId=school_id
         )
 
@@ -227,7 +227,7 @@ class StudentProgramAssociationClient(EdFiAPIClient):
         school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
 
         # Create enrolled student
-        student_reference = self.student_client.create_with_dependencies(
+        student_reference = self.student_client.create_with_dependencies(  # type: ignore
             schoolId=school_id
         )
 
@@ -255,12 +255,12 @@ class StudentDisciplineIncidentAssociationClient(EdFiAPIClient):
         school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
 
         # Create enrolled student
-        student_reference = self.student_client.create_with_dependencies(
+        student_reference = self.student_client.create_with_dependencies(  # type: ignore
             schoolId=school_id
         )
 
         # Create discipline incident
-        incident_reference = self.incident_client.create_with_dependencies(
+        incident_reference = self.incident_client.create_with_dependencies(  # type: ignore
             schoolId=school_id
         )
 
@@ -293,12 +293,12 @@ class StudentSectionAssociationClient(EdFiAPIClient):
         school_id = kwargs.get("schoolId", SchoolClient.shared_elementary_school_id())
         course_code = kwargs.pop("courseCode", "ELA-01")
         # Create section and student
-        section_reference = self.section_client.create_with_dependencies(
+        section_reference = self.section_client.create_with_dependencies(  # type: ignore
             schoolId=school_id,
             courseCode=course_code,
             sectionIdentifier=RandomSuffixAttribute(course_code + "2017RM555"),
         )
-        student_reference = self.student_client.create_with_dependencies(
+        student_reference = self.student_client.create_with_dependencies(  # type: ignore
             schoolId=school_id
         )
         student_unique_id = student_reference["attributes"]["studentUniqueId"]
@@ -340,12 +340,12 @@ class StudentSchoolAttendanceEventClient(EdFiAPIClient):
         school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
 
         # Create enrolled student
-        student_reference = self.student_client.create_with_dependencies(
+        student_reference = self.student_client.create_with_dependencies(  # type: ignore
             schoolId=school_id
         )
 
         # Create session
-        session_reference = self.session_client.create_with_dependencies(
+        session_reference = self.session_client.create_with_dependencies(  # type: ignore
             schoolId=school_id
         )
 
@@ -380,12 +380,12 @@ class StudentSectionAttendanceEventClient(EdFiAPIClient):
         course_code = kwargs.pop("courseCode", "ELA-01")
 
         # Create enrolled student
-        student_reference = self.student_client.create_with_dependencies(
+        student_reference = self.student_client.create_with_dependencies(  # type: ignore
             schoolId=school_id
         )
 
         # Create section
-        section_reference = self.section_client.create_with_dependencies(
+        section_reference = self.section_client.create_with_dependencies(  # type: ignore
             schoolId=school_id,
             courseCode=course_code,
             sectionIdentifier=RandomSuffixAttribute(course_code + "2017RM555"),
@@ -429,7 +429,7 @@ class StudentAcademicRecordClient(EdFiAPIClient):
         school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
 
         # Create enrolled student
-        student_reference = self.student_client.create_with_dependencies(
+        student_reference = self.student_client.create_with_dependencies(  # type: ignore
             schoolId=school_id
         )
 
@@ -454,11 +454,11 @@ class StudentCompetencyObjectiveClient(EdFiAPIClient):
 
     def create_with_dependencies(self, **kwargs):
         # Create grading period
-        period_reference = self.grading_period_client.create_with_dependencies()
+        period_reference = self.grading_period_client.create_with_dependencies()  # type: ignore
 
         # Create competency objective
         objective_reference = (
-            self.competency_objective_client.create_with_dependencies()
+            self.competency_objective_client.create_with_dependencies()  # type: ignore
         )
 
         # Create student competency objective
@@ -560,7 +560,7 @@ class StudentInterventionAssociationClient(EdFiAPIClient):
     }
 
     def create_with_dependencies(self, **kwargs):
-        intervention_reference = self.intervention_client.create_with_dependencies()
+        intervention_reference = self.intervention_client.create_with_dependencies()  # type: ignore
 
         return self.create_using_dependencies(
             intervention_reference,
@@ -581,7 +581,7 @@ class StudentInterventionAttendanceEventClient(EdFiAPIClient):
     }
 
     def create_with_dependencies(self, **kwargs):
-        intervention_reference = self.intervention_client.create_with_dependencies()
+        intervention_reference = self.intervention_client.create_with_dependencies()  # type: ignore
 
         return self.create_using_dependencies(
             intervention_reference,
@@ -607,9 +607,9 @@ class StudentLearningObjectiveClient(EdFiAPIClient):
     }
 
     def create_with_dependencies(self, **kwargs):
-        objective_reference = self.objective_client.create_with_dependencies()
+        objective_reference = self.objective_client.create_with_dependencies()  # type: ignore
 
-        period_reference = self.grading_period_client.create_with_dependencies()
+        period_reference = self.grading_period_client.create_with_dependencies()  # type: ignore
 
         return self.create_using_dependencies(
             [
