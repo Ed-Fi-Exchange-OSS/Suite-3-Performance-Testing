@@ -16,8 +16,8 @@ class AccountPipecleanTest(EdFiPipecleanTestBase):
 
 
 class AccountCodePipecleanTest(EdFiPipecleanTestBase):
-    update_attribute_name = "accountClassificationDescriptor"
-    update_attribute_value = build_descriptor("AccountClassification", "Fund")
+    update_attribute_name = "accountCodeDescription"
+    update_attribute_value = "another description"
 
 
 class ActualPipecleanTest(EdFiPipecleanTestBase):
