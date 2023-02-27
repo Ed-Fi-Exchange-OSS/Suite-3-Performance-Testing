@@ -38,7 +38,6 @@ class StaffClient(EdFiAPIClient):
         assoc_id = self.assoc_client.create(  # type: ignore
             staffReference__staffUniqueId=staff_unique_id,
             educationOrganizationReference__educationOrganizationId=school_id,
-            staffUniqueId=staff_unique_id,
         )
 
         return {
@@ -65,16 +64,13 @@ class StaffEducationOrganizationAssignmentAssociationClient(EdFiAPIClient):
     endpoint = "staffEducationOrganizationAssignmentAssociations"
 
     def create_with_dependencies(self, **kwargs):
-        # Create new staff for association
-        staff_unique_id = kwargs.pop("staffUniqueId", StaffClient.shared_staff_id())
-
-        # Create association from staff to ed org
-        edorg_id = kwargs.pop(
-            "educationOrganizationId", SchoolClient.shared_elementary_school_id()
-        )
         assoc_overrides = dict(
-            staffReference__staffUniqueId=staff_unique_id,
-            educationOrganizationReference__educationOrganizationId=edorg_id,
+            staffReference__staffUniqueId=kwargs.pop(
+                "staffUniqueId", StaffClient.shared_staff_id()
+            ),
+            educationOrganizationReference__educationOrganizationId=kwargs.pop(
+                "educationOrganizationId", SchoolClient.shared_elementary_school_id()
+            ),
         )
         assoc_overrides.update(kwargs)
         return self.create_using_dependencies(**assoc_overrides)

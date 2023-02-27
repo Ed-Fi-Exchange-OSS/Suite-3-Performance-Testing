@@ -10,5 +10,5 @@ from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
 
 
 class ProgramPipecleanTest(EdFiPipecleanTestBase):
-    update_attribute_name = "programTypeDescriptor"
-    update_attribute_value = build_descriptor("ProgramType", "Special Education")
+    update_attribute_name = "programId"
+    update_attribute_value = "xyz"

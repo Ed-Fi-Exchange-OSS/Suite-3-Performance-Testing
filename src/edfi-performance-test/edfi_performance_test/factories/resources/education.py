@@ -66,8 +66,10 @@ class LocalEducationAgencyFactory(APIFactory):
 
 class EducationContentFactory(APIFactory):
     contentIdentifier = UniqueIdAttribute(num_chars=60)
-    description = "A learning resource for all grade levels"
+    shortDescription = "A learning resource for all grade levels"
     namespace = "uri://ed-fi.org"
+    learningResourceMetadataURI = "uri://ed-fi.org/whatever"
+    contentClassDescriptor = "uri://ed-fi.org/ContentClassDescriptor#Presentation"
 
 
 class EducationOrganizationInterventionPrescriptionAssociationFactory(APIFactory):

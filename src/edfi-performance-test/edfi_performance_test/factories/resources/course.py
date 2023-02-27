@@ -62,3 +62,4 @@ class CourseTranscriptFactory(APIFactory):
     courseAttemptResultDescriptor = build_descriptor("CourseAttemptResult", "Pass")
     finalLetterGradeEarned = "B"
     finalNumericGradeEarned = 83
+    earnedCredits = 3

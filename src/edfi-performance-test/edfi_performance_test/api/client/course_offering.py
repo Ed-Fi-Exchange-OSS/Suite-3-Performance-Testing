@@ -15,7 +15,8 @@ class CourseOfferingClient(EdFiAPIClient):
 
     def create_with_dependencies(self, **kwargs):
         school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
-        school_year = kwargs.get("schoolYear", 2014)
+        school_year = kwargs.pop("schoolYear", 2014)
+
         session_reference = self.session_client.create_with_dependencies(  # type: ignore
             schoolId=school_id, schoolYear=school_year
         )

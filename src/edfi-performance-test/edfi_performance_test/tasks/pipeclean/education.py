@@ -37,10 +37,7 @@ class EducationOrganizationNetworkAssociationPipecleanTest(EdFiPipecleanTestBase
 
 class EducationOrganizationPeerAssociationPipecleanTest(EdFiPipecleanTestBase):
     def _touch_put_endpoint(self, resource_id, default_attributes):
-        # This resource has no non-FK data attributes, so we'll update one of those
-        default_attributes["educationOrganizationReference"][
-            "educationOrganizationId"
-        ] = SchoolClient.shared_elementary_school_id()
+        # This resource has no non-key attributes, so there is nothing to update
         self.update(resource_id, **default_attributes)
 
 
@@ -50,7 +47,7 @@ class EducationServiceCenterPipecleanTest(EdFiPipecleanTestBase):
 
 
 class FeederSchoolAssociationPipecleanTest(EdFiPipecleanTestBase):
-    update_attribute_name = "beginDate"
+    update_attribute_name = "endDate"
     update_attribute_value = formatted_date(7, 4)
 
 

@@ -22,8 +22,8 @@ class SectionClient(EdFiAPIClient):
     }
 
     def create_with_dependencies(self, **kwargs):
-        school_id = kwargs.get("schoolId", SchoolClient.shared_elementary_school_id())
-        school_year = kwargs.get("schoolYear", 2014)
+        school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
+        school_year = kwargs.pop("schoolYear", 2014)
         custom_course_code = kwargs.pop("courseCode", "ELA-01")
 
         # Create a course offering and its dependencies
@@ -55,6 +55,7 @@ class SectionClient(EdFiAPIClient):
             ][
                 "classPeriodName"
             ],
+            classPeriods__0__classPeriodReference__schoolId=school_id,
             courseOfferingReference__localCourseCode=course_offering_attrs[
                 "localCourseCode"
             ],

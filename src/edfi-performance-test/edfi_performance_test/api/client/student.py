@@ -62,8 +62,7 @@ class StudentClient(EdFiAPIClient):
         # Associate student with existing school to allow updates
         assoc_id = self.assoc_client.create(  # type: ignore
             studentReference__studentUniqueId=student_unique_id,
-            schoolReference__schoolId=school_id,
-            studentUniqueId=student_unique_id,
+            schoolReference__schoolId=school_id
         )
 
         return {
@@ -90,13 +89,11 @@ class StudentSchoolAssociationClient(EdFiAPIClient):
     endpoint = "studentSchoolAssociations"
 
     def create_with_dependencies(self, **kwargs):
-        # Create new student for association
-        student_unique_id = kwargs.pop(
-            "studentUniqueId", StudentClient.shared_student_id()
-        )
-
         # Create association from student to school
         school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
+        # This is coming back with a function, and we need to call that function
+        student_unique_id = kwargs.pop("student_unique_id", StudentClient.shared_student_id())
+
         assoc_overrides = dict(
             studentReference__studentUniqueId=student_unique_id,
             schoolReference__schoolId=school_id,
@@ -290,7 +287,7 @@ class StudentSectionAssociationClient(EdFiAPIClient):
     }
 
     def create_with_dependencies(self, **kwargs):
-        school_id = kwargs.get("schoolId", SchoolClient.shared_elementary_school_id())
+        school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
         course_code = kwargs.pop("courseCode", "ELA-01")
         # Create section and student
         section_reference = self.section_client.create_with_dependencies(  # type: ignore
@@ -470,7 +467,7 @@ class StudentCompetencyObjectiveClient(EdFiAPIClient):
             gradingPeriodReference__periodSequence=period_reference["attributes"][
                 "periodSequence"
             ],
-            objectiveCompetencyObjectiveReference__objective=objective_reference[
+            competencyObjectiveReference__objective=objective_reference[
                 "attributes"
             ]["objective"],
         )
@@ -496,7 +493,7 @@ class StudentGradebookEntryClient(EdFiAPIClient):
 
     def create_with_dependencies(self, **kwargs):
         # Create a student and section
-        student_section_reference = self.assoc_client.create_with_dependencies()
+        student_section_reference = self.assoc_client.create_with_dependencies()  # type: ignore
         section_kwargs = {
             "sectionIdentifier": student_section_reference["attributes"][
                 "sectionReference"
@@ -516,7 +513,7 @@ class StudentGradebookEntryClient(EdFiAPIClient):
         }
 
         # Create gradebook entry
-        entry_id, gradebook_entry_title = self.entry_client.create(
+        entry_id, gradebook_entry_title = self.entry_client.create(  # type: ignore
             unique_id_field="gradebookEntryTitle", sectionReference=section_kwargs
         )
 
@@ -544,8 +541,8 @@ class StudentGradebookEntryClient(EdFiAPIClient):
     def delete_with_dependencies(self, reference, **kwargs):
         self.delete_item(reference["resource_id"])
         dependencies = reference["dependency_ids"]
-        self.entry_client.delete_item(dependencies["entry_client"])
-        self.assoc_client.delete_with_dependencies(dependencies["assoc_client"])
+        self.entry_client.delete_item(dependencies["entry_client"])  # type: ignore
+        self.assoc_client.delete_with_dependencies(dependencies["assoc_client"])  # type: ignore
 
 
 class StudentHomelessProgramAssociationClient(EdFiAPIClient):

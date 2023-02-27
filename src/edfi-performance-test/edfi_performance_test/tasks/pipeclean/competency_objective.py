@@ -9,5 +9,5 @@ from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
 
 
 class CompetencyObjectivePipecleanTest(EdFiPipecleanTestBase):
-    update_attribute_name = "objectiveGradeLevelDescriptor"
-    update_attribute_value = "Twelfth grade"
+    update_attribute_name = "successCriteria"
+    update_attribute_value = "ABCxyz"

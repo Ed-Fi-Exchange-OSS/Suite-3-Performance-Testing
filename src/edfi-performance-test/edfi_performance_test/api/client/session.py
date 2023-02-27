@@ -16,8 +16,11 @@ class SessionClient(EdFiAPIClient):
     dependencies: Dict = {GradingPeriodClient: {}}
 
     def create_with_dependencies(self, **kwargs):
+        # is schoolyear a kwarg?
+
         school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
-        school_year = kwargs.get("schoolYear", 2014)
+        school_year = kwargs.pop("schoolYear", 2014)
+
         # Create two grading periods
         period_1_reference = self.grading_period_client.create_with_dependencies(  # type: ignore
             schoolReference__schoolId=school_id,
