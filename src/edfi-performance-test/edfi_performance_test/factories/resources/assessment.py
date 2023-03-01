@@ -12,6 +12,7 @@ from edfi_performance_test.factories.utils import (
     RandomDateAttribute,
     RandomSuffixAttribute,
     UniqueIdAttribute,
+    random_date_time,
 )
 
 
@@ -88,7 +89,9 @@ class AssessmentFactory(APIFactory):
                     assessmentReportingMethodDescriptor=build_descriptor(
                         "AssessmentReportingMethod", "Scale score"
                     ),
-                    resultDatatypeType="Integer",
+                    resultDatatypeTypeDescriptor=build_descriptor(
+                        "ResultDatatypeType", "Integer"
+                    ),
                     maximumScore="25",
                     minimumScore="0",
                 )
@@ -119,8 +122,7 @@ class LearningObjectiveFactory(APIFactory):
                 dict(
                     academicSubjectDescriptor=build_descriptor(
                         "AcademicSubject", "Mathematics"
-                    ),
-                    namespace="uri://ed-fi.org/",
+                    )
                 )
             )
         ]
@@ -164,6 +166,7 @@ class LearningStandardFactory(APIFactory):
             ),
         ]
     )
+    contentStandard = factory.Dict(dict(title="State Standard"))
 
 
 class ObjectiveAssessmentFactory(APIFactory):
@@ -188,9 +191,7 @@ class StudentAssessmentFactory(APIFactory):
             namespace="uri://ed-fi.org/Assessment/Assessment.xml",
         )
     )
-    administrationDate = (
-        RandomDateAttribute()
-    )  # Along with studentReference and assessmentReference, this is the PK
+    administrationDate = random_date_time()  # Along with studentReference and assessmentReference, this is the PK
     administrationEnvironmentDescriptor = build_descriptor(
         "AdministrationEnvironment", "Testing Center"
     )

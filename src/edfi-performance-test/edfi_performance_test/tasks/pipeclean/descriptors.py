@@ -16,7 +16,7 @@ class DescriptorPipecleanTestBase(EdFiPipecleanTestBase):
     def __init__(self, descriptor: str, parent, *args, **kwargs):
         super(DescriptorPipecleanTestBase, self).__init__(parent, *args, **kwargs)
 
-        self.update_attribute_name = "codeValue"
+        self.update_attribute_name = "description"
         self.update_attribute_value = random_chars(15)
 
         self.namespace = f"{descriptor[0].upper()}{descriptor[1:]}"

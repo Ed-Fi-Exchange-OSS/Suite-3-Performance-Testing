@@ -16,7 +16,7 @@ class ReportCardClient(EdFiAPIClient):
     }
 
     def create_with_dependencies(self, **kwargs):
-        period_reference = self.grading_period_client.create_with_dependencies()
+        period_reference = self.grading_period_client.create_with_dependencies()  # type: ignore
 
         return self.create_using_dependencies(
             period_reference,

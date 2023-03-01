@@ -28,12 +28,12 @@ class ParentClient(EdFiAPIClient):
         parent_id = self.create(**parent_attrs)
 
         # Create enrolled student
-        student_reference = self.student_client.create_with_dependencies(
+        student_reference = self.student_client.create_with_dependencies(  # type: ignore
             schoolId=school_id
         )
 
         # Associate parent with student to allow updates
-        assoc_id = self.parent_assoc_client.create(
+        assoc_id = self.parent_assoc_client.create(  # type: ignore
             parentReference__parentUniqueId=parent_unique_id,
             studentReference__studentUniqueId=student_reference["attributes"][
                 "studentUniqueId"
@@ -50,8 +50,8 @@ class ParentClient(EdFiAPIClient):
         }
 
     def delete_with_dependencies(self, reference, **kwargs):
-        self.parent_assoc_client.delete_item(reference["dependency_ids"]["assoc_id"])
-        self.student_client.delete_with_dependencies(
+        self.parent_assoc_client.delete_item(reference["dependency_ids"]["assoc_id"])  # type: ignore
+        self.student_client.delete_with_dependencies(  # type: ignore
             reference["dependency_ids"]["student_reference"]
         )
         self.delete_item(reference["resource_id"])

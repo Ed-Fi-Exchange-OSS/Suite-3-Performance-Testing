@@ -28,7 +28,7 @@ class SchoolVolumeTest(EdFiVolumeTestBase):
                 "InstitutionTelephoneNumberType",
                 [("Main", {"telephoneNumber": "(950) 325-9465"})],
             ),
-            educationOrganizationCodes=build_descriptor_dicts(
+            identificationCodes=build_descriptor_dicts(
                 "EducationOrganizationIdentificationSystem",
                 [("SEA", {"identificationCode": "255901444"})],
             ),

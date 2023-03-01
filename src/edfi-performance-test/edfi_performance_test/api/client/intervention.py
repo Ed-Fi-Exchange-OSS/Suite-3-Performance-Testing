@@ -21,7 +21,7 @@ class InterventionClient(EdFiAPIClient):
 
     def create_with_dependencies(self, **kwargs):
         # Create intervention prescription
-        rx_reference = self.prescription_client.create_with_dependencies()
+        rx_reference = self.prescription_client.create_with_dependencies()  # type: ignore
 
         # Create intervention
         return self.create_using_dependencies(
@@ -45,7 +45,7 @@ class InterventionStudyClient(EdFiAPIClient):
 
     def create_with_dependencies(self, **kwargs):
         # Create intervention prescription
-        rx_reference = self.prescription_client.create_with_dependencies()
+        rx_reference = self.prescription_client.create_with_dependencies()  # type: ignore
 
         # Create intervention
         return self.create_using_dependencies(

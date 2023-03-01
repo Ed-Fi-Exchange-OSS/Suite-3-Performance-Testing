@@ -44,5 +44,9 @@ class EdFiCompositeClient(EdFiAPIClient):
         response = self._get_response(
             "get", list_endpoint, headers=self.get_headers(), name=list_endpoint
         )
+
+        if not response.ok:
+            raise RuntimeError(f"Composite resource '{resource}' does not exist (404)")
+
         self.log_response(response)
         return json.loads(response.text)
