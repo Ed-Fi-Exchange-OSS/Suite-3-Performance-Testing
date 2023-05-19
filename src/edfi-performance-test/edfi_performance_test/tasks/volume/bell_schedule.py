@@ -12,11 +12,13 @@ from edfi_performance_test.api.client.school import SchoolClient
 class BellScheduleVolumeTest(EdFiVolumeTestBase):
     @task
     def run_bell_schedule_scenarios(self):
-        self.run_scenario("bellScheduleName",RandomSuffixAttribute("Normal Schedule", suffix_length=4))
+        high_school_id = SchoolClient.shared_high_school_id()
+        self.run_scenario("bellScheduleName","Normal Schedule A")
         self.run_scenario(
             "bellScheduleName",
-            RandomSuffixAttribute("Normal Schedule", suffix_length=4),
-            schoolReference__schoolId=SchoolClient.shared_high_school_id(),
-            alternateDayName = "Red",
-            classPeriodReference__classPeriodName = "Class Period",
+            "Normal Schedule B",
+            classPeriodReference__classPeriodName="Class Period 1",
+            classPeriodReference__schoolId=high_school_id,
+            schoolReference__schoolId=high_school_id,
+            alternateDayName="A",
         )

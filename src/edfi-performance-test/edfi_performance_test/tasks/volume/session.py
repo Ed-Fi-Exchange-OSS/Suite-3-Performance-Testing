@@ -14,11 +14,12 @@ import factory
 class SessionVolumeTest(EdFiVolumeTestBase):
     @task
     def ru_session_scenarios(self):
+        high_school_id = SchoolClient.shared_high_school_id()
         self.run_scenario("sessionName",RandomSuffixAttribute("Fall Semester", suffix_length=4))
         self.run_scenario(
             "sessionName",
             RandomSuffixAttribute("Fall Semester", suffix_length=4),
-            schoolReference__schoolId=SchoolClient.shared_high_school_id(),
+            schoolReference__schoolId=high_school_id,
             SchoolYearTypeReference__schoolYear=2023,
             beginDate="2023-10-06",
             endDate="2023-12-15",
@@ -30,7 +31,7 @@ class SessionVolumeTest(EdFiVolumeTestBase):
                         "GradingPeriod", "First Six Weeks"
                     ),
                         periodSequence=None,  # Must be entered by user
-                        schoolId=SchoolClient.shared_elementary_school_id(),
+                        schoolId=high_school_id,
                         schoolYear=2014,
                     )
                 ),
