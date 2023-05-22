@@ -263,6 +263,7 @@ class StudentAcademicRecordVolumeTest(EdFiVolumeTestBase):
             )
         )
 
+
 class StudentCTEProgramAssociationVolumeTest(EdFiVolumeTestBase):
     @task
     def run_association_scenarios(self):
@@ -271,6 +272,7 @@ class StudentCTEProgramAssociationVolumeTest(EdFiVolumeTestBase):
             "endDate",
             formatted_date(12, 10)
         )
+
 
 class StudentHomelessProgramAssociationVolumeTest(EdFiVolumeTestBase):
     @task
@@ -282,6 +284,7 @@ class StudentHomelessProgramAssociationVolumeTest(EdFiVolumeTestBase):
             ),
         )
 
+
 class StudentLanguageInstructionProgramAssociationVolumeTest(EdFiVolumeTestBase):
     @task
     def run_association_scenarios(self):
@@ -289,6 +292,7 @@ class StudentLanguageInstructionProgramAssociationVolumeTest(EdFiVolumeTestBase)
         self.run_scenario(
             priorityForServices=False,
         )
+
 
 class StudentMigrantProgramAssociationVolumeTest(EdFiVolumeTestBase):
     @task
@@ -299,6 +303,7 @@ class StudentMigrantProgramAssociationVolumeTest(EdFiVolumeTestBase):
             formatted_date(12, 10)
         )
 
+
 class StudentNeglectedOrDelinquentProgramAssociationVolumeTest(EdFiVolumeTestBase):
     @task
     def run_association_scenarios(self):
@@ -308,6 +313,7 @@ class StudentNeglectedOrDelinquentProgramAssociationVolumeTest(EdFiVolumeTestBas
                 "NeglectedOrDelinquentProgramService", "Dropout Prevention Programs"
             ),
         )
+
 
 class StudentSchoolFoodServiceProgramAssociationVolumeTest(EdFiVolumeTestBase):
     @task
