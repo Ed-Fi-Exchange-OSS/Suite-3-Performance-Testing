@@ -262,3 +262,59 @@ class StudentAcademicRecordVolumeTest(EdFiVolumeTestBase):
                 sessionEarnedCredits=6,
             )
         )
+
+class StudentCTEProgramAssociationVolumeTest(EdFiVolumeTestBase):
+    @task
+    def run_association_scenarios(self):
+        self.run_scenario("programName", "Career and Technical Education")
+        self.run_scenario(
+            "endDate",
+            formatted_date(12, 10)
+        )
+
+class StudentHomelessProgramAssociationVolumeTest(EdFiVolumeTestBase):
+    @task
+    def run_association_scenarios(self):
+        self.run_scenario("programName", "Homeless")
+        self.run_scenario(
+            homelessPrimaryNighttimeResidenceDescriptor=build_descriptor(
+                "HomelessPrimaryNighttimeResidence", "Doubled-up"
+            ),
+        )
+
+class StudentLanguageInstructionProgramAssociationVolumeTest(EdFiVolumeTestBase):
+    @task
+    def run_association_scenarios(self):
+        self.run_scenario("programName", "English as a Second Language (ESL)")
+        self.run_scenario(
+            priorityForServices=False,
+        )
+
+class StudentMigrantProgramAssociationVolumeTest(EdFiVolumeTestBase):
+    @task
+    def run_association_scenarios(self):
+        self.run_scenario("programName", "Migrant Education")
+        self.run_scenario(
+            "endDate",
+            formatted_date(12, 10)
+        )
+
+class StudentNeglectedOrDelinquentProgramAssociationVolumeTest(EdFiVolumeTestBase):
+    @task
+    def run_association_scenarios(self):
+        self.run_scenario("programName", "Neglected and Delinquent Program")
+        self.run_scenario(
+            neglectedOrDelinquentProgramServiceDescriptor=build_descriptor(
+                "NeglectedOrDelinquentProgramService", "Dropout Prevention Programs"
+            ),
+        )
+
+class StudentSchoolFoodServiceProgramAssociationVolumeTest(EdFiVolumeTestBase):
+    @task
+    def run_association_scenarios(self):
+        self.run_scenario("programName", "School Food Service")
+        self.run_scenario(
+            schoolFoodServiceProgramServiceDescriptor=build_descriptor(
+                "SchoolFoodServiceProgramService", "Free Lunch"
+            ),
+        )

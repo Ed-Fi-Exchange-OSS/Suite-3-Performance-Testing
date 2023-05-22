@@ -13,12 +13,8 @@ class BellScheduleVolumeTest(EdFiVolumeTestBase):
     @task
     def run_bell_schedule_scenarios(self):
         high_school_id = SchoolClient.shared_high_school_id()
-        self.run_scenario("bellScheduleName","Normal Schedule A")
+        self.run_scenario("bellScheduleName","Early Release A")
         self.run_scenario(
             "bellScheduleName",
             "Normal Schedule B",
-            classPeriodReference__classPeriodName="Class Period 1",
-            classPeriodReference__schoolId=high_school_id,
-            schoolReference__schoolId=high_school_id,
-            alternateDayName="A",
         )

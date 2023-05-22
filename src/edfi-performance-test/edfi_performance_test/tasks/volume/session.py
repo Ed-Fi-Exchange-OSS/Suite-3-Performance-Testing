@@ -9,30 +9,14 @@ from edfi_performance_test.tasks.volume.ed_fi_volume_test_base import EdFiVolume
 from edfi_performance_test.factories.utils import RandomSuffixAttribute
 from edfi_performance_test.api.client.school import SchoolClient
 from edfi_performance_test.factories.descriptors.utils import build_descriptor
-import factory
+from edfi_performance_test.factories.utils import formatted_date
 
 class SessionVolumeTest(EdFiVolumeTestBase):
     @task
     def ru_session_scenarios(self):
-        high_school_id = SchoolClient.shared_high_school_id()
-        self.run_scenario("sessionName",RandomSuffixAttribute("Fall Semester", suffix_length=4))
+        self.run_scenario("sessionName","Fall Semester")
         self.run_scenario(
-            "sessionName",
-            RandomSuffixAttribute("Fall Semester", suffix_length=4),
-            schoolReference__schoolId=high_school_id,
-            SchoolYearTypeReference__schoolYear=2023,
-            beginDate="2023-10-06",
-            endDate="2023-12-15",
-            termDescriptor=build_descriptor("Term", "Fall Semester"),
+            "endDate",
+            formatted_date(12, 10),
             totalInstructionalDays=30,
-            gradingPeriodReference__gradingPeriodDescriptor= factory.Dict(
-                dict(
-                    gradingPeriodDescriptor=build_descriptor(
-                        "GradingPeriod", "First Six Weeks"
-                    ),
-                        periodSequence=None,  # Must be entered by user
-                        schoolId=high_school_id,
-                        schoolYear=2014,
-                    )
-                ),
         )
