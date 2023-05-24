@@ -17,7 +17,7 @@ class SessionClient(EdFiAPIClient):
 
     def create_with_dependencies(self, **kwargs):
         school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
-        school_year = kwargs.get("schoolYear", 2023)
+        school_year = kwargs.get("schoolYear", 2014)
         # Create two grading periods
         period_1_reference = self.grading_period_client.create_with_dependencies(
             schoolReference__schoolId=school_id,
@@ -26,8 +26,8 @@ class SessionClient(EdFiAPIClient):
         period_2_reference = self.grading_period_client.create_with_dependencies(
             schoolReference__schoolId=school_id,
             schoolYearTypeReference__schoolYear=school_year,
-            beginDate="2023-10-06",
-            endDate="2023-12-15",
+            beginDate="2014-10-06",
+            endDate="2014-12-15",
             totalInstructionalDays=30,
             gradingPeriodDescriptor=build_descriptor(
                 "GradingPeriod", "Second Six Weeks"
