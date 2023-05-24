@@ -294,7 +294,7 @@ class StudentLanguageInstructionProgramAssociationVolumeTest(EdFiVolumeTestBase)
         )
 
 
-class StudentMigrantProgramAssociationVolumeTest(EdFiVolumeTestBase):
+class StudentMigrantEducationProgramAssociationVolumeTest(EdFiVolumeTestBase):
     @task
     def run_association_scenarios(self):
         self.run_scenario("programName", "Migrant Education")
