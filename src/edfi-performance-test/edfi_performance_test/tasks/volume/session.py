@@ -12,7 +12,6 @@ from edfi_performance_test.factories.utils import formatted_date
 class SessionVolumeTest(EdFiVolumeTestBase):
     @task
     def ru_session_scenarios(self):
-        self.run_scenario("sessionName", "Fall Semester")
         self.run_scenario(
             "endDate",
             formatted_date(12, 10),

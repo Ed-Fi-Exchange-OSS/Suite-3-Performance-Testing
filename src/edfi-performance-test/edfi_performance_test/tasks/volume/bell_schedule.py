@@ -11,8 +11,8 @@ from edfi_performance_test.tasks.volume.ed_fi_volume_test_base import EdFiVolume
 class BellScheduleVolumeTest(EdFiVolumeTestBase):
     @task
     def run_bell_schedule_scenarios(self):
-        self.run_scenario("bellScheduleName", "Early Release A")
+        self.run_scenario("alternateDayName", "Blue")
         self.run_scenario(
-            "bellScheduleName",
-            "Normal Schedule B",
+            "totalInstructionalTime",
+            "325",
         )
