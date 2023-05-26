@@ -240,6 +240,9 @@ function Invoke-TestRunnerFromTeamCity($testType) {
         param($testType)
         C:\Users\edFiAdmin\run-deployed-tests.bat $testType
 
+        $latest = Get-ChildItem $testResultsPath | ? { $_.PSIsContainer } | sort CreationTime -desc | select -f 1
+        $testResultsPath = Join-Path $testResultsPath $latest
+
         Add-Type -Assembly System.IO.Compression.FileSystem
         [System.IO.File]::Delete($zipPath)
         [System.IO.Compression.ZipFile]::CreateFromDirectory($testResultsPath, $zipPath, [System.IO.Compression.CompressionLevel]::Optimal, $false)
