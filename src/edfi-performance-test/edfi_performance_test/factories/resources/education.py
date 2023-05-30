@@ -31,7 +31,7 @@ class EducationServiceCenterFactory(APIFactory):
     categories = ListOfDescriptors(
         "EducationOrganizationCategory", ["Education Service Center"]
     )
-    educationOrganizationCodes = factory.LazyAttribute(
+    identificationCodes = factory.LazyAttribute(
         lambda o: build_descriptor_dicts(
             "EducationOrganizationIdentificationSystem",
             [("SEA", {"identificationCode": o.educationServiceCenterId})],
@@ -53,7 +53,7 @@ class LocalEducationAgencyFactory(APIFactory):
     localEducationAgencyCategoryDescriptor = build_descriptor(
         "LocalEducationAgencyCategory", "Independent"
     )
-    educationOrganizationCodes = factory.LazyAttribute(
+    identificationCodes = factory.LazyAttribute(
         lambda o: build_descriptor_dicts(
             "EducationOrganizationIdentificationSystem",
             [("SEA", {"identificationCode": o.localEducationAgencyId})],
@@ -66,8 +66,10 @@ class LocalEducationAgencyFactory(APIFactory):
 
 class EducationContentFactory(APIFactory):
     contentIdentifier = UniqueIdAttribute(num_chars=60)
-    description = "A learning resource for all grade levels"
+    shortDescription = "A learning resource for all grade levels"
     namespace = "uri://ed-fi.org"
+    learningResourceMetadataURI = "uri://ed-fi.org/whatever"
+    contentClassDescriptor = "uri://ed-fi.org/ContentClassDescriptor#Presentation"
 
 
 class EducationOrganizationInterventionPrescriptionAssociationFactory(APIFactory):
@@ -95,7 +97,7 @@ class EducationOrganizationNetworkFactory(APIFactory):
         ]
     )
     categories = ListOfDescriptors("EducationOrganizationCategory", ["School"])
-    educationOrganizationCodes = factory.LazyAttribute(
+    identificationCodes = factory.LazyAttribute(
         lambda o: build_descriptor_dicts(
             "EducationOrganizationIdentificationSystem",
             [("SEA", {"identificationCode": o.educationOrganizationNetworkId})],
@@ -142,7 +144,7 @@ class StateEducationAgencyFactory(APIFactory):
     categories = ListOfDescriptors(
         "EducationOrganizationCategory", ["Local Education Agency"]
     )
-    educationOrganizationCodes = factory.LazyAttribute(
+    identificationCodes = factory.LazyAttribute(
         lambda o: build_descriptor_dicts(
             "EducationOrganizationIdentificationSystem",
             [("SEA", {"identificationCode": o.stateEducationAgencyId})],

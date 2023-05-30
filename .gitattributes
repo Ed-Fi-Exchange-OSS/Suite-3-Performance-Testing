@@ -1,3 +1,5 @@
+* text eol=lf
+
 *.md text
 *.txt text
 *.py text

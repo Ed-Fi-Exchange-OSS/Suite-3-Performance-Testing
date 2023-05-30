@@ -3,10 +3,10 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-from edfi_performance_test.factories.descriptors.utils import build_descriptor
 from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
     EdFiPipecleanTestBase,
 )
+import factory
 
 
 class PostSecondaryInstitutionPipecleanTest(EdFiPipecleanTestBase):
@@ -15,7 +15,7 @@ class PostSecondaryInstitutionPipecleanTest(EdFiPipecleanTestBase):
 
 
 class PostSecondaryEventPipecleanTest(EdFiPipecleanTestBase):
-    update_attribute_name = "postSecondaryEventCategoryDescriptor"
-    update_attribute_value = build_descriptor(
-        "PostSecondaryEventCategory", "College Degree Received"
+    update_attribute_name = "postSecondaryInstitutionReference"
+    update_attribute_value = factory.Dict(
+        dict(postSecondaryInstitutionId=6000203)
     )

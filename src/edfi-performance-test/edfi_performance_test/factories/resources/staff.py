@@ -50,7 +50,6 @@ class StaffEducationOrganizationAssignmentAssociationFactory(APIFactory):
 class StaffFactory(APIFactory):
     staffUniqueId = UniqueIdAttribute()
     firstName = "John"
-    middleName = ""
     lastSurname = "Loyo"
     hispanicLatinoEthnicity = True
     birthDate = "1959-04-30"

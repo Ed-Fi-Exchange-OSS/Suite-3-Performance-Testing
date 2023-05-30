@@ -22,13 +22,13 @@ class SectionClient(EdFiAPIClient):
     }
 
     def create_with_dependencies(self, **kwargs):
-        school_id = kwargs.get("schoolId", SchoolClient.shared_elementary_school_id())
-        school_year = kwargs.get("schoolYear", 2014)
+        school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
+        school_year = kwargs.pop("schoolYear", 2014)
         custom_course_code = kwargs.pop("courseCode", "ELA-01")
 
         # Create a course offering and its dependencies
         course_offering_reference = (
-            self.course_offering_client.create_with_dependencies(
+            self.course_offering_client.create_with_dependencies(  # type: ignore
                 schoolId=school_id,
                 schoolYear=school_year,
                 courseReference__courseCode=custom_course_code,
@@ -39,12 +39,12 @@ class SectionClient(EdFiAPIClient):
         course_offering_attrs = course_offering_reference["attributes"]
 
         # Create a class period
-        class_period_reference = self.class_period_client.create_with_dependencies(
+        class_period_reference = self.class_period_client.create_with_dependencies(  # type: ignore
             schoolReference__schoolId=school_id,
         )
 
         # Create a location
-        location_reference = self.location_client.create_with_dependencies(
+        location_reference = self.location_client.create_with_dependencies(  # type: ignore
             schoolReference__schoolId=school_id,
         )
 
@@ -55,6 +55,7 @@ class SectionClient(EdFiAPIClient):
             ][
                 "classPeriodName"
             ],
+            classPeriods__0__classPeriodReference__schoolId=school_id,
             courseOfferingReference__localCourseCode=course_offering_attrs[
                 "localCourseCode"
             ],
@@ -91,11 +92,11 @@ class SectionClient(EdFiAPIClient):
     def delete_with_dependencies(self, reference, **kwargs):
         self.delete_item(reference["resource_id"])
         depend = reference["dependency_ids"]
-        self.location_client.delete_with_dependencies(depend["location_reference"])
-        self.class_period_client.delete_with_dependencies(
+        self.location_client.delete_with_dependencies(depend["location_reference"])  # type: ignore
+        self.class_period_client.delete_with_dependencies(  # type: ignore
             depend["class_period_reference"]
         )
-        self.course_offering_client.delete_with_dependencies(
+        self.course_offering_client.delete_with_dependencies(  # type: ignore
             depend["course_offering_reference"]
         )
 
@@ -110,13 +111,13 @@ class SectionAttendanceTakenEventClient(EdFiAPIClient):
 
     def create_with_dependencies(self, **kwargs):
         school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
-        calendar_date_reference = self.calendar_date_client.create_with_dependencies(
+        calendar_date_reference = self.calendar_date_client.create_with_dependencies(  # type: ignore
             schoolId=school_id,
         )
         calendar_date_attrs = calendar_date_reference["attributes"]
         calendarSchoolYear = calendar_date_attrs["calendarReference"]["schoolYear"]
 
-        section_reference = self.section_client.create_with_dependencies(
+        section_reference = self.section_client.create_with_dependencies(  # type: ignore
             schoolId=school_id, schoolYear=calendarSchoolYear
         )
         section_attrs = section_reference["attributes"]

@@ -82,6 +82,15 @@ class RandomDateAttribute(declarations.BaseDeclaration):
         )
 
 
+def random_date_time() -> str:
+    """
+    Returns a random date time between 1/1/1901 and 12/28/2050. Ignores days
+    of the month past the 28th.
+    """
+
+    return f"{random.randint(1901, 2050)}-{str(random.randint(1, 12)).zfill(2)}-{str(random.randint(1, 28)).zfill(2)}T15:00:00Z"
+
+
 class RandomSchoolYearAttribute(declarations.BaseDeclaration):
     """
     Returns a random date between 1991 & 2050.
