@@ -142,6 +142,9 @@ class EdFiBasicAPIClient:
         return "{}/{}{}".format(self.api_prefix, self.endpoint, query)
 
     def get_list(self, query=""):
+        # 287 - Pipeclean
+        if "NoEndpoint" in self.endpoint:
+            return
         response = self._get_response(
             "get",
             self.list_endpoint(query),

@@ -9,12 +9,25 @@ from edfi_performance_test.api.client.school import SchoolClient
 from edfi_performance_test.factories.resources.api_factory import APIFactory
 from edfi_performance_test.factories.descriptors.utils import build_descriptor
 from edfi_performance_test.factories.utils import current_year, formatted_date
+# PERF-287
+import logging
+
+
+logger = logging.getLogger()
 
 
 class GradeFactory(APIFactory):
     gradeTypeDescriptor = build_descriptor("GradeType", "Grading Period")
     letterGradeEarned = "B"
     numericGradeEarned = 80
+
+    # PERF-287
+    if APIFactory.version.startswith("4"):
+        logger.info("dataModels version:" + APIFactory.version)
+        currentGradeAsOfDate = formatted_date(12, 16)
+        currentGradeIndicator = True
+    # ---
+
     gradingPeriodReference = factory.Dict(
         dict(
             schoolId=SchoolClient.shared_elementary_school_id(),

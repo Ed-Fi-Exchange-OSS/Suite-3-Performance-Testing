@@ -5,14 +5,23 @@
 
 from typing import Dict
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
+from edfi_performance_test.factories.resources.api_factory import APIFactory
 
 
 class AccountCodeClient(EdFiAPIClient):
-    endpoint = "accountCodes"
+    # 287
+    if APIFactory.version.startswith("4"):
+        endpoint = "NoEndpoint"
+    else:
+        endpoint = "accountCodes"
 
 
 class AccountClient(EdFiAPIClient):
-    endpoint = "accounts"
+    # 287
+    if APIFactory.version.startswith("4"):
+        endpoint = "NoEndpoint"
+    else:
+        endpoint = "accounts"
 
     dependencies: Dict = {
         AccountCodeClient: {},
@@ -67,16 +76,32 @@ class _AccountDependentMixin(object):
 
 
 class ActualClient(_AccountDependentMixin, EdFiAPIClient):
-    endpoint = "actuals"
+    # 287
+    if APIFactory.version.startswith("4"):
+        endpoint = "NoEndpoint"
+    else:
+        endpoint = "actuals"
 
 
 class BudgetClient(_AccountDependentMixin, EdFiAPIClient):
-    endpoint = "budgets"
+    # 287
+    if APIFactory.version.startswith("4"):
+        endpoint = "NoEndpoint"
+    else:
+        endpoint = "budgets"
 
 
 class ContractedStaffClient(_AccountDependentMixin, EdFiAPIClient):
-    endpoint = "contractedStaffs"
+    # 287
+    if APIFactory.version.startswith("4"):
+        endpoint = "NoEndpoint"
+    else:
+        endpoint = "contractedStaffs"
 
 
 class PayrollClient(_AccountDependentMixin, EdFiAPIClient):
-    endpoint = "payrolls"
+    # 287
+    if APIFactory.version.startswith("4"):
+        endpoint = "NoEndpoint"
+    else:
+        endpoint = "payrolls"
