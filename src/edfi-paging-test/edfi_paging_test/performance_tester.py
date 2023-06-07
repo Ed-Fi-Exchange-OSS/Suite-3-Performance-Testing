@@ -48,12 +48,14 @@ def _generate_output_reports(args: MainArguments) -> None:
 
 def fetch_resource(request_client: RequestClient, target_resource: str) -> None:
     resources = request_client.get_all(target_resource)
-    total_count = request_client.get_total(target_resource)
 
-    if len(resources) != total_count:
-        logger.warn(
-            f"{target_resource}: expected {total_count} results, got: {len(resources)}"
-        )
+    if('error' not in resources):
+        total_count = request_client.get_total(target_resource)
+
+        if len(resources) != total_count:
+            logger.warn(
+                f"{target_resource}: expected {total_count} results, got: {len(resources)}"
+            )
 
 
 def invalid_resources(
