@@ -12,7 +12,7 @@ DEFAULT_API_VERSION = "3.3.1-b"
 
 
 class ConfVersion:
-    def get_config_version(baseUrl: str = ""):
+    def get_config_version(self, baseUrl: str = ""):
         """
         Get the version Number from API dataModels.
 
