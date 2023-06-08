@@ -7,15 +7,15 @@
 import os
 import json
 from edfi_performance_test.helpers.main_arguments import MainArguments
-from edfi_performance_test.helpers.config_version import ConfVersion
+from edfi_performance_test.helpers.config_version import (
+    get_config_version,
+)
+
 
 DEFAULT_API_PREFIX = "/data/v3/ed-fi"
 DEFAULT_OAUTH_ENDPOINT = "/oauth/token"
 DEFAULT_LEA_ID = 255901
-
-# PERF-287
 DEFAULT_API_VERSION = "3.3.1-b"
-# ...
 
 
 def get_config_value(key: str, default: str = "") -> str:
@@ -47,7 +47,7 @@ def set_config_values(args: MainArguments):
     os.environ["PERF_API_OAUTH_PREFIX"] = args.oauth_endpoint
     os.environ["PERF_LOCAL_EDUCATION_ORGANIZATION_ID"] = str(args.localEducationOrganizationId)
     # PERF-287
-    os.environ["PERF_API_VERSION"] = ConfVersion.get_config_version(str(args.baseUrl))
+    os.environ["PERF_API_VERSION"] = get_config_version(str(args.baseUrl))
 
 
 def _get_change_version_file_path():
