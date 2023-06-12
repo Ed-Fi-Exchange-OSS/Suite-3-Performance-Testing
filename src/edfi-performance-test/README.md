@@ -35,7 +35,7 @@ of the tests experience failures.
 | `-k`  or `--key`                          | yes (no default)        | The web API OAuth key                                                                                         |
 | `-s`  or `--secret`                       | yes (no default)        | The web API OAuth secret                                                                                      |
 | `-i`  or `--ignoreCertificateErrors`      | no (default: false)     | Ignore certificate errors                                                                                     |
-| `-t`  or `--testType`                     | no (default: pipeclean) | Type of the performance tests to run: volume, pipeclean, CHANGE_QUERY                                         |
+| `-t`  or `--testType`                     | no (default: pipeclean) | Type of the performance tests to run: volume, pipeclean, change_query                                         |
 | `-tl` or `--testList`                     | no (no default)         | (Optional) List of test files to run - if not provided, all tests will be run                                 |
 | `-d`  or `--deleteResources`              | no (default: true)      | Delete resources during test run                                                                              |
 | `-f`  or `--failDeliberately`             | no (default: true)      | Deliberately introduce requests that result in failure                                                        |
