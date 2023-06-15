@@ -12,6 +12,7 @@ import importlib
 import os
 import pkgutil
 import edfi_performance_test.tasks.pipeclean
+import edfi_performance_test.tasks.pipeclean.v4
 
 from typing import List
 from locust import HttpUser
@@ -26,6 +27,9 @@ from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
     EdFiPipecleanTestBase,
     EdFiPipecleanTaskSequence,
     EdFiPipecleanTestTerminator,
+)
+from edfi_performance_test.helpers.config_version import (
+    get_config_version,
 )
 
 
@@ -53,6 +57,22 @@ class PipeCleanTestUser(HttpUser):
 
         for mod_name in tasks_submodules:
             importlib.import_module(mod_name)
+
+        # Import modules under tasks.pipeclean.v4
+
+        version = get_config_version(str(PipeCleanTestUser.host))
+
+        if version.startswith("4"):
+            tasks_v4 = [
+                file
+                for _, file, _ in pkgutil.iter_modules(
+                    [os.path.dirname(edfi_performance_test.tasks.pipeclean.v4.__file__)],
+                    prefix="edfi_performance_test.tasks.pipeclean.v4.",
+                )
+            ]
+
+            for mod_name in tasks_v4:
+                importlib.import_module(mod_name)
 
         # Collect *PipecleanTest classes and append them to
         # EdFiPipecleanTaskSequence.tasks

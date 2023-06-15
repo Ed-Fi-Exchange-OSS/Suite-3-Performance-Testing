@@ -7,11 +7,14 @@
 import json
 import urllib.request
 import ssl
+import logging
 
+
+logger = logging.getLogger()
 DEFAULT_API_VERSION = "3.3.1-b"
 
 
-def get_config_version(baseUrl: str = ""):
+def get_config_version(baseUrl: str = "") -> str:
     """
     Get the version Number from API dataModels.
 
@@ -27,6 +30,9 @@ def get_config_version(baseUrl: str = ""):
 
         for info in data['dataModels']:
             if (info['name'] == 'Ed-Fi'):
-                return info['version']
+                version = info['version']
 
-    return DEFAULT_API_VERSION
+    if not version:
+        version = DEFAULT_API_VERSION
+
+    return version

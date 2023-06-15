@@ -10,7 +10,10 @@ from edfi_performance_test.helpers.main_arguments import MainArguments
 from edfi_performance_test.helpers.config_version import (
     get_config_version,
 )
+import logging
 
+
+logger = logging.getLogger()
 
 DEFAULT_API_PREFIX = "/data/v3/ed-fi"
 DEFAULT_OAUTH_ENDPOINT = "/oauth/token"

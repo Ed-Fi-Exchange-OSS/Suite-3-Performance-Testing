@@ -19,11 +19,9 @@ logger = logging.getLogger()
 
 
 class ChartOfAccountFactory(APIFactory):
-    if APIFactory.version.startswith("4"):
-        logger.info("ChartOfAccount - dataModels version:" + APIFactory.version)
-        accountIdentifier = UniqueIdAttribute()
-        fiscalYear = current_year()
-        educationOrganizationReference = factory.Dict(
-           {"educationOrganizationId": SchoolClient.shared_elementary_school_id()}
-        )
-        accountTypeDescriptor = build_descriptor("AccountType", "Revenue")
+    accountIdentifier = UniqueIdAttribute()
+    fiscalYear = current_year()
+    educationOrganizationReference = factory.Dict(
+        {"educationOrganizationId": SchoolClient.shared_elementary_school_id()}
+    )
+    accountTypeDescriptor = build_descriptor("AccountType", "Revenue")

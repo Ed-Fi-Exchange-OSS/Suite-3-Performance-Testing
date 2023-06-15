@@ -6,16 +6,9 @@
 from locust import task
 
 from edfi_performance_test.tasks.volume.ed_fi_volume_test_base import EdFiVolumeTestBase
-from edfi_performance_test.factories.resources.api_factory import APIFactory
-import logging
-
-
-logger = logging.getLogger()
 
 
 class ChartOfAccountVolumeTest(EdFiVolumeTestBase):
     @task
     def run_grade_scenarios(self):
-        if APIFactory.version.startswith("4"):
-            logger.info("entra ChartOfAccountVolumeTest")
-            self.run_scenario("accountName", "Test Char of Account II")
+        self.run_scenario("accountName", "Test Char of Account II")
