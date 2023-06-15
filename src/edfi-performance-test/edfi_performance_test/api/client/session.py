@@ -16,8 +16,6 @@ class SessionClient(EdFiAPIClient):
     dependencies: Dict = {GradingPeriodClient: {}}
 
     def create_with_dependencies(self, **kwargs):
-        # is schoolyear a kwarg?
-
         school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
         school_year = kwargs.pop("schoolYear", 2014)
 
