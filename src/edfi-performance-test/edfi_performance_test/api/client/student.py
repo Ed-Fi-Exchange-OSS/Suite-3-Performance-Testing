@@ -91,7 +91,6 @@ class StudentSchoolAssociationClient(EdFiAPIClient):
     def create_with_dependencies(self, **kwargs):
         # Create association from student to school
         school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
-        # This is coming back with a function, and we need to call that function
         student_unique_id = kwargs.pop("student_unique_id", StudentClient.shared_student_id())
 
         assoc_overrides = dict(
