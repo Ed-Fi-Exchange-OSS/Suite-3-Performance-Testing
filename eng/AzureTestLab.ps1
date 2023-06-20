@@ -251,7 +251,7 @@ function Invoke-TestRunnerFromTeamCity($testType) {
     Copy-Item $zipPath -Destination artifacts -FromSession $session -Recurse
 }
 
-function Invoke-PerfTestReportFromTeamCity(){
+function Invoke-PerfTestReportFromTeamCity {
     if (!(Test-Path artifacts)) { New-Item -ItemType Directory -Force -Path artifacts | Out-Null }
 
     $securePassword = $env:AzureTestVmPassword | ConvertTo-SecureString -AsPlainText -Force
@@ -278,8 +278,8 @@ function Invoke-PerfTestReportFromTeamCity(){
         $zipPathR
     }
 
-    Invoke-Command -Session $session {        
-        C:\Users\edFiAdmin\run-perf-result.bat        
+    $value = Invoke-Command -Session $session {
+        C:\Users\edFiAdmin\run-perf-result.bat
         Add-Type -Assembly System.IO.Compression.FileSystem
         [System.IO.File]::Delete($zipPathR)
         [System.IO.Compression.ZipFile]::CreateFromDirectory($testResultsPathR, $zipPathR, [System.IO.Compression.CompressionLevel]::Optimal, $false)
