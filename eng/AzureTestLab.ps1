@@ -268,7 +268,7 @@ function Invoke-PerfTestReportFromTeamCity($testType){
 
     # Set $testResultsPath locally and remotely.
     $testResultsPath = Invoke-Command -Session $session {
-        $testResultsPath = Join-Path $testRunnerPath "TestResults"
+        $testResultsPath = "C:\Octopus\Applications\Perf-v3\Suite-3-Performance-Testing\1.1.0-pre-0251\Report"
         $testResultsPath
     }
 
@@ -278,9 +278,9 @@ function Invoke-PerfTestReportFromTeamCity($testType){
         $zipPath
     }
 
-    Invoke-Command -Session $session -ArgumentList @($testType) {
-        param($testType)
-        C:\Users\edFiAdmin\run-perf-result.bat $testType
+    Invoke-Command -Session $session {
+        
+        C:\Users\edFiAdmin\run-perf-result.bat
 
         $latest = Get-ChildItem $testResultsPath | ? { $_.PSIsContainer } | sort CreationTime -desc | select -f 1
         $testResultsPath = Join-Path $testResultsPath $latest
