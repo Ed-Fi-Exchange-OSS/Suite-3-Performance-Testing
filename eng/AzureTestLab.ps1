@@ -251,7 +251,7 @@ function Invoke-TestRunnerFromTeamCity($testType) {
     Copy-Item $zipPath -Destination artifacts -FromSession $session -Recurse
 }
 
-function Invoke-PerfTestReportFromTeamCity($testType){
+function Invoke-PerfTestReportFromTeamCity(){
     if (!(Test-Path artifacts)) { New-Item -ItemType Directory -Force -Path artifacts | Out-Null }
 
     $securePassword = $env:AzureTestVmPassword | ConvertTo-SecureString -AsPlainText -Force
@@ -261,34 +261,29 @@ function Invoke-PerfTestReportFromTeamCity($testType){
     $session = New-PSSession -UseSSL -Port 5986 -ComputerName 'edfi-perf-test.southcentralus.cloudapp.azure.com' -Credential $credential -SessionOption $sessionOptions -ConfigurationName SecondHopConfiguration
 
     # Set $testRunnerPath locally and remotely.
-    $testRunnerPath = Invoke-Command -Session $session {
-        $testRunnerPath = Get-Content "C:\Users\edFiAdmin\deployed-test-runner-path.txt" -Raw
-        $testRunnerPath
+    $testRunnerPathR = Invoke-Command -Session $session {
+        $testRunnerPathR = Get-Content "C:\Users\edFiAdmin\deployed-test-runner-path.txt" -Raw
+        $testRunnerPathR
     }
 
     # Set $testResultsPath locally and remotely.
-    $testResultsPath = Invoke-Command -Session $session {
-        $testResultsPath = "C:\Octopus\Applications\Perf-v3\Suite-3-Performance-Testing\1.1.0-pre-0251\Report"
-        $testResultsPath
+    $testResultsPathR = Invoke-Command -Session $session {
+        $testResultsPathR = "C:\Octopus\Applications\Perf-v3\Suite-3-Performance-Testing\1.1.0-pre-0251\Report"
+        $testResultsPathR
     }
 
     # Set $zipPath locally and remotely.
-    $zipPath = Invoke-Command -Session $session {
-        $zipPath = Join-Path $testRunnerPath "TestReport.zip"
-        $zipPath
+    $zipPathR = Invoke-Command -Session $session {
+        $zipPathR = Join-Path $testRunnerPathR "TestReport.zip"
+        $zipPathR
     }
 
-    Invoke-Command -Session $session {
-        
-        C:\Users\edFiAdmin\run-perf-result.bat
-
-        $latest = Get-ChildItem $testResultsPath | ? { $_.PSIsContainer } | sort CreationTime -desc | select -f 1
-        $testResultsPath = Join-Path $testResultsPath $latest
-
+    Invoke-Command -Session $session {        
+        C:\Users\edFiAdmin\run-perf-result.bat        
         Add-Type -Assembly System.IO.Compression.FileSystem
-        [System.IO.File]::Delete($zipPath)
-        [System.IO.Compression.ZipFile]::CreateFromDirectory($testResultsPath, $zipPath, [System.IO.Compression.CompressionLevel]::Optimal, $false)
+        [System.IO.File]::Delete($zipPathR)
+        [System.IO.Compression.ZipFile]::CreateFromDirectory($testResultsPathR, $zipPathR, [System.IO.Compression.CompressionLevel]::Optimal, $false)
     }
 
-    Copy-Item $zipPath -Destination artifacts -FromSession $session -Recurse
+    Copy-Item $zipPathR -Destination artifacts -FromSession $session -Recurse
 }
