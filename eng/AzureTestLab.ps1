@@ -235,9 +235,7 @@ function Invoke-TestRunnerFromTeamCity($testType) {
         $zipPath = Join-Path $testRunnerPath "TestResults.zip"
         $zipPath
     }
-
-    $ErrorActionPreference = 'SilentlyContinue'
-
+    
     Invoke-Command -Session $session -ArgumentList @($testType) {
         param($testType)
         C:\Users\edFiAdmin\run-deployed-tests.bat $testType
@@ -285,7 +283,8 @@ function Invoke-PerfTestReportFromTeamCity {
         $zipPathR
     }
 
-    $value = Invoke-Command -Session $session {
+    $ErrorActionPreference = 'SilentlyContinue'
+    Invoke-Command -Session $session {
         C:\Users\edFiAdmin\run-perf-result.bat
 
         Add-Type -Assembly System.IO.Compression.FileSystem
