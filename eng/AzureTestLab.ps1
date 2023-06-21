@@ -256,7 +256,7 @@ function Invoke-TestRunnerFromTeamCity($testType) {
 # Relies on environment variables:
 #   $env:AzureTestVmPassword
 #   $env:AzureTestVmUsername
-function Invoke-PerfTestReportFromTeamCity {
+function Invoke-PerfTestReportFromTeamCity($testType) {
     if (!(Test-Path artifacts)) { New-Item -ItemType Directory -Force -Path artifacts | Out-Null }
 
     $securePassword = $env:AzureTestVmPassword | ConvertTo-SecureString -AsPlainText -Force
@@ -272,9 +272,15 @@ function Invoke-PerfTestReportFromTeamCity {
     }
 
     # Set $testResultsPath locally and remotely.
-    $testResultsPathR = Invoke-Command -Session $session {
-        $testResultsPathR = "C:\Octopus\Applications\Perf-v3\Suite-3-Performance-Testing\1.1.0-pre-0251\Report"
-        $testResultsPathR
+    if ($testType -eq "volume"){
+        $testResultsPathR = Invoke-Command -Session $session {
+            $testResultsPathR = "C:\Octopus\Applications\Perf-v3\Suite-3-Performance-Testing\1.1.0-pre-0251\ReportV"
+            $testResultsPathR
+        }
+    }else{
+        $testResultsPathR = Invoke-Command -Session $session {
+            $testResultsPathR = "C:\Octopus\Applications\Perf-v3\Suite-3-Performance-Testing\1.1.0-pre-0251\ReportP"
+            $testResultsPathR
     }
 
     # Set $zipPath locally and remotely.
@@ -284,8 +290,9 @@ function Invoke-PerfTestReportFromTeamCity {
     }
 
     $ErrorActionPreference = 'SilentlyContinue'
-    Invoke-Command -Session $session {
-        C:\Users\edFiAdmin\run-perf-result.bat
+    Invoke-Command -Session $session -ArgumentList @($testType){
+        param($testType)
+        C:\Users\edFiAdmin\run-perf-result.bat $testType
 
         Add-Type -Assembly System.IO.Compression.FileSystem
         [System.IO.File]::Delete($zipPathR)
