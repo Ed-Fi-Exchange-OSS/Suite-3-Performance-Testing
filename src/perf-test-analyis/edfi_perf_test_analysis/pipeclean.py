@@ -11,9 +11,9 @@ from edfi_perf_test_analysis.analysis_helpers import (
 from edfi_perf_test_analysis.ui_helpers import select_directory
 
 
-def run_analysis() -> None:
+def run_analysis(default_dir="") -> None:
 
-    results_dir = select_directory()
+    results_dir = select_directory(default_dir)
 
     display_exceptions(results_dir, "pipeclean")
     display_failures(results_dir, "pipeclean")
