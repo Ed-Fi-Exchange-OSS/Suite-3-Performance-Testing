@@ -251,6 +251,11 @@ function Invoke-TestRunnerFromTeamCity($testType) {
     Copy-Item $zipPath -Destination artifacts -FromSession $session -Recurse
 }
 
+# Run performance tests analysis in the Azure Test Lab, assuming the following environment variables, write test results to an artifacts folder.
+#
+# Relies on environment variables:
+#   $env:AzureTestVmPassword
+#   $env:AzureTestVmUsername
 function Invoke-PerfTestReportFromTeamCity {
     if (!(Test-Path artifacts)) { New-Item -ItemType Directory -Force -Path artifacts | Out-Null }
 
@@ -280,6 +285,7 @@ function Invoke-PerfTestReportFromTeamCity {
 
     $value = Invoke-Command -Session $session {
         C:\Users\edFiAdmin\run-perf-result.bat
+
         Add-Type -Assembly System.IO.Compression.FileSystem
         [System.IO.File]::Delete($zipPathR)
         [System.IO.Compression.ZipFile]::CreateFromDirectory($testResultsPathR, $zipPathR, [System.IO.Compression.CompressionLevel]::Optimal, $false)
