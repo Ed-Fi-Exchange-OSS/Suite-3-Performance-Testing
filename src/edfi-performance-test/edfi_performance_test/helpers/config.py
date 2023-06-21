@@ -32,6 +32,10 @@ def get_config_value(key: str, default: str = "") -> str:
 
 
 def set_config_values(args: MainArguments):
+    # Although we parse arguments from the command line elsewhere, we go back
+    # and inject these into environment variables to make it easy to access them
+    # from anywhere in the code, without having to pass the `args` variable
+    # around.
     os.environ["PERF_API_KEY"] = args.key
     os.environ["PERF_API_BASEURL"] = args.baseUrl
     os.environ["PERF_DELETE_RESOURCES"] = str(args.deleteResources)
@@ -41,6 +45,7 @@ def set_config_values(args: MainArguments):
     os.environ["PERF_API_PREFIX"] = args.api_prefix
     os.environ["PERF_API_OAUTH_PREFIX"] = args.oauth_endpoint
     os.environ["PERF_LOCAL_EDUCATION_ORGANIZATION_ID"] = str(args.localEducationOrganizationId)
+    os.environ["PERF_DISABLE_ENROLLMENTS"] = str(args.disableEnrollments)
 
 
 def _get_change_version_file_path():

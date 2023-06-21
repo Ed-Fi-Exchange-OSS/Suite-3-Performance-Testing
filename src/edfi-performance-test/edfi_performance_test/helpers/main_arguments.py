@@ -33,6 +33,7 @@ class MainArguments:
     oauth_endpoint: str
     localEducationOrganizationId: int
     log_level: LogLevel = LogLevel.INFO
+    disableEnrollments: bool = False
 
     def __str__(self) -> str:
         def _masked(key: str) -> str:

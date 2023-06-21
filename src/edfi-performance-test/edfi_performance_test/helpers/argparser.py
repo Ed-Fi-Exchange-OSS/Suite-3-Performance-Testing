@@ -164,6 +164,14 @@ def parse_main_arguments() -> MainArguments:
         env_var="PERF_LOCAL_EDUCATION_ORGANIZATION_ID",
         default=DEFAULT_LEA_ID
     )
+    parser.add(  # type: ignore
+        "-de",
+        "--disableEnrollments",
+        help="Override to disable testing the Enrollments Composite",
+        type=bool,
+        env_var="PERF_DISABLE_ENROLLMENTS",
+        default=False
+    )
     args_parsed = parser.parse_args()
 
     arguments = MainArguments(
@@ -184,6 +192,7 @@ def parse_main_arguments() -> MainArguments:
         args_parsed.oauthEndpoint,
         args_parsed.localEducationOrganizationId,
         args_parsed.logLevel,
+        args_parsed.disableEnrollments
     )
 
     return arguments
