@@ -209,53 +209,6 @@ function Register-Credentials {
 # Relies on environment variables:
 #   $env:AzureTestVmPassword
 #   $env:AzureTestVmUsername
-function Invoke-TestRunnerFromTeamCity($testType) {
-    if (!(Test-Path artifacts)) { New-Item -ItemType Directory -Force -Path artifacts | Out-Null }
-
-    $securePassword = $env:AzureTestVmPassword | ConvertTo-SecureString -AsPlainText -Force
-    $credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $env:AzureTestVmUsername, $securePassword
-
-    $sessionOptions = New-PSSessionOption -SkipCACheck -SkipCNCheck -SkipRevocationCheck
-    $session = New-PSSession -UseSSL -Port 5986 -ComputerName 'edfi-perf-test.southcentralus.cloudapp.azure.com' -Credential $credential -SessionOption $sessionOptions -ConfigurationName SecondHopConfiguration
-
-    # Set $testRunnerPath locally and remotely.
-    $testRunnerPath = Invoke-Command -Session $session {
-        $testRunnerPath = Get-Content "C:\Users\edFiAdmin\deployed-test-runner-path.txt" -Raw
-        $testRunnerPath
-    }
-
-    # Set $testResultsPath locally and remotely.
-    $testResultsPath = Invoke-Command -Session $session {
-        $testResultsPath = Join-Path $testRunnerPath "TestResults"
-        $testResultsPath
-    }
-
-    # Set $zipPath locally and remotely.
-    $zipPath = Invoke-Command -Session $session {
-        $zipPath = Join-Path $testRunnerPath "TestResults.zip"
-        $zipPath
-    }
-    
-    Invoke-Command -Session $session -ArgumentList @($testType) {
-        param($testType)
-        C:\Users\edFiAdmin\run-deployed-tests.bat $testType
-
-        $latest = Get-ChildItem $testResultsPath | ? { $_.PSIsContainer } | sort CreationTime -desc | select -f 1
-        $testResultsPath = Join-Path $testResultsPath $latest
-
-        Add-Type -Assembly System.IO.Compression.FileSystem
-        [System.IO.File]::Delete($zipPath)
-        [System.IO.Compression.ZipFile]::CreateFromDirectory($testResultsPath, $zipPath, [System.IO.Compression.CompressionLevel]::Optimal, $false)
-    }
-
-    Copy-Item $zipPath -Destination artifacts -FromSession $session -Recurse
-}
-
-# Run performance tests analysis in the Azure Test Lab, assuming the following environment variables, write test results to an artifacts folder.
-#
-# Relies on environment variables:
-#   $env:AzureTestVmPassword
-#   $env:AzureTestVmUsername
 function Invoke-PerfTestReportFromTeamCity($testType) {
     if (!(Test-Path artifacts)) { New-Item -ItemType Directory -Force -Path artifacts | Out-Null }
 
@@ -281,6 +234,58 @@ function Invoke-PerfTestReportFromTeamCity($testType) {
         $testResultsPathR = Invoke-Command -Session $session {
             $testResultsPathR = "C:\Octopus\Applications\Perf-v3\Suite-3-Performance-Testing\1.1.0-pre-0251\ReportP"
             $testResultsPathR
+    }
+
+    # Set $zipPath locally and remotely.
+    $zipPathR = Invoke-Command -Session $session {
+        $zipPathR = Join-Path $testRunnerPathR "TestReport.zip"
+        $zipPathR
+    }
+
+    $ErrorActionPreference = 'SilentlyContinue'
+    Invoke-Command -Session $session -ArgumentList @($testType){
+        param($testType)
+        C:\Users\edFiAdmin\run-perf-result.bat $testType
+
+        Add-Type -Assembly System.IO.Compression.FileSystem
+        [System.IO.File]::Delete($zipPathR)
+        [System.IO.Compression.ZipFile]::CreateFromDirectory($testResultsPathR, $zipPathR, [System.IO.Compression.CompressionLevel]::Optimal, $false)
+    }
+
+    Copy-Item $zipPathR -Destination artifacts -FromSession $session -Recurse
+}
+
+# Run performance tests analysis in the Azure Test Lab, assuming the following environment variables, write test results to an artifacts folder.
+#
+# Relies on environment variables:
+#   $env:AzureTestVmPassword
+#   $env:AzureTestVmUsername
+function Invoke-PerfTestReportFromTeamCity($testType) {
+    if (!(Test-Path artifacts)) { New-Item -ItemType Directory -Force -Path artifacts | Out-Null }
+
+    $securePassword = $env:AzureTestVmPassword | ConvertTo-SecureString -AsPlainText -Force
+    $credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $env:AzureTestVmUsername, $securePassword
+
+    $sessionOptions = New-PSSessionOption -SkipCACheck -SkipCNCheck -SkipRevocationCheck
+    $session = New-PSSession -UseSSL -Port 5986 -ComputerName 'edfi-perf-test.southcentralus.cloudapp.azure.com' -Credential $credential -SessionOption $sessionOptions -ConfigurationName SecondHopConfiguration
+
+    # Set $testRunnerPath locally and remotely.
+    $testRunnerPathR = Invoke-Command -Session $session {
+        $testRunnerPathR = Get-Content "C:\Users\edFiAdmin\deployed-test-runner-path.txt" -Raw
+        $testRunnerPathR
+    }
+
+    # Set $testResultsPath locally and remotely.
+    if ($testType -eq "volume") {
+        $testResultsPathR = Invoke-Command -Session $session {
+            $testResultsPathR = "C:\Octopus\Applications\Perf-v3\Suite-3-Performance-Testing\1.1.0-pre-0251\ReportV"
+            $testResultsPathR
+            }
+    } else {
+        $testResultsPathR = Invoke-Command -Session $session {
+            $testResultsPathR = "C:\Octopus\Applications\Perf-v3\Suite-3-Performance-Testing\1.1.0-pre-0251\ReportP"
+            $testResultsPathR
+            }
     }
 
     # Set $zipPath locally and remotely.
