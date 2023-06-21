@@ -3,8 +3,6 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-from os import environ
-
 from edfi_performance_test.tasks.pipeclean.composite import (
     EdFiCompositePipecleanTestBase,
 )
@@ -22,8 +20,7 @@ class LocalEducationAgencyEnrollmentCompositePipecleanTest(
     EdFiCompositePipecleanTestBase
 ):
     def _run_pipeclean_scenario(self):
-        if not bool(environ["PERF_DISABLE_ENROLLMENTS"]):
-            self.run_get_only_pipeclean_scenario()
+        self.run_get_only_pipeclean_scenario()
 
 
 class SchoolEnrollmentCompositePipecleanTest(EdFiCompositePipecleanTestBase):

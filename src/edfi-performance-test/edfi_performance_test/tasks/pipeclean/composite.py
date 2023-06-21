@@ -3,6 +3,8 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
+from os import environ
+
 import traceback
 from greenlet import GreenletExit
 from typing import List
@@ -20,7 +22,8 @@ class EdFiCompositePipecleanTestBase(EdFiPipecleanTestBase):
 
     @task
     def run_pipeclean_scenario(self):
-        self._run_pipeclean_scenario()
+        if not bool(environ["PERF_DISABLE_COMPOSITES"]):
+            self._run_pipeclean_scenario()
 
     def _run_pipeclean_scenario(self):
         try:

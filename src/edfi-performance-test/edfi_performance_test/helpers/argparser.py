@@ -166,10 +166,10 @@ def parse_main_arguments() -> MainArguments:
     )
     parser.add(  # type: ignore
         "-de",
-        "--disableEnrollments",
+        "--disableComposites",
         help="Override to disable testing the Enrollments Composite",
         type=bool,
-        env_var="PERF_DISABLE_ENROLLMENTS",
+        env_var="PERF_DISABLE_COMPOSITES",
         default=False
     )
     args_parsed = parser.parse_args()
@@ -192,7 +192,7 @@ def parse_main_arguments() -> MainArguments:
         args_parsed.oauthEndpoint,
         args_parsed.localEducationOrganizationId,
         args_parsed.logLevel,
-        args_parsed.disableEnrollments
+        args_parsed.disableComposites
     )
 
     return arguments
