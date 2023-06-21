@@ -9,6 +9,8 @@ from tkinter import Tk, filedialog
 
 from IPython.display import display, Markdown, HTML
 import pandas as pd
+import os
+from typing import Tuple
 
 
 def markdown(message: str) -> None:
@@ -75,3 +77,21 @@ def select_directory(def_dir="") -> str:
     log_info(f"Running analysis on {path.abspath(results_dir)}")
 
     return path.abspath(results_dir)
+
+
+def get_result_directory() -> Tuple[str, str]:
+    work_dir = format(os.getcwd())
+    default_dir = format(os.getcwd())
+    default_dir = default_dir.replace('\src\perf-test-analyis', '\TestResults')
+
+    name_list = os.listdir(default_dir)
+    full_list = [os.path.join(default_dir, i) for i in name_list]
+    time_sorted_list = sorted(full_list, key=os.path.getmtime)
+
+    default_dir = time_sorted_list[-1]
+    if len(time_sorted_list) > 1:
+        compare_dir = time_sorted_list[-2]
+
+    os.chdir(work_dir)
+
+    return (default_dir, compare_dir)
