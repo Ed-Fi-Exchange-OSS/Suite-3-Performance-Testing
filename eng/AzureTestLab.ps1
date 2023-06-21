@@ -236,6 +236,8 @@ function Invoke-TestRunnerFromTeamCity($testType) {
         $zipPath
     }
 
+    $ErrorActionPreference = 'SilentlyContinue'
+
     Invoke-Command -Session $session -ArgumentList @($testType) {
         param($testType)
         C:\Users\edFiAdmin\run-deployed-tests.bat $testType
