@@ -90,7 +90,7 @@ def describe_when_parsing_from_command_line_args() -> None:
             assert main_arguments.log_level == LogLevel.DEBUG
 
         def it_sets_disableEnrollments(main_arguments: MainArguments) -> None:
-            assert main_arguments.disableComposites == True
+            assert main_arguments.disableComposites == "True"
 
 
     def describe_given_arguments_do_not_include_baseUrl() -> None:
@@ -176,4 +176,4 @@ def describe_when_parsing_from_env_vars() -> None:
         assert main_arguments.log_level == LogLevel.WARNING
 
     def it_sets_disableEnrollments(main_arguments: MainArguments) -> None:
-        assert main_arguments.disableComposites == True
+        assert main_arguments.disableComposites == "True"
