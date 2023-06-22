@@ -22,8 +22,7 @@ class EdFiCompositePipecleanTestBase(EdFiPipecleanTestBase):
 
     @task
     def run_pipeclean_scenario(self):
-        if environ["PERF_DISABLE_COMPOSITES"].lower() != "true":
-            self._run_pipeclean_scenario()
+        self._run_pipeclean_scenario()
 
     def _run_pipeclean_scenario(self):
         try:
