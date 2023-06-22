@@ -92,7 +92,6 @@ def describe_when_parsing_from_command_line_args() -> None:
         def it_sets_disableEnrollments(main_arguments: MainArguments) -> None:
             assert main_arguments.disableComposites == "True"
 
-
     def describe_given_arguments_do_not_include_baseUrl() -> None:
         def it_should_show_help(capsys) -> None:
             with pytest.raises(SystemExit):

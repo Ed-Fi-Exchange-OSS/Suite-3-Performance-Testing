@@ -32,6 +32,7 @@ from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
 
 logger = logging.getLogger(__name__)
 
+
 class EdFiPipecleanTestMixin(object):
     min_wait = 2000
     max_wait = 9000
