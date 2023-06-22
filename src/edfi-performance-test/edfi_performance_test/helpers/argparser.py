@@ -168,7 +168,7 @@ def parse_main_arguments() -> MainArguments:
         "-de",
         "--disableComposites",
         help="Override to disable testing the Enrollments Composite",
-        type=bool,
+        type=str,
         env_var="PERF_DISABLE_COMPOSITES",
         default=False
     )
