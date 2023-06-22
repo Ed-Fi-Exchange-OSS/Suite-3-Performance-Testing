@@ -11,6 +11,8 @@ locust which runs each scenario in order.
 import importlib
 import os
 import pkgutil
+import logging
+
 import edfi_performance_test.tasks.pipeclean
 
 from typing import List
@@ -28,6 +30,7 @@ from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
     EdFiPipecleanTestTerminator,
 )
 
+logger = logging.getLogger(__name__)
 
 class EdFiPipecleanTestMixin(object):
     min_wait = 2000
@@ -64,8 +67,11 @@ class PipeCleanTestUser(HttpUser):
                 EdFiPipecleanTaskSequence.tasks.append(subclass)
 
         # Add composite pipeclean tests
-        for subclass in EdFiCompositePipecleanTestBase.__subclasses__():
-            EdFiPipecleanTaskSequence.tasks.append(subclass)
+        if os.environ["PERF_DISABLE_COMPOSITES"].lower() != "true":
+            for subclass in EdFiCompositePipecleanTestBase.__subclasses__():
+                EdFiPipecleanTaskSequence.tasks.append(subclass)
+        else:
+            logger.info("Composites tests have been disabled")
 
         # Add descriptor pipeclean tests
         for descriptorSubclass in DescriptorPipecleanTestBase.__subclasses__():
