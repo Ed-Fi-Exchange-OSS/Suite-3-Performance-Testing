@@ -1,27 +1,18 @@
-﻿# SPDX-License-Identifier: Apache-2.0
+﻿﻿# SPDX-License-Identifier: Apache-2.0
 # Licensed to the Ed-Fi Alliance under one or more agreements.
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
 from typing import Dict
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
-from edfi_performance_test.factories.resources.api_factory import APIFactory
 
 
 class AccountCodeClient(EdFiAPIClient):
-    # 287
-    if APIFactory.version.startswith("4"):
-        endpoint = "NoEndpoint"
-    else:
-        endpoint = "accountCodes"
+    endpoint = "accountCodes"
 
 
 class AccountClient(EdFiAPIClient):
-    # 287
-    if APIFactory.version.startswith("4"):
-        endpoint = "NoEndpoint"
-    else:
-        endpoint = "accounts"
+    endpoint = "accounts"
 
     dependencies: Dict = {
         AccountCodeClient: {},
@@ -76,32 +67,16 @@ class _AccountDependentMixin(object):
 
 
 class ActualClient(_AccountDependentMixin, EdFiAPIClient):
-    # 287
-    if APIFactory.version.startswith("4"):
-        endpoint = "NoEndpoint"
-    else:
-        endpoint = "actuals"
+    endpoint = "actuals"
 
 
 class BudgetClient(_AccountDependentMixin, EdFiAPIClient):
-    # 287
-    if APIFactory.version.startswith("4"):
-        endpoint = "NoEndpoint"
-    else:
-        endpoint = "budgets"
+    endpoint = "budgets"
 
 
 class ContractedStaffClient(_AccountDependentMixin, EdFiAPIClient):
-    # 287
-    if APIFactory.version.startswith("4"):
-        endpoint = "NoEndpoint"
-    else:
-        endpoint = "contractedStaffs"
+    endpoint = "contractedStaffs"
 
 
 class PayrollClient(_AccountDependentMixin, EdFiAPIClient):
-    # 287
-    if APIFactory.version.startswith("4"):
-        endpoint = "NoEndpoint"
-    else:
-        endpoint = "payrolls"
+    endpoint = "payrolls"

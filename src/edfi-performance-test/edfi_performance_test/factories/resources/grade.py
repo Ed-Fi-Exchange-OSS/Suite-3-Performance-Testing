@@ -23,7 +23,6 @@ class GradeFactory(APIFactory):
 
     # PERF-287
     if APIFactory.version.startswith("4"):
-        logger.info("dataModels version:" + APIFactory.version)
         currentGradeAsOfDate = formatted_date(12, 16)
         currentGradeIndicator = True
     # ---

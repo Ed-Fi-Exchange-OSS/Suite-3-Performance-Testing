@@ -14,12 +14,11 @@ import pkgutil
 from typing import List
 from locust import FastHttpUser
 
-import edfi_performance_test.tasks.volume.v4
 import edfi_performance_test.tasks.volume
 from edfi_performance_test.tasks.volume.ed_fi_volume_test_base import EdFiVolumeTestBase
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 from edfi_performance_test.helpers.config_version import (
-    get_config_version,
+    exclude_endpoints_by_version,
 )
 import logging
 
@@ -54,24 +53,12 @@ class VolumeTestUser(FastHttpUser):
             )
         ]
 
+        # exclude not present endpoints
+
+        tasks_submodules = exclude_endpoints_by_version(str(VolumeTestUser.host), tasks_submodules, "edfi_performance_test.tasks.volume.")
+
         for mod_name in tasks_submodules:
             importlib.import_module(mod_name)
-
-        # Import modules under tasks.volume.v4
-
-        version = get_config_version(str(VolumeTestUser.host))
-
-        if version.startswith("4"):
-            tasks_v4 = [
-                file
-                for _, file, _ in pkgutil.iter_modules(
-                    [os.path.dirname(edfi_performance_test.tasks.volume.v4.__file__)],
-                    prefix="edfi_performance_test.tasks.volume.v4.",
-                )
-            ]
-
-            for mod_name in tasks_v4:
-                importlib.import_module(mod_name)
 
         # Dynamically create VolumeTest locust classes for all scenarios
         for subclass in EdFiVolumeTestBase.__subclasses__():
