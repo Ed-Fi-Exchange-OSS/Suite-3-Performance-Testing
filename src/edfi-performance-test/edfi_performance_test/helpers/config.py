@@ -18,7 +18,7 @@ logger = logging.getLogger()
 DEFAULT_API_PREFIX = "/data/v3/ed-fi"
 DEFAULT_OAUTH_ENDPOINT = "/oauth/token"
 DEFAULT_LEA_ID = 255901
-DEFAULT_API_VERSION = "3.3.1-b"
+DEFAULT_DATA_STANDARD_VERSION = "3.3.1-b"
 
 
 def get_config_value(key: str, default: str = "") -> str:
@@ -50,7 +50,7 @@ def set_config_values(args: MainArguments):
     os.environ["PERF_API_OAUTH_PREFIX"] = args.oauth_endpoint
     os.environ["PERF_LOCAL_EDUCATION_ORGANIZATION_ID"] = str(args.localEducationOrganizationId)
     # PERF-287
-    os.environ["PERF_API_VERSION"] = get_config_version(str(args.baseUrl))
+    os.environ["PERF_DATA_STANDARD_VERSION"] = get_config_version(str(args.baseUrl))
 
 
 def _get_change_version_file_path():
@@ -71,3 +71,12 @@ def set_change_version_value(value):
                 {"newest_change_version": value}, indent=4, separators=(",", ": ")
             )
         )
+
+
+# PERF-287
+def is_data_standard4() -> bool:
+    version = get_config_value(
+        "PERF_DATA_STANDARD_VERSION", DEFAULT_DATA_STANDARD_VERSION
+    )
+
+    return version.startswith("4")

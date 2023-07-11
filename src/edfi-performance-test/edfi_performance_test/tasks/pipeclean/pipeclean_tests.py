@@ -29,8 +29,12 @@ from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
     EdFiPipecleanTestTerminator,
 )
 from edfi_performance_test.helpers.config_version import (
-    get_config_version,
+    exclude_endpoints_by_version,
 )
+import logging
+
+
+logger = logging.getLogger()
 
 
 class EdFiPipecleanTestMixin(object):
@@ -55,23 +59,30 @@ class PipeCleanTestUser(HttpUser):
             )
         ]
 
+        # exclude not present endpoints
+
+        tasks_submodules = exclude_endpoints_by_version(str(PipeCleanTestUser.host), tasks_submodules, "edfi_performance_test.tasks.pipeclean.")
+
         for mod_name in tasks_submodules:
             importlib.import_module(mod_name)
 
         # Import modules under tasks.pipeclean.v4
 
-        version = get_config_version(str(PipeCleanTestUser.host))
+        tasks_v4 = [
+            file
+            for _, file, _ in pkgutil.iter_modules(
+                [os.path.dirname(edfi_performance_test.tasks.pipeclean.v4.__file__)],
+                prefix="edfi_performance_test.tasks.pipeclean.v4.",
+            )
+        ]
 
-        if version.startswith("4"):
-            tasks_v4 = [
-                file
-                for _, file, _ in pkgutil.iter_modules(
-                    [os.path.dirname(edfi_performance_test.tasks.pipeclean.v4.__file__)],
-                    prefix="edfi_performance_test.tasks.pipeclean.v4.",
-                )
-            ]
+        # exclude not present endpoints
 
+        tasks_v4 = exclude_endpoints_by_version(str(PipeCleanTestUser.host), tasks_v4, "edfi_performance_test.tasks.pipeclean.v4.")
+
+        if len(tasks_v4):
             for mod_name in tasks_v4:
+                logger.info(mod_name)
                 importlib.import_module(mod_name)
 
         # Collect *PipecleanTest classes and append them to
