@@ -5,12 +5,9 @@
 
 import json
 import urllib.request
-import ssl
-import logging
 
 
-logger = logging.getLogger()
-DEFAULT_API_VERSION = "3.3.1-b"
+DEFAULT_DATA_STANDARD_VERSION = "3.3.1-b"
 
 
 def get_config_version(baseUrl: str = "") -> str:
@@ -23,8 +20,7 @@ def get_config_version(baseUrl: str = "") -> str:
         Version: String
     """
 
-    context = ssl._create_unverified_context()
-    with urllib.request.urlopen(baseUrl, context=context) as url:
+    with urllib.request.urlopen(baseUrl) as url:
         data = json.load(url)
 
         for info in data['dataModels']:
@@ -32,7 +28,7 @@ def get_config_version(baseUrl: str = "") -> str:
                 version = info['version']
 
     if not version:
-        version = DEFAULT_API_VERSION
+        version = DEFAULT_DATA_STANDARD_VERSION
 
     return version
 
@@ -48,8 +44,8 @@ def get_metadata(baseUrl: str = "") -> list[str]:
         list[str]
     """
     url_metadata = str(baseUrl) + '/metadata/resources/swagger.json'
-    context = ssl._create_unverified_context()
-    with urllib.request.urlopen(url_metadata, context=context) as url:
+
+    with urllib.request.urlopen(url_metadata) as url:
         data = json.load(url)
 
     metadata = []
@@ -74,10 +70,15 @@ def exclude_endpoints_by_version(baseUrl: str, testList: list[str], replaceVal: 
     """
     metadata = get_metadata(baseUrl)
 
+    exceptions = ["composites", "descriptors", "educations", "enrollments"]
+
     for val in testList:
-        name = val.replace(replaceVal, "") + "s"
+        name = val.replace(replaceVal, "")
         name = name.replace("_", "").lower()
-        exceptions = ["disciplines", "edfivolumetestbases", "volumetestss", "accountabilitys", "communitys", "composites", "descriptorss", "educations", "enrollments", "gradebookentriess", "postsecondarys", "restraints", "pipecleantestss", "edfipipecleantestbases"]
+        if name.endswith("y"):
+            name = name[:-1] + "ies"
+        else:
+            name = name if name.endswith("s") else name + "s"
 
         if name not in metadata and name not in exceptions:
             testList.remove(val)

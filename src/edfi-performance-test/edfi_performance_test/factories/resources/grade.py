@@ -9,11 +9,7 @@ from edfi_performance_test.api.client.school import SchoolClient
 from edfi_performance_test.factories.resources.api_factory import APIFactory
 from edfi_performance_test.factories.descriptors.utils import build_descriptor
 from edfi_performance_test.factories.utils import current_year, formatted_date
-# PERF-287
-import logging
-
-
-logger = logging.getLogger()
+from edfi_performance_test.helpers.config import is_data_standard4
 
 
 class GradeFactory(APIFactory):
@@ -22,7 +18,7 @@ class GradeFactory(APIFactory):
     numericGradeEarned = 80
 
     # PERF-287
-    if APIFactory.version.startswith("4"):
+    if is_data_standard4():
         currentGradeAsOfDate = formatted_date(12, 16)
         currentGradeIndicator = True
     # ---

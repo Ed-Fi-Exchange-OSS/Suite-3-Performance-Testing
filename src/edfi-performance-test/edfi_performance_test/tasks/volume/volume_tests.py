@@ -17,9 +17,9 @@ from locust import FastHttpUser
 import edfi_performance_test.tasks.volume
 from edfi_performance_test.tasks.volume.ed_fi_volume_test_base import EdFiVolumeTestBase
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
-from edfi_performance_test.helpers.config_version import (
-    exclude_endpoints_by_version,
-)
+# from edfi_performance_test.helpers.config_version import (
+#    exclude_endpoints_by_version,
+# )
 import logging
 
 
@@ -55,7 +55,7 @@ class VolumeTestUser(FastHttpUser):
 
         # exclude not present endpoints
 
-        tasks_submodules = exclude_endpoints_by_version(str(VolumeTestUser.host), tasks_submodules, "edfi_performance_test.tasks.volume.")
+        # tasks_submodules = exclude_endpoints_by_version(str(VolumeTestUser.host), tasks_submodules, "edfi_performance_test.tasks.volume.")
 
         for mod_name in tasks_submodules:
             importlib.import_module(mod_name)

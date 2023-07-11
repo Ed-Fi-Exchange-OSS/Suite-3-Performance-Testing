@@ -5,11 +5,6 @@
 
 import json
 import factory
-# PERF-287
-from edfi_performance_test.helpers.config import (
-    get_config_value,
-    DEFAULT_API_VERSION,
-)
 
 
 class APIFactory(factory.Factory):
@@ -25,8 +20,3 @@ class APIFactory(factory.Factory):
     @classmethod
     def build_json(cls, **kwargs):
         return json.dumps(cls.build_dict(**kwargs))
-
-    # PERF-287
-    version = get_config_value(
-        "PERF_API_VERSION", DEFAULT_API_VERSION
-    )
