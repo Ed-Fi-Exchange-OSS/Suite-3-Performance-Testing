@@ -124,9 +124,6 @@ class EdFiAPIClient(EdFiBasicAPIClient):
         # an association to this resource.
         unique_id = None
         succeed_on = factory_kwargs.pop("succeed_on", [])
-        # 287 - Volume
-        if "NoEndpoint" in self.endpoint:
-            return
         name = name or self.list_endpoint()
         payload = self.factory.build_json(**factory_kwargs)
         if unique_id_field:

@@ -70,7 +70,7 @@ def exclude_endpoints_by_version(baseUrl: str, testList: list[str], replaceVal: 
     """
     metadata = get_metadata(baseUrl)
 
-    exceptions = ["composites", "descriptors", "educations", "enrollments"]
+    exceptions = ["disciplines", "accountabilities", "communities", "composites", "descriptors", "educations", "enrollments", "gradebookentries", "postsecondarys", "restraints"]
 
     for val in testList:
         name = val.replace(replaceVal, "")
@@ -81,6 +81,7 @@ def exclude_endpoints_by_version(baseUrl: str, testList: list[str], replaceVal: 
             name = name if name.endswith("s") else name + "s"
 
         if name not in metadata and name not in exceptions:
+            print(name)
             testList.remove(val)
 
     return testList
