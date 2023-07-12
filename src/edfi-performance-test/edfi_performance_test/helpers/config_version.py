@@ -81,7 +81,7 @@ def exclude_endpoints_by_version(baseUrl: str, testList: list[str], replaceVal: 
             name = name if name.endswith("s") else name + "s"
 
         if name not in metadata and name not in exceptions:
-            print(name)
+            # print(name)
             testList.remove(val)
 
     return testList

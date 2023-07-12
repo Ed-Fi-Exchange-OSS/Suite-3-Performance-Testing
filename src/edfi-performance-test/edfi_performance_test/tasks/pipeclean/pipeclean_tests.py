@@ -82,7 +82,7 @@ class PipeCleanTestUser(HttpUser):
 
         if len(tasks_v4):
             for mod_name in tasks_v4:
-                logger.info(mod_name)
+                # logger.info(mod_name)
                 importlib.import_module(mod_name)
 
         # Collect *PipecleanTest classes and append them to
