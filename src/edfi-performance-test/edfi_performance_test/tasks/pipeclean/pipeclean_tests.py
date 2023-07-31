@@ -31,10 +31,6 @@ from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
 from edfi_performance_test.helpers.config_version import (
     exclude_endpoints_by_version,
 )
-import logging
-
-
-logger = logging.getLogger()
 
 
 class EdFiPipecleanTestMixin(object):
@@ -82,7 +78,6 @@ class PipeCleanTestUser(HttpUser):
 
         if len(tasks_v4):
             for mod_name in tasks_v4:
-                # logger.info(mod_name)
                 importlib.import_module(mod_name)
 
         # Collect *PipecleanTest classes and append them to
