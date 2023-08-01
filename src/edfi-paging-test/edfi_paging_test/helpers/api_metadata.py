@@ -133,7 +133,7 @@ def normalize_resource_paths(resource_paths: List[str]) -> List[str]:
     """
     return list(
         map(
-            lambda r: r.removeprefix("/").removeprefix("ed-fi/").lower(),
+            lambda r: r.removeprefix("/").removeprefix("ed-fi/"),
             resource_paths,
         )
     )
