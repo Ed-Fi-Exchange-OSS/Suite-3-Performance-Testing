@@ -15,7 +15,6 @@ class APIInfo:
     """
 
     version: str
-    api_mode: str
     datamodels: List[Dict[str, str]]
     urls: Dict[str, str]
 

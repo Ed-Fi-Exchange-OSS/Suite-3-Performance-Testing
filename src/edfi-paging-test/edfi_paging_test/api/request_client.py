@@ -100,7 +100,6 @@ class RequestClient:
             response = get_base_api_response(self.api_base_url, self.verify_cert)
             self.api_info = APIInfo(
                 version=response["version"],
-                api_mode=response["apiMode"],
                 datamodels=response["dataModels"],
                 urls=response["urls"],
             )
