@@ -78,8 +78,8 @@ def describe_when_normalizing_paths():
     def it_should_remove_edfi_prefix(resource_paths):
         assert resource_paths[0] == "student"
 
-    def it_should_remove_edfi_prefix_and_lowercase(resource_paths):
-        assert resource_paths[1] == "studentschoolassociation"
+    def it_should_remove_edfi_prefix_and_preserve_case(resource_paths):
+        assert resource_paths[1] == "studentSchoolAssociation"
 
     def it_should_remove_leading_slash(resource_paths):
         assert resource_paths[2] == "tpdm/candidates"
