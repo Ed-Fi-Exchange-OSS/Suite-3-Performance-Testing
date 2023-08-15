@@ -274,12 +274,12 @@ function Invoke-PerfTestReportFromTeamCity($testType) {
     # Set $testResultsPath locally and remotely.
     if ($testType -eq "volume") {
         $testResultsPathR = Invoke-Command -Session $session {
-            $testResultsPathR = "C:\Octopus\Applications\Perf-v3\Suite-3-Performance-Testing\1.1.0-pre-0251\ReportV"
+            $testResultsPathR = Join-Path $testRunnerPathR "ReportV"
             $testResultsPathR
             }
     } else {
         $testResultsPathR = Invoke-Command -Session $session {
-            $testResultsPathR = "C:\Octopus\Applications\Perf-v3\Suite-3-Performance-Testing\1.1.0-pre-0251\ReportP"
+            $testResultsPathR = Join-Path $testRunnerPathR  "ReportP"
             $testResultsPathR
             }
     }
