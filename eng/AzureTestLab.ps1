@@ -236,6 +236,12 @@ function Invoke-TestRunnerFromTeamCity($testType) {
         $zipPath
     }
 
+    # Set $zipPath locally and remotely for Report.
+    $zipReportPath = Invoke-Command -Session $session {
+        $zipReportPath = Join-Path $testRunnerPath "TestReport.zip"
+        $zipReportPath
+    }
+
     Invoke-Command -Session $session -ArgumentList @($testType) {
         param($testType)
         C:\Users\edFiAdmin\run-deployed-tests.bat $testType
@@ -246,59 +252,12 @@ function Invoke-TestRunnerFromTeamCity($testType) {
         Add-Type -Assembly System.IO.Compression.FileSystem
         [System.IO.File]::Delete($zipPath)
         [System.IO.Compression.ZipFile]::CreateFromDirectory($testResultsPath, $zipPath, [System.IO.Compression.CompressionLevel]::Optimal, $false)
+
+         Add-Type -Assembly System.IO.Compression.FileSystem
+        [System.IO.File]::Delete($zipReportPath)
+        [System.IO.Compression.ZipFile]::CreateFromDirectory($testRunnerPath, $zipReportPath, [System.IO.Compression.CompressionLevel]::Optimal, $false)
     }
 
     Copy-Item $zipPath -Destination artifacts -FromSession $session -Recurse
 }
 
-# Run performance tests analysis in the Azure Test Lab, assuming the following environment variables, write test results to an artifacts folder.
-#
-# Relies on environment variables:
-#   $env:AzureTestVmPassword
-#   $env:AzureTestVmUsername
-function Invoke-PerfTestReportFromTeamCity($testType) {
-    if (!(Test-Path artifacts)) { New-Item -ItemType Directory -Force -Path artifacts | Out-Null }
-
-    $securePassword = $env:AzureTestVmPassword | ConvertTo-SecureString -AsPlainText -Force
-    $credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $env:AzureTestVmUsername, $securePassword
-
-    $sessionOptions = New-PSSessionOption -SkipCACheck -SkipCNCheck -SkipRevocationCheck
-    $session = New-PSSession -UseSSL -Port 5986 -ComputerName 'edfi-perf-test.southcentralus.cloudapp.azure.com' -Credential $credential -SessionOption $sessionOptions -ConfigurationName SecondHopConfiguration
-
-    # Set $testRunnerPath locally and remotely.
-    $testRunnerPathR = Invoke-Command -Session $session {
-        $testRunnerPathR = Get-Content "C:\Users\edFiAdmin\deployed-test-runner-path.txt" -Raw
-        $testRunnerPathR
-    }
-
-    # Set $testResultsPath locally and remotely.
-    if ($testType -eq "volume") {
-        $testResultsPathR = Invoke-Command -Session $session {
-            $testResultsPathR = Join-Path $testRunnerPathR "ReportV"
-            $testResultsPathR
-            }
-    } else {
-        $testResultsPathR = Invoke-Command -Session $session {
-            $testResultsPathR = Join-Path $testRunnerPathR  "ReportP"
-            $testResultsPathR
-            }
-    }
-
-    # Set $zipPath locally and remotely.
-    $zipPathR = Invoke-Command -Session $session {
-        $zipPathR = Join-Path $testRunnerPathR "TestReport.zip"
-        $zipPathR
-    }
-
-    $ErrorActionPreference = 'SilentlyContinue'
-    Invoke-Command -Session $session -ArgumentList @($testType){
-        param($testType)
-        C:\Users\edFiAdmin\run-perf-result.bat $testType
-
-        Add-Type -Assembly System.IO.Compression.FileSystem
-        [System.IO.File]::Delete($zipPathR)
-        [System.IO.Compression.ZipFile]::CreateFromDirectory($testResultsPathR, $zipPathR, [System.IO.Compression.CompressionLevel]::Optimal, $false)
-    }
-
-    Copy-Item $zipPathR -Destination artifacts -FromSession $session -Recurse
-}
