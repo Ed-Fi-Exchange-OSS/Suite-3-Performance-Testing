@@ -242,6 +242,8 @@ function Invoke-TestRunnerFromTeamCity($testType) {
         $zipReportPath
     }
 
+    # jupyter notebook with nbconvert build generates an unspecified error, however the report is generated
+    # ticket PERF-300 was created to review the case
     $ErrorActionPreference = 'SilentlyContinue'
     Invoke-Command -Session $session -ArgumentList @($testType) {
         param($testType)
@@ -254,9 +256,19 @@ function Invoke-TestRunnerFromTeamCity($testType) {
         [System.IO.File]::Delete($zipPath)
         [System.IO.Compression.ZipFile]::CreateFromDirectory($testResultsPath, $zipPath, [System.IO.Compression.CompressionLevel]::Optimal, $false)
 
-         Add-Type -Assembly System.IO.Compression.FileSystem
+        # Create Zip file for the report
+        $reportName = $testType + " Test Analysis.html"
+        $testRunnerPath = Join-Path $testRunnerPath $reportName
+        $testRunnerPath
+
+        $compress = @{
+            Path = $testRunnerPath
+            CompressionLevel = "Optimal"
+            DestinationPath = $zipReportPath
+            }
+
         [System.IO.File]::Delete($zipReportPath)
-        [System.IO.Compression.ZipFile]::CreateFromDirectory($testRunnerPath, $zipReportPath, [System.IO.Compression.CompressionLevel]::Optimal, $false)
+        Compress-Archive @compress
     }
 
     Copy-Item $zipPath -Destination artifacts -FromSession $session -Recurse
