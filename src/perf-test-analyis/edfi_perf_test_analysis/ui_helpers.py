@@ -46,18 +46,15 @@ def display_df(df: pd.DataFrame, max_rows: Optional[int] = None) -> None:
     )
 
 
-def select_directory(def_dir="") -> str:
-    if def_dir == "":
-        root = Tk()
-        # Hide the main window
-        root.withdraw()
-        # Raise the root to the top of all windows.
-        root.call("wm", "attributes", ".", "-topmost", True)
+def select_directory() -> str:
+    root = Tk()
+    # Hide the main window
+    root.withdraw()
+    # Raise the root to the top of all windows.
+    root.call("wm", "attributes", ".", "-topmost", True)
 
-        file_path = filedialog.askdirectory()
-        root.destroy()
-    else:
-        file_path = def_dir
+    file_path = filedialog.askdirectory()
+    root.destroy()
 
     if not path.exists(file_path):
         raise RuntimeError(

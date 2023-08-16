@@ -64,7 +64,7 @@ def _display_server_counters(results_dir: str, test_type: str, server: str) -> N
 
 def run_analysis(default_dir="") -> Tuple[str, pd.DataFrame]:
 
-    results_dir = select_directory(default_dir)
+    results_dir = select_directory() if default_dir == "" else path.abspath(default_dir)
 
     test_type = "volume"
 
