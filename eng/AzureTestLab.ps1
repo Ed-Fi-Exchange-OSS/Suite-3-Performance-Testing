@@ -258,11 +258,17 @@ function Invoke-TestRunnerFromTeamCity($testType) {
 
         # Create Zip file for the report
         $reportName = $testType + " Test Analysis.html"
-        $testRunnerPath = Join-Path $testRunnerPath $reportName
-        $testRunnerPath
+        $reportPath = Join-Path $testRunnerPath $reportName
+        $reportPath
+
+        #Testing Porpouse will be deleted
+        Write-Host $reportName
+        Write-Host $reportPath
+        Write-Host $zipReportPath
+        #
 
         $compress = @{
-            Path = $testRunnerPath
+            Path = $reportPath
             CompressionLevel = "Optimal"
             DestinationPath = $zipReportPath
             }
