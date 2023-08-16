@@ -260,5 +260,7 @@ function Invoke-TestRunnerFromTeamCity($testType) {
     }
 
     Copy-Item $zipPath -Destination artifacts -FromSession $session -Recurse
+
+    Copy-Item $zipReportPath -Destination artifacts -FromSession $session -Recurse
 }
 
