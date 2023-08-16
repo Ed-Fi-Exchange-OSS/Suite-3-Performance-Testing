@@ -82,7 +82,7 @@ def run_analysis(default_dir="") -> Tuple[str, pd.DataFrame]:
 
 def run_comparison(left_dir: str, df_left: pd.DataFrame, compare_dir="") -> None:
 
-    right_dir = select_directory(compare_dir)
+    right_dir = select_directory() if compare_dir == "" else path.abspath(compare_dir)
 
     df_right = get_and_prep_stats(right_dir, "volume")
 
