@@ -11,6 +11,10 @@ from IPython.display import display, Markdown, HTML
 import pandas as pd
 import os
 from typing import Tuple
+from dotenv import load_dotenv
+
+
+load_dotenv()
 
 
 def markdown(message: str) -> None:
@@ -77,18 +81,29 @@ def select_directory() -> str:
 
 
 def get_result_directory() -> Tuple[str, str]:
-    work_dir = format(os.getcwd())
-    default_dir = format(os.getcwd())
-    default_dir = default_dir.replace('\src\perf-test-analyis', '\TestResults')
+    origin = os.environ.get("PERF_RESULTS_ORIGIN")
 
-    name_list = os.listdir(default_dir)
-    full_list = [os.path.join(default_dir, i) for i in name_list]
-    time_sorted_list = sorted(full_list, key=os.path.getmtime)
+    if origin == "1":
+        work_dir = format(os.getcwd())
+        default_dir = format(os.getcwd())
+        default_dir = default_dir.replace('\src\perf-test-analyis', '\TestResults')
 
-    default_dir = time_sorted_list[-1]
-    if len(time_sorted_list) > 1:
-        compare_dir = time_sorted_list[-2]
+        name_list = os.listdir(default_dir)
+        full_list = [os.path.join(default_dir, i) for i in name_list]
+        time_sorted_list = sorted(full_list, key=os.path.getmtime)
 
-    os.chdir(work_dir)
+        default_dir = time_sorted_list[-1]
+        compare_dir = ""
+        if len(time_sorted_list) > 1:
+            if os.path.exists(os.path.join(time_sorted_list[-1], 'volume_stats.csv')):
+                find = -2
+                while not os.path.exists(os.path.join(time_sorted_list[find], 'volume_stats.csv')):
+                    find = find - 1
+                compare_dir = time_sorted_list[find]
+
+        os.chdir(work_dir)
+    else:
+        default_dir = ""
+        compare_dir = ""
 
     return (default_dir, compare_dir)

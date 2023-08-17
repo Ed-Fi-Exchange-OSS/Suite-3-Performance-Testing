@@ -257,7 +257,7 @@ function Invoke-TestRunnerFromTeamCity($testType) {
         [System.IO.Compression.ZipFile]::CreateFromDirectory($testResultsPath, $zipPath, [System.IO.Compression.CompressionLevel]::Optimal, $false)
 
         # Create Zip file for the report
-        $reportName = $testType + " Test Analysis TC.html"
+        $reportName = $testType + " Test Analysis.html"
         $reportPath = Join-Path $testRunnerPath $reportName
         $reportPath
 
