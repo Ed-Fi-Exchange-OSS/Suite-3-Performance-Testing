@@ -20,6 +20,7 @@ from edfi_perf_test_analysis.analysis_helpers import (
 from edfi_perf_test_analysis.ui_helpers import (
     display_df,
     select_directory,
+    get_result_directory,
     log_warning,
     markdown,
 )
@@ -63,9 +64,9 @@ def _display_server_counters(results_dir: str, test_type: str, server: str) -> N
 
 
 def run_analysis() -> Tuple[str, pd.DataFrame]:
-
-    results_dir = select_directory()
-
+    results_dir = get_result_directory() [0]
+    if results_dir == "":
+        results_dir = select_directory()
     test_type = "volume"
 
     display_exceptions(results_dir, test_type)
@@ -82,7 +83,9 @@ def run_analysis() -> Tuple[str, pd.DataFrame]:
 
 def run_comparison(left_dir: str, df_left: pd.DataFrame) -> None:
 
-    right_dir = select_directory()
+    right_dir = get_result_directory() [1]
+    if right_dir == "":
+        right_dir = select_directory()
 
     df_right = get_and_prep_stats(right_dir, "volume")
 
