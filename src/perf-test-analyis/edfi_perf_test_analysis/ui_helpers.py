@@ -98,7 +98,7 @@ def get_result_directory() -> Tuple[str, str]:
         result_file = csv_files[0]
 
         index = -2
-        #find compare directory with same type of test results as in the result_dir
+        #find compare_dir with same type of test results as in the result_dir
         while not os.path.exists(os.path.join(time_sorted_list[index], result_file)):
             index = index - 1
         compare_dir = time_sorted_list[index]
