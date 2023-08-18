@@ -5,6 +5,8 @@
 
 from typing import Dict
 
+from edfi_performance_test.helpers.perf_suite_error import PerfSuiteError
+
 from edfi_performance_test.api.client.ed_fi_api_client import (
     EdFiAPIClient,
     import_from_dotted_path,
@@ -122,7 +124,13 @@ class LocalEducationAgencyClient(EdFiAPIClient):
             "edfi_performance_test.api.client.education.LocalEducationAgencyClient"
         )
         client_instance = client_class(client_class.client, token=client_class.token)
-        cls._education_organization_id = client_instance.get_list()[0][
+
+        ed_orgs = client_instance.get_list()
+
+        if ed_orgs is None or len(ed_orgs) == 0:
+            raise PerfSuiteError("There no local education agencies. Please create one and then try this test again.")
+
+        cls._education_organization_id = ed_orgs[0][
             "localEducationAgencyId"
         ]
         return cls._education_organization_id
