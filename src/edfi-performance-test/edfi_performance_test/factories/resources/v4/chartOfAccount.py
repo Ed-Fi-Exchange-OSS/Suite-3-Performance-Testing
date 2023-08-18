@@ -12,10 +12,6 @@ from edfi_performance_test.factories.utils import (
     UniqueIdAttribute,
     current_year,
 )
-import logging
-
-
-logger = logging.getLogger()
 
 
 class ChartOfAccountFactory(APIFactory):
