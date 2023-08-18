@@ -236,9 +236,18 @@ function Invoke-TestRunnerFromTeamCity($testType) {
         $zipPath
     }
 
+    # Set $zipPath locally and remotely for Report.
+    $zipReportPath = Invoke-Command -Session $session {
+        $zipReportPath = Join-Path $testRunnerPath "TestReport.zip"
+        $zipReportPath
+    }
+
+    # jupyter notebook with nbconvert build generates an unspecified error, however the report is generated
+    # ticket PERF-300 was created to review the case
+    $ErrorActionPreference = 'SilentlyContinue'
     Invoke-Command -Session $session -ArgumentList @($testType) {
         param($testType)
-        C:\Users\edFiAdmin\run-deployed-tests.bat $testType
+        C:\Users\edFiAdmin\run-deployed-tests.bat $testType $testResultsPath
 
         $latest = Get-ChildItem $testResultsPath | ? { $_.PSIsContainer } | sort CreationTime -desc | select -f 1
         $testResultsPath = Join-Path $testResultsPath $latest
@@ -246,7 +255,24 @@ function Invoke-TestRunnerFromTeamCity($testType) {
         Add-Type -Assembly System.IO.Compression.FileSystem
         [System.IO.File]::Delete($zipPath)
         [System.IO.Compression.ZipFile]::CreateFromDirectory($testResultsPath, $zipPath, [System.IO.Compression.CompressionLevel]::Optimal, $false)
+
+        # Create Zip file for the report
+        $reportName = $testType + " Test Analysis.html"
+        $reportPath = Join-Path $testRunnerPath $reportName
+        $reportPath
+
+        $compress = @{
+            Path = $reportPath
+            CompressionLevel = "Optimal"
+            DestinationPath = $zipReportPath
+            }
+
+        [System.IO.File]::Delete($zipReportPath)
+        Compress-Archive @compress
     }
 
     Copy-Item $zipPath -Destination artifacts -FromSession $session -Recurse
+
+    Copy-Item $zipReportPath -Destination artifacts -FromSession $session -Recurse
 }
+
