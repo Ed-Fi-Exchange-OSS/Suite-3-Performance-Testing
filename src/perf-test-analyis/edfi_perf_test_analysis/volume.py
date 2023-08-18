@@ -63,7 +63,7 @@ def _display_server_counters(results_dir: str, test_type: str, server: str) -> N
     regression_plot(web, x="SequenceNumber", y="Memory Used (%)")
 
 
-def run_analysis(default_dir="") -> Tuple[str, pd.DataFrame]:
+def run_analysis() -> Tuple[str, pd.DataFrame]:
     results_dir = get_result_directory() [0]
     if results_dir == "":
         results_dir = select_directory()
