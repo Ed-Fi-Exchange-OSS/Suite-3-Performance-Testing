@@ -3,6 +3,7 @@
 cd .\src\perf-test-analyis
 
 echo "Running %1 jupyter notebook from %CD%"
+REM Write path to test results folder for notebook to process.
 echo %2>notebook_input.txt
 
 REM Launch the notebook run.
