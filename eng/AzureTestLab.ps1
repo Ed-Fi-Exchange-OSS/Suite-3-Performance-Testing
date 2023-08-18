@@ -247,7 +247,7 @@ function Invoke-TestRunnerFromTeamCity($testType) {
     $ErrorActionPreference = 'SilentlyContinue'
     Invoke-Command -Session $session -ArgumentList @($testType) {
         param($testType)
-        C:\Users\edFiAdmin\run-deployed-tests.bat $testType
+        C:\Users\edFiAdmin\run-deployed-tests.bat $testType $testResultsPath
 
         $latest = Get-ChildItem $testResultsPath | ? { $_.PSIsContainer } | sort CreationTime -desc | select -f 1
         $testResultsPath = Join-Path $testResultsPath $latest

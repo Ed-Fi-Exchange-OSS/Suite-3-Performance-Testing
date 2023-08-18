@@ -10,12 +10,8 @@ from tkinter import Tk, filedialog
 from IPython.display import display, Markdown, HTML
 import pandas as pd
 import os
+import glob
 from typing import Tuple
-from dotenv import load_dotenv
-
-
-load_dotenv()
-
 
 def markdown(message: str) -> None:
     display(Markdown(message))
@@ -81,29 +77,30 @@ def select_directory() -> str:
 
 
 def get_result_directory() -> Tuple[str, str]:
-    origin = os.environ.get("PERF_RESULTS_ORIGIN")
 
-    if origin == "1":
-        work_dir = format(os.getcwd())
-        default_dir = format(os.getcwd())
-        default_dir = default_dir.replace('\src\perf-test-analyis', '\TestResults')
+    result_dir_root = path.abspath('./notebook_input.txt')
+    if not path.exists(result_dir_root):
+         return ("","")
 
-        name_list = os.listdir(default_dir)
-        full_list = [os.path.join(default_dir, i) for i in name_list]
-        time_sorted_list = sorted(full_list, key=os.path.getmtime)
+    with open(result_dir_root) as f:
+        result_root_dir = f.read().rstrip('\n')
 
-        default_dir = time_sorted_list[-1]
-        compare_dir = ""
-        if len(time_sorted_list) > 1:
-            if os.path.exists(os.path.join(time_sorted_list[-1], 'volume_stats.csv')):
-                find = -2
-                while not os.path.exists(os.path.join(time_sorted_list[find], 'volume_stats.csv')):
-                    find = find - 1
-                compare_dir = time_sorted_list[find]
+    result_dir = path.abspath(result_root_dir)
 
-        os.chdir(work_dir)
-    else:
-        default_dir = ""
-        compare_dir = ""
+    name_list = os.listdir(result_dir)
+    full_list = [os.path.join(result_dir, i) for i in name_list]
+    time_sorted_list = sorted(full_list, key=os.path.getmtime)
 
-    return (default_dir, compare_dir)
+    result_dir = time_sorted_list[-1]
+    if len(time_sorted_list) > 1:
+        all_files = os.listdir(result_dir)
+        csv_files = list(filter(lambda f: f.endswith('.csv'), all_files))
+        result_file = csv_files[0]
+
+        index = -2
+        #find compare directory with same type of test results as in the result_dir
+        while not os.path.exists(os.path.join(time_sorted_list[index], result_file)):
+            index = index - 1
+        compare_dir = time_sorted_list[index]
+
+    return (result_dir, compare_dir)
