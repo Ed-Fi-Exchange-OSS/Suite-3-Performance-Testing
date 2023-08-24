@@ -73,12 +73,3 @@ def set_change_version_value(value):
                 {"newest_change_version": value}, indent=4, separators=(",", ": ")
             )
         )
-
-
-# PERF-287
-def is_data_standard4() -> bool:
-    version = get_config_value(
-        "PERF_DATA_STANDARD_VERSION", DEFAULT_DATA_STANDARD_VERSION
-    )
-
-    return version.startswith("4")
