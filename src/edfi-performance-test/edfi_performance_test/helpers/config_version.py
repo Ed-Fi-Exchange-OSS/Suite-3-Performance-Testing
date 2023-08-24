@@ -55,7 +55,7 @@ def get_metadata(baseUrl: str = "") -> list[str]:
     return metadata
 
 
-def exclude_endpoints_by_version(baseUrl: str, testList: list[str], replaceVal: str) -> list[str]:
+def exclude_endpoints_by_version(baseUrl: str, testList: list[str]) -> list[str]:
     """
         Filter the endpoint list searching in the metadata
 
@@ -70,11 +70,11 @@ def exclude_endpoints_by_version(baseUrl: str, testList: list[str], replaceVal: 
     """
     metadata = get_metadata(baseUrl)
 
-    exceptions = ["disciplines", "accountabilities", "communities", "composites", "descriptors", "educations", "enrollments", "gradebookentries", "postsecondarys", "restraints"]
+    exceptions = ["disciplines", "accountabilities", "communities", "composites", "descriptors", "educations", "enrollments", "gradebookentries", "postsecondaries", "restraints"]
 
     for val in testList:
-        name = val.replace(replaceVal, "")
-        name = name.replace("_", "").lower()
+        name = val.replace(val[0:val.rfind(".") + 1], "").replace("_", "").lower()
+
         if name.endswith("y"):
             name = name[:-1] + "ies"
         else:

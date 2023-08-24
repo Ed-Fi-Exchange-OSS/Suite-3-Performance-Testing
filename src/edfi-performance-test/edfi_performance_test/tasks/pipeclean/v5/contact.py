@@ -10,7 +10,6 @@ from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
 
 
 class ContactPipecleanTest(EdFiPipecleanTestBase):
-    print("-ContactPipecleanTest-")
     update_attribute_name = "contactOtherNames"
     update_attribute_value = [
         {

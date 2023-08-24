@@ -12,7 +12,6 @@ from edfi_performance_test.factories.utils import UniqueIdAttribute
 
 
 class ContactFactory(APIFactory):
-    print("-ContactFactory-")
     contactUniqueId = UniqueIdAttribute()
     firstName = "Michael"
     lastSurname = "Jones"

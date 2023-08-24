@@ -72,7 +72,7 @@ class PipeCleanTestUser(HttpUser):
 
         # exclude not present endpoints
 
-        tasks_submodules = exclude_endpoints_by_version(str(PipeCleanTestUser.host), tasks_submodules, "edfi_performance_test.tasks.pipeclean.")
+        tasks_submodules = exclude_endpoints_by_version(str(PipeCleanTestUser.host), tasks_submodules)
 
         for mod_name in tasks_submodules:
             importlib.import_module(mod_name)

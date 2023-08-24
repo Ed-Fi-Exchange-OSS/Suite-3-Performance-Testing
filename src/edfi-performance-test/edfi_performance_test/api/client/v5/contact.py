@@ -8,7 +8,6 @@ from edfi_performance_test.api.client.school import SchoolClient
 
 
 class ContactClient(EdFiAPIClient):
-    print("-ContactClient-")
     endpoint = "contacts"
 
     dependencies = {

@@ -54,30 +54,22 @@ class VolumeTestUser(FastHttpUser):
             )
         ]
 
+        # Import modules under subfolder structures
+
+        with os.scandir(os.path.dirname(edfi_performance_test.tasks.volume.__file__)) as route:
+            subFolders = [folder.name for folder in route if folder.is_dir()]
+        for sub in subFolders:
+            path = os.path.join(os.path.dirname(edfi_performance_test.tasks.volume.__file__), sub)
+            for dirpath, dirnames, fNames in os.walk(path):
+                for fNames in list(filter(lambda f: f.endswith('.py') and not f.startswith("__"), fNames)):
+                    tasks_submodules.append("edfi_performance_test.tasks.volume." + sub + "." + fNames.replace(".py", ""))
+
         # exclude not present endpoints
 
-        tasks_submodules = exclude_endpoints_by_version(str(VolumeTestUser.host), tasks_submodules, "edfi_performance_test.tasks.volume.")
+        tasks_submodules = exclude_endpoints_by_version(str(VolumeTestUser.host), tasks_submodules)
 
         for mod_name in tasks_submodules:
             importlib.import_module(mod_name)
-
-        # Import modules under tasks.volume.v4
-
-        tasks_v4 = [
-            file
-            for _, file, _ in pkgutil.iter_modules(
-                [os.path.dirname(edfi_performance_test.tasks.volume.v4.__file__)],
-                prefix="edfi_performance_test.tasks.volume.v4.",
-            )
-        ]
-
-        # exclude not present endpoints v4
-
-        tasks_v4 = exclude_endpoints_by_version(str(VolumeTestUser.host), tasks_v4, "edfi_performance_test.tasks.volume.v4.")
-
-        if len(tasks_v4):
-            for mod_name in tasks_v4:
-                importlib.import_module(mod_name)
 
         # Dynamically create VolumeTest locust classes for all scenarios
         for subclass in EdFiVolumeTestBase.__subclasses__():
