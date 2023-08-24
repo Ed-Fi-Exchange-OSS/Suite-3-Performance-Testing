@@ -15,6 +15,7 @@ from edfi_performance_test.factories.utils import (
 
 
 class ChartOfAccountFactory(APIFactory):
+    print("ChartOfAccountFactory")
     accountIdentifier = UniqueIdAttribute()
     fiscalYear = current_year()
     educationOrganizationReference = factory.Dict(
