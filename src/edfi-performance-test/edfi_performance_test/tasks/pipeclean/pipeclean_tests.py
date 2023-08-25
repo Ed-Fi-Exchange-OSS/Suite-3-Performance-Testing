@@ -72,8 +72,6 @@ class PipeCleanTestUser(HttpUser):
 
         # exclude not present endpoints
 
-        tasks_submodules = exclude_endpoints_by_version(str(PipeCleanTestUser.host), tasks_submodules)
-
         for mod_name in tasks_submodules:
             importlib.import_module(mod_name)
 
@@ -83,6 +81,8 @@ class PipeCleanTestUser(HttpUser):
             if (
                 subclass != EdFiCompositePipecleanTestBase
                 and subclass != DescriptorPipecleanTestBase
+                and not subclass.__subclasses__() # include only top most subclass
+                and not subclass.skip_all_scenarios() # allows overrides to skip endpoints defined in base class
             ):
                 EdFiPipecleanTaskSequence.tasks.append(subclass)
 
