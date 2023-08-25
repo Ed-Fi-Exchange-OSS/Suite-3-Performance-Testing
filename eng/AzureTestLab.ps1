@@ -242,9 +242,7 @@ function Invoke-TestRunnerFromTeamCity($testType) {
         $zipReportPath
     }
 
-    # jupyter notebook with nbconvert build generates an unspecified error, however the report is generated
-    # ticket PERF-300 was created to review the case
-    $ErrorActionPreference = 'SilentlyContinue'
+
     Invoke-Command -Session $session -ArgumentList @($testType) {
         param($testType)
         C:\Users\edFiAdmin\run-deployed-tests.bat $testType $testResultsPath
