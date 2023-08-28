@@ -32,7 +32,7 @@ from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
     EdFiPipecleanTestTerminator,
 )
 from edfi_performance_test.helpers.config_version import (
-    exclude_endpoints_by_version,
+   get_config_version,
 )
 
 logger = logging.getLogger(__name__)
@@ -61,16 +61,21 @@ class PipeCleanTestUser(HttpUser):
         ]
 
         # Import modules under subfolder structures
+        version = get_config_version(str(PipeCleanTestUser.host))
 
-        with os.scandir(os.path.dirname(edfi_performance_test.tasks.pipeclean.__file__)) as route:
-            subFolders = [folder.name for folder in route if folder.is_dir()]
-        for sub in subFolders:
-            path = os.path.join(os.path.dirname(edfi_performance_test.tasks.pipeclean.__file__), sub)
-            for dirpath, dirnames, fNames in os.walk(path):
-                for fNames in list(filter(lambda f: f.endswith('.py') and not f.startswith("__"), fNames)):
-                    tasks_submodules.append("edfi_performance_test.tasks.pipeclean." + sub + "." + fNames.replace(".py", ""))
-
-        # exclude not present endpoints
+        task_list = []
+        for root, dirs, files in os.walk(os.path.dirname(edfi_performance_test.tasks.pipeclean.__file__)):
+            for folder in dirs:
+                path = os.path.join(os.path.dirname(edfi_performance_test.tasks.pipeclean.__file__), folder)
+                if folder != '__pycache__' and int(folder[-1]) <= version:
+                    task_list = [
+                        name
+                        for _, name, _ in pkgutil.iter_modules(
+                            [path],
+                            prefix="edfi_performance_test.tasks.pipeclean." + folder + ".",
+                        )
+                    ]
+                    tasks_submodules.extend(task_list)
 
         for mod_name in tasks_submodules:
             importlib.import_module(mod_name)
@@ -81,8 +86,8 @@ class PipeCleanTestUser(HttpUser):
             if (
                 subclass != EdFiCompositePipecleanTestBase
                 and subclass != DescriptorPipecleanTestBase
-                and not subclass.__subclasses__() # include only top most subclass
-                and not subclass.skip_all_scenarios() # allows overrides to skip endpoints defined in base class
+                and not subclass.__subclasses__()  # include only top most subclass
+                and not subclass.skip_all_scenarios()  # allows overrides to skip endpoints defined in base class
             ):
                 EdFiPipecleanTaskSequence.tasks.append(subclass)
 

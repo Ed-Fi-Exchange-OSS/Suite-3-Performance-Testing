@@ -14,12 +14,12 @@ import pkgutil
 from typing import List
 from locust import FastHttpUser
 
-import edfi_performance_test.tasks.volume.v4
 import edfi_performance_test.tasks.volume
+import edfi_performance_test.tasks.volume.v4
 from edfi_performance_test.tasks.volume.ed_fi_volume_test_base import EdFiVolumeTestBase
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 from edfi_performance_test.helpers.config_version import (
-    exclude_endpoints_by_version,
+    get_config_version,
 )
 import logging
 
@@ -55,18 +55,21 @@ class VolumeTestUser(FastHttpUser):
         ]
 
         # Import modules under subfolder structures
+        version = get_config_version(str(VolumeTestUser.host))
 
-        with os.scandir(os.path.dirname(edfi_performance_test.tasks.volume.__file__)) as route:
-            subFolders = [folder.name for folder in route if folder.is_dir()]
-        for sub in subFolders:
-            path = os.path.join(os.path.dirname(edfi_performance_test.tasks.volume.__file__), sub)
-            for dirpath, dirnames, fNames in os.walk(path):
-                for fNames in list(filter(lambda f: f.endswith('.py') and not f.startswith("__"), fNames)):
-                    tasks_submodules.append("edfi_performance_test.tasks.volume." + sub + "." + fNames.replace(".py", ""))
-
-        # exclude not present endpoints
-
-        tasks_submodules = exclude_endpoints_by_version(str(VolumeTestUser.host), tasks_submodules)
+        task_list = []
+        for root, dirs, files in os.walk(os.path.dirname(edfi_performance_test.tasks.volume.__file__)):
+            for folder in dirs:
+                path = os.path.join(os.path.dirname(edfi_performance_test.tasks.volume.__file__), folder)
+                if folder != '__pycache__' and int(folder[-1]) <= version:
+                    task_list = [
+                        name
+                        for _, name, _ in pkgutil.iter_modules(
+                            [path],
+                            prefix="edfi_performance_test.tasks.volume." + folder + ".",
+                        )
+                    ]
+                    tasks_submodules.extend(task_list)
 
         for mod_name in tasks_submodules:
             importlib.import_module(mod_name)
@@ -76,6 +79,8 @@ class VolumeTestUser(FastHttpUser):
             if (
                 not VolumeTestUser.test_list
                 or subclass.__name__ in VolumeTestUser.test_list
+                and not subclass.__subclasses__()  # include only top most subclass
+                and not subclass.skip_all_scenarios()  # allows overrides to skip endpoints defined in base class
             ):
                 self.tasks.append(subclass)
 
