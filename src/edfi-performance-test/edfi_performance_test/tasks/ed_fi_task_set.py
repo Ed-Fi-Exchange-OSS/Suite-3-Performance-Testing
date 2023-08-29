@@ -123,9 +123,8 @@ class EdFiTaskSet(TaskSet):
     def generate_client_class(self) -> Any:
         if "pipeclean" in self.__class__.__module__:
             class_name = self.__class__.__name__.replace("PipecleanTest", "Client")
-            path_name = self.__class__.__module__.replace("tasks.pipeclean", "api.client")
             class_path = (
-                path_name
+                self.__class__.__module__.replace("tasks.pipeclean", "api.client")
                 + "."
                 + class_name
             )
