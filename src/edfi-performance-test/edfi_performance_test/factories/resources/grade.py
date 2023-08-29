@@ -15,7 +15,6 @@ class GradeFactory(APIFactory):
     gradeTypeDescriptor = build_descriptor("GradeType", "Grading Period")
     letterGradeEarned = "B"
     numericGradeEarned = 80
-
     gradingPeriodReference = factory.Dict(
         dict(
             schoolId=SchoolClient.shared_elementary_school_id(),

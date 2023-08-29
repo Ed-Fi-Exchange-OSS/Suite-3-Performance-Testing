@@ -11,7 +11,7 @@ class ContactClient(EdFiAPIClient):
     endpoint = "contacts"
 
     dependencies = {
-        "edfi_performance_test.api.client.student.StudentParentAssociationClient": {
+        "edfi_performance_test.api.client.v5.student.StudentContactAssociationClient": {
             "client_name": "contact_assoc_client",
         },
         "edfi_performance_test.api.client.student.StudentClient": {},

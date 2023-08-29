@@ -55,13 +55,11 @@ class VolumeTestUser(FastHttpUser):
         ]
 
         # Import modules under subfolder structures
-        version = get_config_version(str(VolumeTestUser.host))
 
-        task_list = []
         for root, dirs, files in os.walk(os.path.dirname(edfi_performance_test.tasks.volume.__file__)):
             for folder in dirs:
                 path = os.path.join(os.path.dirname(edfi_performance_test.tasks.volume.__file__), folder)
-                if folder != '__pycache__' and int(folder[-1]) <= version:
+                if folder != '__pycache__' and int(folder[-1]) <= get_config_version(str(VolumeTestUser.host)):
                     task_list = [
                         name
                         for _, name, _ in pkgutil.iter_modules(
@@ -77,8 +75,8 @@ class VolumeTestUser(FastHttpUser):
         # Dynamically create VolumeTest locust classes for all scenarios
         for subclass in EdFiVolumeTestBase.__subclasses__():
             if (
-                not VolumeTestUser.test_list
-                or subclass.__name__ in VolumeTestUser.test_list
+                (not VolumeTestUser.test_list
+                    or subclass.__name__ in VolumeTestUser.test_list)
                 and not subclass.__subclasses__()  # include only top most subclass
                 and not subclass.skip_all_scenarios()  # allows overrides to skip endpoints defined in base class
             ):

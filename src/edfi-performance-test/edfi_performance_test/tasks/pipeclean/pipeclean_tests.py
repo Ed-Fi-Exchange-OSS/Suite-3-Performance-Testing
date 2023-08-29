@@ -61,13 +61,11 @@ class PipeCleanTestUser(HttpUser):
         ]
 
         # Import modules under subfolder structures
-        version = get_config_version(str(PipeCleanTestUser.host))
 
-        task_list = []
         for root, dirs, files in os.walk(os.path.dirname(edfi_performance_test.tasks.pipeclean.__file__)):
             for folder in dirs:
                 path = os.path.join(os.path.dirname(edfi_performance_test.tasks.pipeclean.__file__), folder)
-                if folder != '__pycache__' and int(folder[-1]) <= version:
+                if folder != '__pycache__' and int(folder[-1]) <= get_config_version(str(PipeCleanTestUser.host)):
                     task_list = [
                         name
                         for _, name, _ in pkgutil.iter_modules(
