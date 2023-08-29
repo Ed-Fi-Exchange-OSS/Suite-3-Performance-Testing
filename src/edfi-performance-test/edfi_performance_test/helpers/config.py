@@ -8,7 +8,6 @@ import os
 import json
 from edfi_performance_test.helpers.main_arguments import MainArguments
 
-
 DEFAULT_API_PREFIX = "/data/v3/ed-fi"
 DEFAULT_OAUTH_ENDPOINT = "/oauth/token"
 DEFAULT_LEA_ID = 255901
