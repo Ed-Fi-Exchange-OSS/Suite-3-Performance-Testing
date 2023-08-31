@@ -242,7 +242,6 @@ function Invoke-TestRunnerFromTeamCity($testType) {
         $zipReportPath
     }
 
-
     Invoke-Command -Session $session -ArgumentList $testType, $testResultsPath {
         param(
             [string] $testType,
@@ -259,8 +258,7 @@ function Invoke-TestRunnerFromTeamCity($testType) {
         [System.IO.Compression.ZipFile]::CreateFromDirectory($testResultsPath, $zipPath, [System.IO.Compression.CompressionLevel]::Optimal, $false)
 
         # Create Zip file for the report
-        if ($testType -ne "pageVolume")
-        {
+        if ($testType -ne "pageVolume") {
             $reportName = $testType + " Test Analysis.html"
             $reportPath = Join-Path $testRunnerPath $reportName
             $reportPath
@@ -274,12 +272,13 @@ function Invoke-TestRunnerFromTeamCity($testType) {
             [System.IO.File]::Delete($zipReportPath)
             Compress-Archive @compress
 
-            Copy-Item $zipReportPath -Destination artifacts -FromSession $session -Recurse
         }
-
     }
 
     Copy-Item $zipPath -Destination artifacts -FromSession $session -Recurse
 
+    if ($testType -ne "pageVolume") {
+        Copy-Item $zipReportPath -Destination artifacts -FromSession $session -Recurse
+    }
 }
 
