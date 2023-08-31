@@ -243,11 +243,10 @@ function Invoke-TestRunnerFromTeamCity($testType) {
     }
 
 
-    Invoke-Command -Session $session -ArgumentList @($testType) {
-        param($testType)
+    Invoke-Command -Session $session -ArgumentList @($testType, $testResultsPath) {
         C:\Users\edFiAdmin\run-deployed-tests.bat $testType $testResultsPath
 
-        $latest = Get-ChildItem $testResultsPath | ? { $_.PSIsContainer } | sort CreationTime -desc | select -f 1
+        $latest = Get-ChildItem $testResultsPath | Where-Object { $_.PSIsContainer } | Sort-Object CreationTime -desc | Select-Object -f 1
         $testResultsPath = Join-Path $testResultsPath $latest
 
         Add-Type -Assembly System.IO.Compression.FileSystem
