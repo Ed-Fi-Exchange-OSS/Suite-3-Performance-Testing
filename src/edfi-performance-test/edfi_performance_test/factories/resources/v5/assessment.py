@@ -15,7 +15,7 @@ from edfi_performance_test.factories.utils import (
 )
 
 
-class AssessmentFactory(APIFactory):
+class AssessmentFactoryV5(APIFactory):
     assessmentIdentifier = UniqueIdAttribute()
     academicSubjects = factory.List(
         [
@@ -97,7 +97,7 @@ class AssessmentFactory(APIFactory):
     )
 
 
-class AssessmentItemFactory(APIFactory):
+class AssessmentItemFactoryV5(APIFactory):
     assessmentReference = factory.Dict(
         dict(
             assessmentIdentifier=None,
@@ -112,7 +112,7 @@ class AssessmentItemFactory(APIFactory):
     maxRawScore = 1
 
 
-class LearningStandardFactory(APIFactory):
+class LearningStandardFactoryV5(APIFactory):
     learningStandardId = UniqueIdAttribute()
     academicSubjects = factory.List(
         [
@@ -142,7 +142,7 @@ class LearningStandardFactory(APIFactory):
         )
 
 
-class ObjectiveAssessmentFactory(APIFactory):
+class ObjectiveAssessmentFactoryV5(APIFactory):
     assessmentReference = factory.Dict(
         dict(
             assessmentIdentifier=None,
@@ -153,7 +153,7 @@ class ObjectiveAssessmentFactory(APIFactory):
     maxRawScore = 8
 
 
-class StudentAssessmentFactory(APIFactory):
+class StudentAssessmentFactoryV5(APIFactory):
     studentAssessmentIdentifier = UniqueIdAttribute()
     studentReference = factory.Dict(
         dict(studentUniqueId=StudentClient.shared_student_id())

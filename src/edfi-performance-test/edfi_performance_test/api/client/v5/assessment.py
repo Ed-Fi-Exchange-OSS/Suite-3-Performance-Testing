@@ -7,14 +7,14 @@ from typing import Dict
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 
 
-class AssessmentClient(EdFiAPIClient):
+class AssessmentClientV5(EdFiAPIClient):
     endpoint = "assessments"
 
 
-class AssessmentItemClient(EdFiAPIClient):
+class AssessmentItemClientV5(EdFiAPIClient):
     endpoint = "assessmentItems"
 
-    dependencies: Dict = {AssessmentClient: {}}
+    dependencies: Dict = {AssessmentClientV5: {}}
 
     def create_with_dependencies(self, **kwargs):
         # Create new assessment
@@ -30,14 +30,14 @@ class AssessmentItemClient(EdFiAPIClient):
         )
 
 
-class LearningStandardClient(EdFiAPIClient):
+class LearningStandardClientV5(EdFiAPIClient):
     endpoint = "learningStandards"
 
 
-class ObjectiveAssessmentClient(EdFiAPIClient):
+class ObjectiveAssessmentClientV5(EdFiAPIClient):
     endpoint = "objectiveAssessments"
 
-    dependencies: Dict = {AssessmentClient: {}}
+    dependencies: Dict = {AssessmentClientV5: {}}
 
     def create_with_dependencies(self, **kwargs):
         # Create new assessment
@@ -53,10 +53,10 @@ class ObjectiveAssessmentClient(EdFiAPIClient):
         )
 
 
-class StudentAssessmentClient(EdFiAPIClient):
+class StudentAssessmentClientV5(EdFiAPIClient):
     endpoint = "studentAssessments"
 
-    dependencies: Dict = {AssessmentClient: {}}
+    dependencies: Dict = {AssessmentClientV5: {}}
 
     def create_with_dependencies(self, **kwargs):
         # Create new assessment
