@@ -54,26 +54,26 @@ class SkipStudentAssessmentPipecleanTest(StudentAssessmentPipecleanTest):
 
 # call all again now in v5
 
-class AssessmentPipecleanTestV5(EdFiPipecleanTestBase):
+class AssessmentPipecleanTest(EdFiPipecleanTestBase):
     update_attribute_name = "title"
     update_attribute_value = "AP English 3"
 
 
-class AssessmentItemPipecleanTestV5(EdFiPipecleanTestBase):
+class AssessmentItemPipecleanTest(EdFiPipecleanTestBase):
     update_attribute_name = "correctResponse"
     update_attribute_value = "C"
 
 
-class LearningStandardPipecleanTestV5(EdFiPipecleanTestBase):
+class LearningStandardPipecleanTest(EdFiPipecleanTestBase):
     update_attribute_name = "courseTitle"
     update_attribute_value = "Advanced Math for students v4.6"
 
 
-class ObjectiveAssessmentPipecleanTestV5(EdFiPipecleanTestBase):
+class ObjectiveAssessmentPipecleanTest(EdFiPipecleanTestBase):
     update_attribute_name = "maxRawScore"
     update_attribute_value = 10
 
 
-class StudentAssessmentPipecleanTestV5(EdFiPipecleanTestBase):
+class StudentAssessmentPipecleanTest(EdFiPipecleanTestBase):
     update_attribute_name = "serialNumber"
     update_attribute_value = 2
