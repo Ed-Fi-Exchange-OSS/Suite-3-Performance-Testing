@@ -243,11 +243,15 @@ function Invoke-TestRunnerFromTeamCity($testType) {
     }
 
 
-    Invoke-Command -Session $session -ArgumentList @($testType) {
-        param($testType)
+    Invoke-Command -Session $session -ArgumentList $testType, $testResultsPath {
+        param(
+            [string] $testType,
+            [string] $testResultsPath
+        )
+
         C:\Users\edFiAdmin\run-deployed-tests.bat $testType $testResultsPath
 
-        $latest = Get-ChildItem $testResultsPath | ? { $_.PSIsContainer } | sort CreationTime -desc | select -f 1
+        $latest = Get-ChildItem $testResultsPath | Where-Object { $_.PSIsContainer } | Sort-Object CreationTime -desc | Select-Object -f 1
         $testResultsPath = Join-Path $testResultsPath $latest
 
         Add-Type -Assembly System.IO.Compression.FileSystem
@@ -255,22 +259,27 @@ function Invoke-TestRunnerFromTeamCity($testType) {
         [System.IO.Compression.ZipFile]::CreateFromDirectory($testResultsPath, $zipPath, [System.IO.Compression.CompressionLevel]::Optimal, $false)
 
         # Create Zip file for the report
-        $reportName = $testType + " Test Analysis.html"
-        $reportPath = Join-Path $testRunnerPath $reportName
-        $reportPath
+        if ($testType -ne "pageVolume")
+        {
+            $reportName = $testType + " Test Analysis.html"
+            $reportPath = Join-Path $testRunnerPath $reportName
+            $reportPath
 
-        $compress = @{
-            Path = $reportPath
-            CompressionLevel = "Optimal"
-            DestinationPath = $zipReportPath
-            }
+            $compress = @{
+                Path = $reportPath
+                CompressionLevel = "Optimal"
+                DestinationPath = $zipReportPath
+                }
 
-        [System.IO.File]::Delete($zipReportPath)
-        Compress-Archive @compress
+            [System.IO.File]::Delete($zipReportPath)
+            Compress-Archive @compress
+
+            Copy-Item $zipReportPath -Destination artifacts -FromSession $session -Recurse
+        }
+
     }
 
     Copy-Item $zipPath -Destination artifacts -FromSession $session -Recurse
 
-    Copy-Item $zipReportPath -Destination artifacts -FromSession $session -Recurse
 }
 
