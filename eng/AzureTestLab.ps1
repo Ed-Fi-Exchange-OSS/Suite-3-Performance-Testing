@@ -277,7 +277,7 @@ function Invoke-TestRunnerFromTeamCity($testType) {
     Write-Output "Uploading test results"
     Copy-Item $zipPath -Destination artifacts -FromSession $session -Recurse
 
-    if (Test-Path $zipReportPath -PathType Leaf) {
+    if (Test-Path $zipReportPath -PathType Leaf -FromSession $session) {
         Write-Output "Uploading test reports"
         Copy-Item $zipReportPath -Destination artifacts -FromSession $session -Recurse
     }
