@@ -279,7 +279,7 @@ function Invoke-TestRunnerFromTeamCity($testType) {
 
     Invoke-Command -Session $session {
         if (!(Test-Path $zipReportPath -PathType Leaf)) {
-            return
+            return 0
         }
     }
     Write-Output "Uploading test reports"
