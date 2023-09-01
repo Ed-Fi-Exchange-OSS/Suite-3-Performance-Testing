@@ -242,35 +242,34 @@ function Invoke-TestRunnerFromTeamCity($testType) {
         $zipReportPath
     }
 
-    [System.IO.File]::Delete($zipReportPath)
-
     Invoke-Command -Session $session -ArgumentList $testType, $testResultsPath {
         param(
             [string] $testType,
             [string] $testResultsPath
-        )
+            )
 
-        C:\Users\edFiAdmin\run-deployed-tests.bat $testType $testResultsPath
+            C:\Users\edFiAdmin\run-deployed-tests.bat $testType $testResultsPath
 
-        $latest = Get-ChildItem $testResultsPath | Where-Object { $_.PSIsContainer } | Sort-Object CreationTime -desc | Select-Object -f 1
-        $testResultsPath = Join-Path $testResultsPath $latest
+            $latest = Get-ChildItem $testResultsPath | Where-Object { $_.PSIsContainer } | Sort-Object CreationTime -desc | Select-Object -f 1
+            $testResultsPath = Join-Path $testResultsPath $latest
 
-        Add-Type -Assembly System.IO.Compression.FileSystem
-        [System.IO.File]::Delete($zipPath)
-        [System.IO.Compression.ZipFile]::CreateFromDirectory($testResultsPath, $zipPath, [System.IO.Compression.CompressionLevel]::Optimal, $false)
+            Add-Type -Assembly System.IO.Compression.FileSystem
+            [System.IO.File]::Delete($zipPath)
+            [System.IO.Compression.ZipFile]::CreateFromDirectory($testResultsPath, $zipPath, [System.IO.Compression.CompressionLevel]::Optimal, $false)
 
-        # Create Zip file for the report
-        $reportName = $testType + " Test Analysis.html"
-        $reportPath = Join-Path $testRunnerPath $reportName
-        $reportPath
+            # Create Zip file for the report
+            $reportName = $testType + " Test Analysis.html"
+            $reportPath = Join-Path $testRunnerPath $reportName
+            $reportPath
 
         if (Test-Path $reportPath -PathType Leaf) {
             $compress = @{
                 Path = $reportPath
                 CompressionLevel = "Optimal"
                 DestinationPath = $zipReportPath
-                }
+            }
 
+            [System.IO.File]::Delete($zipReportPath)
             Compress-Archive @compress
         }
     }
@@ -280,7 +279,7 @@ function Invoke-TestRunnerFromTeamCity($testType) {
 
     Invoke-Command -Session $session {
         if (!(Test-Path $zipReportPath -PathType Leaf)) {
-            return 0
+            break
         }
     }
     Write-Output "Uploading test reports"
