@@ -242,6 +242,8 @@ function Invoke-TestRunnerFromTeamCity($testType) {
         $zipReportPath
     }
 
+    [System.IO.File]::Delete($zipReportPath)
+
     Invoke-Command -Session $session -ArgumentList $testType, $testResultsPath {
         param(
             [string] $testType,
@@ -269,7 +271,6 @@ function Invoke-TestRunnerFromTeamCity($testType) {
                 DestinationPath = $zipReportPath
                 }
 
-            [System.IO.File]::Delete($zipReportPath)
             Compress-Archive @compress
         }
     }
