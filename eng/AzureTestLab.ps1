@@ -278,7 +278,7 @@ function Invoke-TestRunnerFromTeamCity($testType) {
     Copy-Item $zipPath -Destination artifacts -FromSession $session -Recurse
 
     Invoke-Command -Session $session {
-        if (!(Test-Path $reportName -PathType Leaf)) {
+        if (!(Test-Path $reportPath -PathType Leaf)) {
             Write-Output "Report does not exist"
             exit
         }
