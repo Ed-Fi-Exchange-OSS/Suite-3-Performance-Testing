@@ -270,11 +270,12 @@ function Invoke-TestRunnerFromTeamCity($testType) {
 
             [System.IO.File]::Delete($zipReportPath)
             Compress-Archive @compress
-            Copy-Item $zipReportPath -Destination artifacts -FromSession $session -Recurse
         }
-        else{
-            Copy-Item $zipPath -Destination artifacts -FromSession $session -Recurse
-        }
+    }
+    Copy-Item $zipPath -Destination artifacts -FromSession $session -Recurse
+
+    if (Test-Path $zipReportPath -PathType Leaf) {
+        Copy-Item $zipReportPath -Destination artifacts -FromSession $session -Recurse
     }
 }
 
