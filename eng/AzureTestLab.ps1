@@ -280,7 +280,7 @@ function Invoke-TestRunnerFromTeamCity($testType) {
     Invoke-Command -Session $session {
         if (!(Test-Path $reportPath -PathType Leaf)) {
             Write-Output "Report does not exist"
-            exit
+            return 0
         }
     }
     Write-Output "Uploading test reports"
