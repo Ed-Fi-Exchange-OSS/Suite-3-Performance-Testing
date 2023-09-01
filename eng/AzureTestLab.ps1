@@ -260,6 +260,7 @@ function Invoke-TestRunnerFromTeamCity($testType) {
         # Create Zip file for the report
         $reportName = $testType + " Test Analysis.html"
         $reportPath = Join-Path $testRunnerPath $reportName
+        $reportPath
 
         if (Test-Path $reportPath -PathType Leaf) {
             $compress = @{
@@ -272,9 +273,12 @@ function Invoke-TestRunnerFromTeamCity($testType) {
             Compress-Archive @compress
         }
     }
+
+    Write-Output("Uploading test results")
     Copy-Item $zipPath -Destination artifacts -FromSession $session -Recurse
 
     if (Test-Path $zipReportPath -PathType Leaf) {
+        Write-Output("Uploading test reports")
         Copy-Item $zipReportPath -Destination artifacts -FromSession $session -Recurse
     }
 }
