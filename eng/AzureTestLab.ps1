@@ -278,12 +278,14 @@ function Invoke-TestRunnerFromTeamCity($testType) {
     Copy-Item $zipPath -Destination artifacts -FromSession $session -Recurse
 
     Invoke-Command -Session $session {
-        if (!(Test-Path $reportPath -PathType Leaf)) {
-            Write-Output "Report does not exist"
-            return 0
+        if (Test-Path $reportPath -PathType Leaf) {
+            Write-Output "Uploading test reports"
+
+            $sessionOptions = New-PSSessionOption -SkipCACheck -SkipCNCheck -SkipRevocationCheck
+            $session = New-PSSession -UseSSL -Port 5986 -ComputerName 'edfi-perf-test.southcentralus.cloudapp.azure.com' -Credential $credential -SessionOption $sessionOptions -ConfigurationName SecondHopConfiguration
+
+            Copy-Item $zipReportPath -Destination artifacts -FromSession $session -Recurse
         }
     }
-    Write-Output "Uploading test reports"
-    Copy-Item $zipReportPath -Destination artifacts -FromSession $session -Recurse
 
 }
