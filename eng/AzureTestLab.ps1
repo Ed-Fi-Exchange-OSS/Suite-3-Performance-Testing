@@ -277,16 +277,8 @@ function Invoke-TestRunnerFromTeamCity($testType) {
     Write-Output "Uploading test results"
     Copy-Item $zipPath -Destination artifacts -FromSession $session -Recurse
 
-    Invoke-Command -Session $session {
-        if (Test-Path $reportPath -PathType Leaf) {
-            Write-Output "Uploading test reports"
-
-            if (!$session){
-                Write-Output "session is null"
-            }
-
-            Copy-Item $zipReportPath -Destination artifacts -FromSession $session -Recurse
-        }
-    }
+    (Test-Path $reportPath -PathType Leaf) ?
+        (Copy-Item $zipReportPath -Destination artifacts -FromSession $session -Recurse) :
+        (Write-Output "No Report")
 
 }
