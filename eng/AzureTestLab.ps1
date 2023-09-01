@@ -236,7 +236,7 @@ function Invoke-TestRunnerFromTeamCity($testType) {
         $zipPath
     }
 
-    # Set $zipPath locally and remotely for Report.
+    # Set $zipReportPath locally and remotely for Report.
     $zipReportPath = Invoke-Command -Session $session {
         $zipReportPath = Join-Path $testRunnerPath "TestReport.zip"
         $zipReportPath
@@ -258,11 +258,10 @@ function Invoke-TestRunnerFromTeamCity($testType) {
         [System.IO.Compression.ZipFile]::CreateFromDirectory($testResultsPath, $zipPath, [System.IO.Compression.CompressionLevel]::Optimal, $false)
 
         # Create Zip file for the report
-        if ($testType -ne "pageVolume") {
-            $reportName = $testType + " Test Analysis.html"
-            $reportPath = Join-Path $testRunnerPath $reportName
-            $reportPath
+        $reportName = $testType + " Test Analysis.html"
+        $reportPath = Join-Path $testRunnerPath $reportName
 
+        if (Test-Path $reportPath -PathType Leaf) {
             $compress = @{
                 Path = $reportPath
                 CompressionLevel = "Optimal"
@@ -271,14 +270,11 @@ function Invoke-TestRunnerFromTeamCity($testType) {
 
             [System.IO.File]::Delete($zipReportPath)
             Compress-Archive @compress
-
+            Copy-Item $zipReportPath -Destination artifacts -FromSession $session -Recurse
         }
-    }
-
-    Copy-Item $zipPath -Destination artifacts -FromSession $session -Recurse
-
-    if ($testType -ne "pageVolume") {
-        Copy-Item $zipReportPath -Destination artifacts -FromSession $session -Recurse
+        else{
+            Copy-Item $zipPath -Destination artifacts -FromSession $session -Recurse
+        }
     }
 }
 
