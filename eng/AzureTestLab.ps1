@@ -283,7 +283,6 @@ function Invoke-TestRunnerFromTeamCity($testType) {
         }
     }
 
-    Write-Output `$$reportExist
     if (-not $reportExist){
         exit
     }
