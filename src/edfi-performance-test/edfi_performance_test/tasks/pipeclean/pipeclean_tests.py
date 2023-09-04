@@ -12,10 +12,6 @@ import importlib
 import os
 import logging
 
-import edfi_performance_test.tasks.pipeclean
-import edfi_performance_test.tasks.pipeclean.v4
-import edfi_performance_test.tasks.pipeclean.v5
-
 from typing import List
 from locust import HttpUser
 
@@ -57,7 +53,7 @@ class PipeCleanTestUser(HttpUser):
 
         # Import root pipeclean modules
         pipe_clean_dir = os.path.dirname(__file__)
-        tasks_submodules = get_dir_modules(pipe_clean_dir,self.pipeclean_test_root_namespace)
+        tasks_submodules = get_dir_modules(pipe_clean_dir, self.pipeclean_test_root_namespace)
 
         # Import modules under version specific subfolders
         pipe_clean_sub_dir_list = [dir for dir in os.listdir(pipe_clean_dir) if os.path.isdir(os.path.join(pipe_clean_dir, dir))]
@@ -65,7 +61,7 @@ class PipeCleanTestUser(HttpUser):
             path = os.path.join(os.path.dirname(__file__), dir)
             namespace_prefix = self.pipeclean_test_root_namespace + dir + "."
             if dir[-1].isnumeric() and int(dir[-1]) <= get_model_version(str(PipeCleanTestUser.host)):
-                task_list = get_dir_modules(path,namespace_prefix)
+                task_list = get_dir_modules(path, namespace_prefix)
                 tasks_submodules.extend(task_list)
 
         for mod_name in tasks_submodules:

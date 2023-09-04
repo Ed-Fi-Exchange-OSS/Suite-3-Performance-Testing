@@ -13,8 +13,6 @@ import os
 from typing import List
 from locust import FastHttpUser
 
-import edfi_performance_test.tasks.volume
-import edfi_performance_test.tasks.volume.v4
 from edfi_performance_test.tasks.volume.ed_fi_volume_test_base import EdFiVolumeTestBase
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 from edfi_performance_test.helpers.api_metadata import (
@@ -50,7 +48,7 @@ class VolumeTestUser(FastHttpUser):
 
         # Import root pipeclean modules
         volume_tests_dir = os.path.dirname(__file__)
-        tasks_submodules = get_dir_modules(volume_tests_dir,self.volume_test_root_namespace)
+        tasks_submodules = get_dir_modules(volume_tests_dir, self.volume_test_root_namespace)
 
         # Import modules under version specific subfolders
         volume_test_sub_dir_list = [dir for dir in os.listdir(volume_tests_dir) if os.path.isdir(os.path.join(volume_tests_dir, dir))]
@@ -58,7 +56,7 @@ class VolumeTestUser(FastHttpUser):
             path = os.path.join(os.path.dirname(__file__), dir)
             namespace_prefix = self.volume_test_root_namespace + dir + "."
             if dir[-1].isnumeric() and int(dir[-1]) <= get_model_version(str(VolumeTestUser.host)):
-                task_list = get_dir_modules(path,namespace_prefix)
+                task_list = get_dir_modules(path, namespace_prefix)
                 tasks_submodules.extend(task_list)
 
         for mod_name in tasks_submodules:

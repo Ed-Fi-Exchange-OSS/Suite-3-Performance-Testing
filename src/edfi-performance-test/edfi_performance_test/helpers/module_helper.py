@@ -6,12 +6,13 @@
 import pkgutil
 from typing import List
 
+
 def get_dir_modules(path: str, namespace_prefix: str) -> List[str]:
     task_list = [
         name
-            for _, name, _ in pkgutil.iter_modules(
-                [path],
-                prefix= namespace_prefix,
-            )
+        for _, name, _ in pkgutil.iter_modules(
+            [path],
+            prefix=namespace_prefix,
+        )
     ]
     return task_list
