@@ -10,7 +10,6 @@ individual testing scenarios, run `locust -f volume_test.py --list`.
 """
 import importlib
 import os
-import pkgutil
 from typing import List
 from locust import FastHttpUser
 
@@ -18,9 +17,13 @@ import edfi_performance_test.tasks.volume
 import edfi_performance_test.tasks.volume.v4
 from edfi_performance_test.tasks.volume.ed_fi_volume_test_base import EdFiVolumeTestBase
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
-from edfi_performance_test.helpers.config_version import (
-    get_config_version,
+from edfi_performance_test.helpers.api_metadata import (
+    get_model_version,
 )
+from edfi_performance_test.helpers.module_helper import (
+   get_dir_modules,
+)
+
 import logging
 
 
@@ -36,6 +39,7 @@ class VolumeTestUser(FastHttpUser):
 
     test_list: List[str]
     is_initialized: bool = False
+    volume_test_root_namespace: str = "edfi_performance_test.tasks.volume."
 
     def on_start(self):
         if VolumeTestUser.is_initialized:
@@ -44,30 +48,18 @@ class VolumeTestUser(FastHttpUser):
         EdFiAPIClient.client = self.client
         EdFiAPIClient.token = None
 
-        # Import modules under tasks.volume package so *VolumeTest classes are registered
+        # Import root pipeclean modules
+        volume_tests_dir = os.path.dirname(__file__)
+        tasks_submodules = get_dir_modules(volume_tests_dir,self.volume_test_root_namespace)
 
-        tasks_submodules = [
-            name
-            for _, name, _ in pkgutil.iter_modules(
-                [os.path.dirname(edfi_performance_test.tasks.volume.__file__)],
-                prefix="edfi_performance_test.tasks.volume.",
-            )
-        ]
-
-        # Import modules under subfolder structures
-
-        for root, dirs, files in os.walk(os.path.dirname(edfi_performance_test.tasks.volume.__file__)):
-            for folder in dirs:
-                path = os.path.join(os.path.dirname(edfi_performance_test.tasks.volume.__file__), folder)
-                if folder != '__pycache__' and int(folder[-1]) <= get_config_version(str(VolumeTestUser.host)):
-                    task_list = [
-                        name
-                        for _, name, _ in pkgutil.iter_modules(
-                            [path],
-                            prefix="edfi_performance_test.tasks.volume." + folder + ".",
-                        )
-                    ]
-                    tasks_submodules.extend(task_list)
+        # Import modules under version specific subfolders
+        volume_test_sub_dir_list = [dir for dir in os.listdir(volume_tests_dir) if os.path.isdir(os.path.join(volume_tests_dir, dir))]
+        for dir in volume_test_sub_dir_list:
+            path = os.path.join(os.path.dirname(__file__), dir)
+            namespace_prefix = self.volume_test_root_namespace + dir + "."
+            if dir[-1].isnumeric() and int(dir[-1]) <= get_model_version(str(VolumeTestUser.host)):
+                task_list = get_dir_modules(path,namespace_prefix)
+                tasks_submodules.extend(task_list)
 
         for mod_name in tasks_submodules:
             importlib.import_module(mod_name)

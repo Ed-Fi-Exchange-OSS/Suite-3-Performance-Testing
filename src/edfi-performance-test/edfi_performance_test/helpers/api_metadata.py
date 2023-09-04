@@ -10,7 +10,7 @@ import urllib.request
 DEFAULT_DATA_STANDARD_VERSION = 3
 
 
-def get_config_version(baseUrl: str = "") -> int:
+def get_model_version(baseUrl: str = "") -> int:
     """
     Get the version Number from API dataModels.
 
