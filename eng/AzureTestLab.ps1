@@ -283,7 +283,7 @@ function Invoke-TestRunnerFromTeamCity($testType) {
         }
     }
 
-    Write-Output $return
+    Write-Output ReturVariable is `$$return
     if (-not $return){
         exit
     }
