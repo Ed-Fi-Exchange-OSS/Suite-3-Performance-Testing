@@ -277,12 +277,12 @@ function Invoke-TestRunnerFromTeamCity($testType) {
     Write-Output "Uploading test results"
     Copy-Item $zipPath -Destination artifacts -FromSession $session -Recurse
 
-    Invoke-Command -Session $session -ArgumentList $reportPath, $zipReportPath {
-        if (-not (Test-Path $reportPath -PathType Leaf)) {
-            Write-Output "No report founf"
-            return
-        }
+    # Invoke-Command -Session $session -ArgumentList $reportPath, $zipReportPath {
+    if (-not (Test-Path $reportPath -PathType Leaf)) {
+        Write-Output "Report not found"
+        return
     }
+    #}
 
     Write-Output "Uploading test reports"
     Copy-Item $zipReportPath -Destination artifacts -FromSession $session -Recurse
