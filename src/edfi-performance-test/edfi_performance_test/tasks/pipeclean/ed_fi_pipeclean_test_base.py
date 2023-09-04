@@ -49,6 +49,9 @@ class EdFiPipecleanTestBase(EdFiTaskSet):
             return {'schoolId': 255901107}
     ```
     """
+    @classmethod
+    def skip_all_scenarios(cls):
+        return False
 
     @task
     def run_pipeclean_scenario(self):
