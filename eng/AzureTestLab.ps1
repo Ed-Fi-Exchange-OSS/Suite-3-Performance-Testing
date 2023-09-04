@@ -277,14 +277,16 @@ function Invoke-TestRunnerFromTeamCity($testType) {
     Write-Output "Uploading test results"
     Copy-Item $zipPath -Destination artifacts -FromSession $session -Recurse
 
-    $return = Invoke-Command -Session $session -ArgumentList $reportPath, $zipReportPath {
+    $reportExist = Invoke-Command -Session $session -ArgumentList $reportPath, $zipReportPath {
         if (-not (Test-Path $reportPath -PathType Leaf)) {
-            Write-Output "Report not found"
+            $false
+        } else {
+            $true
         }
     }
 
-    Write-Output ReturVariable is `$$return
-    if (-not $return){
+    Write-Output `$$reportExist
+    if (-not $reportExist){
         exit
     }
 
