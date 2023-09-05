@@ -12,9 +12,6 @@ from edfi_performance_test.factories.utils import RandomDateAttribute, UniqueIdA
 
 
 class DisciplineActionFactoryV5(APIFactory):
-
-    print("DisciplineActionFactoryV5")
-
     disciplineActionIdentifier = UniqueIdAttribute(num_chars=20)
     disciplineDate = RandomDateAttribute()
     disciplines = factory.List(

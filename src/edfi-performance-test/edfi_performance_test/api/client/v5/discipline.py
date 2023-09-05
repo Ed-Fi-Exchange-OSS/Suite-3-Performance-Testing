@@ -14,8 +14,6 @@ from edfi_performance_test.api.client.student import (
 class DisciplineActionClientV5(EdFiAPIClient):
     endpoint = "disciplineActions"
 
-    print("DisciplineActionClientV5")
-
     dependencies: Dict = {StudentClient: {}}
 
     def create_with_dependencies(self, **kwargs):

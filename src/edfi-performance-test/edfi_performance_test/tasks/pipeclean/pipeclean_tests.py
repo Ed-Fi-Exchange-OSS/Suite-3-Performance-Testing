@@ -87,7 +87,8 @@ class PipeCleanTestUser(HttpUser):
 
         # Add descriptor pipeclean tests
         for descriptorSubclass in DescriptorPipecleanTestBase.__subclasses__():
-            EdFiPipecleanTaskSequence.tasks.append(descriptorSubclass)
+            if not descriptorSubclass.__subclasses__() and not descriptorSubclass.skip_all_scenarios():
+                EdFiPipecleanTaskSequence.tasks.append(descriptorSubclass)
 
         # If a list of tests were given, filter out the rest
         if PipeCleanTestUser.test_list:

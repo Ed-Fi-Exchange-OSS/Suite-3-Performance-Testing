@@ -307,7 +307,7 @@ class StudentSectionAttendanceEventFactory(APIFactory):
         "AttendanceEventCategory", "Tardy"
     )
     eventDate = formatted_date(9, 16)
-    attendanceEventReason = ""
+    attendanceEventReason = "No Note"
 
 
 class StudentAcademicRecordFactory(APIFactory):
