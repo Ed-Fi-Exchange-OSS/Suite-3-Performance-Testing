@@ -6,6 +6,10 @@
 
 from edfi_performance_test.tasks.pipeclean.assessment import (
     LearningObjectivePipecleanTest,
+    LearningStandardPipecleanTest,
+)
+from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
+    EdFiPipecleanTestBase,
 )
 
 
@@ -13,3 +17,14 @@ class SkipLearningObjectivePipecleanTest(LearningObjectivePipecleanTest):
     @classmethod
     def skip_all_scenarios(cls):
         return True
+
+
+class SkipLearningStandardPipecleanTest(LearningStandardPipecleanTest):
+    @classmethod
+    def skip_all_scenarios(cls):
+        return True
+
+
+class LearningStandardPipecleanTestV5(EdFiPipecleanTestBase):
+    update_attribute_name = "courseTitle"
+    update_attribute_value = "Advanced Math for students v4.6"
