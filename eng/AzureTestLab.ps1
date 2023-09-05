@@ -236,14 +236,18 @@ function Invoke-TestRunnerFromTeamCity($testType) {
         $zipPath
     }
 
-    # Set $zipPath locally and remotely for Report.
+    # Set $zipReportPath locally and remotely for Report.
     $zipReportPath = Invoke-Command -Session $session {
         $zipReportPath = Join-Path $testRunnerPath "TestReport.zip"
         $zipReportPath
     }
 
+    Invoke-Command -Session $session -ArgumentList $testType, $testResultsPath {
+        param(
+            [string] $testType,
+            [string] $testResultsPath
+            )
 
-    Invoke-Command -Session $session -ArgumentList @($testType, $testResultsPath) {
         C:\Users\edFiAdmin\run-deployed-tests.bat $testType $testResultsPath
 
         $latest = Get-ChildItem $testResultsPath | Where-Object { $_.PSIsContainer } | Sort-Object CreationTime -desc | Select-Object -f 1
@@ -258,18 +262,32 @@ function Invoke-TestRunnerFromTeamCity($testType) {
         $reportPath = Join-Path $testRunnerPath $reportName
         $reportPath
 
-        $compress = @{
-            Path = $reportPath
-            CompressionLevel = "Optimal"
-            DestinationPath = $zipReportPath
+        if (Test-Path $reportPath -PathType Leaf) {
+            $compress = @{
+                Path = $reportPath
+                CompressionLevel = "Optimal"
+                DestinationPath = $zipReportPath
             }
 
-        [System.IO.File]::Delete($zipReportPath)
-        Compress-Archive @compress
+            [System.IO.File]::Delete($zipReportPath)
+            Compress-Archive @compress
+        }
     }
 
+    Write-Output "Uploading test results"
     Copy-Item $zipPath -Destination artifacts -FromSession $session -Recurse
 
-    Copy-Item $zipReportPath -Destination artifacts -FromSession $session -Recurse
-}
+    $reportExist = Invoke-Command -Session $session -ArgumentList $zipReportPath {
+        if (Test-Path $zipReportPath -PathType Leaf) {
+            $true
+        }
+    }
 
+    if (-not $reportExist){
+        exit
+    }
+
+    Write-Output "Uploading test reports"
+    Copy-Item $zipReportPath -Destination artifacts -FromSession $session -Recurse
+
+}
