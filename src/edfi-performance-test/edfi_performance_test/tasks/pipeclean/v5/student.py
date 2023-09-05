@@ -6,10 +6,24 @@
 
 from edfi_performance_test.tasks.pipeclean.student import (
     StudentParentAssociationPipecleanTest,
+    StudentDisciplineIncidentAssociationPipecleanTest,
+    StudentLearningObjectivePipecleanTest,
 )
 
 
 class SkipStudentParentAssociationPipecleanTest(StudentParentAssociationPipecleanTest):
+    @classmethod
+    def skip_all_scenarios(cls):
+        return True
+
+
+class SkipStudentDisciplineIncidentAssociationPipecleanTest(StudentDisciplineIncidentAssociationPipecleanTest):
+    @classmethod
+    def skip_all_scenarios(cls):
+        return True
+
+
+class SkipStudentLearningObjectivePipecleanTest(StudentLearningObjectivePipecleanTest):
     @classmethod
     def skip_all_scenarios(cls):
         return True
