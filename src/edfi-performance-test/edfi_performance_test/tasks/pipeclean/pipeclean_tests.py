@@ -21,6 +21,9 @@ from edfi_performance_test.tasks.pipeclean.composite import (
 from edfi_performance_test.tasks.pipeclean.descriptors import (
     DescriptorPipecleanTestBase,
 )
+from edfi_performance_test.tasks.pipeclean.v4.dimensions import (
+    DimensionPipecleanTestBase,
+)
 from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
     EdFiPipecleanTestBase,
     EdFiPipecleanTaskSequence,
@@ -73,6 +76,7 @@ class PipeCleanTestUser(HttpUser):
             if (
                 subclass != EdFiCompositePipecleanTestBase
                 and subclass != DescriptorPipecleanTestBase
+                and subclass != DimensionPipecleanTestBase
                 and not subclass.__subclasses__()  # include only top most subclass
                 and not subclass.skip_all_scenarios()  # allows overrides to skip endpoints defined in base class
             ):
@@ -89,6 +93,12 @@ class PipeCleanTestUser(HttpUser):
         for descriptorSubclass in DescriptorPipecleanTestBase.__subclasses__():
             if not descriptorSubclass.__subclasses__() and not descriptorSubclass.skip_all_scenarios():
                 EdFiPipecleanTaskSequence.tasks.append(descriptorSubclass)
+
+        # Add dimension pipeclean tests (if > 3 must be improved)
+        if get_model_version(str(PipeCleanTestUser.host)) > 3:
+            for dimensionSubclass in DimensionPipecleanTestBase.__subclasses__():
+                if not dimensionSubclass.__subclasses__() and not dimensionSubclass.skip_all_scenarios():
+                    EdFiPipecleanTaskSequence.tasks.append(dimensionSubclass)
 
         # If a list of tests were given, filter out the rest
         if PipeCleanTestUser.test_list:
