@@ -11,13 +11,14 @@ from edfi_performance_test.factories.utils import (
     UniqueIdAttribute,
     formatted_date,
     current_year,
+    RandomSuffixAttribute,
 )
 
 
 class GradebookEntryFactoryV4(APIFactory):
-    gradebookEntryIdentifier = UniqueIdAttribute(num_chars=60)
+    gradebookEntryIdentifier = UniqueIdAttribute(num_chars=16)
     namespace = "uri://ed-fi.org/GradebookEntry/GradebookEntry.xml"
-    title = UniqueIdAttribute(num_chars=100)
+    title = RandomSuffixAttribute("Assignment", suffix_length=10)
     dateAssigned = formatted_date(2, 2)
     sectionReference = factory.Dict(
         dict(
