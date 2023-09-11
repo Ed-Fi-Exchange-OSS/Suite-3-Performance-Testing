@@ -9,6 +9,9 @@ from edfi_performance_test.tasks.pipeclean.student import (
     StudentDisciplineIncidentAssociationPipecleanTest,
     StudentLearningObjectivePipecleanTest,
 )
+from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
+    EdFiPipecleanTestBase,
+)
 
 
 class SkipStudentParentAssociationPipecleanTest(StudentParentAssociationPipecleanTest):
@@ -27,3 +30,13 @@ class SkipStudentLearningObjectivePipecleanTest(StudentLearningObjectivePipeclea
     @classmethod
     def skip_all_scenarios(cls):
         return True
+
+
+class StudentProgramEvaluationPipecleanTest(EdFiPipecleanTestBase):
+    update_attribute_name = "evaluationDuration"
+    update_attribute_value = 45
+
+
+class StudentSpecialEducationProgramEligibilityAssociationPipecleanTest(EdFiPipecleanTestBase):
+    update_attribute_name = "evaluationCompleteIndicator"
+    update_attribute_value = True
