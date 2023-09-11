@@ -34,6 +34,7 @@ from edfi_performance_test.helpers.api_metadata import (
 )
 from edfi_performance_test.helpers.module_helper import (
    get_dir_modules,
+   get_inheritors,
 )
 
 logger = logging.getLogger(__name__)
@@ -72,33 +73,16 @@ class PipeCleanTestUser(HttpUser):
 
         # Collect *PipecleanTest classes and append them to
         # EdFiPipecleanTaskSequence.tasks
-        for subclass in EdFiPipecleanTestBase.__subclasses__():
+        for subclass in get_inheritors(EdFiPipecleanTestBase):
             if (
-                subclass != EdFiCompositePipecleanTestBase
-                and subclass != DescriptorPipecleanTestBase
-                and subclass != DimensionPipecleanTestBase
-                and not subclass.__subclasses__()  # include only top most subclass
+                not subclass.__subclasses__()  # include only top most subclass
                 and not subclass.skip_all_scenarios()  # allows overrides to skip endpoints defined in base class
+                and not (issubclass(subclass,EdFiCompositePipecleanTestBase) and os.environ["PERF_DISABLE_COMPOSITES"].lower() == "true") #skip composites based on the configuration
             ):
-                EdFiPipecleanTaskSequence.tasks.append(subclass)
+               EdFiPipecleanTaskSequence.tasks.append(subclass)
 
-        # Add composite pipeclean tests
-        if os.environ["PERF_DISABLE_COMPOSITES"].lower() != "true":
-            for subclass in EdFiCompositePipecleanTestBase.__subclasses__():
-                EdFiPipecleanTaskSequence.tasks.append(subclass)
-        else:
+        if os.environ["PERF_DISABLE_COMPOSITES"].lower() == "true":
             logger.info("Composites tests have been disabled")
-
-        # Add descriptor pipeclean tests
-        for descriptorSubclass in DescriptorPipecleanTestBase.__subclasses__():
-            if not descriptorSubclass.__subclasses__() and not descriptorSubclass.skip_all_scenarios():
-                EdFiPipecleanTaskSequence.tasks.append(descriptorSubclass)
-
-        # Add dimension pipeclean tests (if > 3 must be improved)
-        if get_model_version(str(PipeCleanTestUser.host)) > 3:
-            for dimensionSubclass in DimensionPipecleanTestBase.__subclasses__():
-                if not dimensionSubclass.__subclasses__() and not dimensionSubclass.skip_all_scenarios():
-                    EdFiPipecleanTaskSequence.tasks.append(dimensionSubclass)
 
         # If a list of tests were given, filter out the rest
         if PipeCleanTestUser.test_list:
