@@ -73,7 +73,7 @@ class PipeCleanTestUser(HttpUser):
                 and not subclass.skip_all_scenarios()  # allows overrides to skip endpoints defined in base class
                 and not (issubclass(subclass, EdFiCompositePipecleanTestBase) and os.environ["PERF_DISABLE_COMPOSITES"].lower() == "true")  # skip composites based on the configuration
             ):
-               EdFiPipecleanTaskSequence.tasks.append(subclass)
+                EdFiPipecleanTaskSequence.tasks.append(subclass)
 
         if os.environ["PERF_DISABLE_COMPOSITES"].lower() == "true":
             logger.info("Composites tests have been disabled")
