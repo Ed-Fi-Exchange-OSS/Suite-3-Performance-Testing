@@ -18,12 +18,6 @@ from locust import HttpUser
 from edfi_performance_test.tasks.pipeclean.composite import (
     EdFiCompositePipecleanTestBase,
 )
-from edfi_performance_test.tasks.pipeclean.descriptors import (
-    DescriptorPipecleanTestBase,
-)
-from edfi_performance_test.tasks.pipeclean.v4.dimensions import (
-    DimensionPipecleanTestBase,
-)
 from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
     EdFiPipecleanTestBase,
     EdFiPipecleanTaskSequence,
@@ -77,9 +71,9 @@ class PipeCleanTestUser(HttpUser):
             if (
                 not subclass.__subclasses__()  # include only top most subclass
                 and not subclass.skip_all_scenarios()  # allows overrides to skip endpoints defined in base class
-                and not (issubclass(subclass,EdFiCompositePipecleanTestBase) and os.environ["PERF_DISABLE_COMPOSITES"].lower() == "true") #skip composites based on the configuration
+                and not (issubclass(subclass, EdFiCompositePipecleanTestBase) and os.environ["PERF_DISABLE_COMPOSITES"].lower() == "true")  # skip composites based on the configuration
             ):
-               EdFiPipecleanTaskSequence.tasks.append(subclass)
+                EdFiPipecleanTaskSequence.tasks.append(subclass)
 
         if os.environ["PERF_DISABLE_COMPOSITES"].lower() == "true":
             logger.info("Composites tests have been disabled")

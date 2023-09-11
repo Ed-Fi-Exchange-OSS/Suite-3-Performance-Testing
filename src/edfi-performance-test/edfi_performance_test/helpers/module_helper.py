@@ -17,6 +17,7 @@ def get_dir_modules(path: str, namespace_prefix: str) -> List[str]:
     ]
     return task_list
 
+
 def get_inheritors(classType) -> List:
     subclasses = []
     work = [classType]
