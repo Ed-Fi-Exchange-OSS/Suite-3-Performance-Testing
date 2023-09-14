@@ -18,7 +18,6 @@ class DescriptorPipecleanTestBase(EdFiPipecleanTestBase):
 
         self.update_attribute_name = "codeValue"
         self.update_attribute_value = random_chars(15)
-
         self.namespace = f"{descriptor[0].upper()}{descriptor[1:]}"
 
         self._api_client.factory.namespace = f"uri://ed-fi.org/{descriptor.title()}Descriptor"
@@ -32,6 +31,9 @@ class DescriptorPipecleanTestBase(EdFiPipecleanTestBase):
         )
 
         return import_from_dotted_path(class_path)
+
+    def _touch_put_endpoint(self, resource_id, default_attributes):
+        pass
 
 
 class AbsenceEventCategoryDescriptorPipecleanTest(DescriptorPipecleanTestBase):

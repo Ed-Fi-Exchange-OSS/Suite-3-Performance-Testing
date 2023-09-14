@@ -9,5 +9,5 @@ from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
 
 
 class DescriptorMappingPipecleanTest(EdFiPipecleanTestBase):
-    update_attribute_name = "Value"
+    update_attribute_name = "value"
     update_attribute_value = "Life and Physical Sciences I"

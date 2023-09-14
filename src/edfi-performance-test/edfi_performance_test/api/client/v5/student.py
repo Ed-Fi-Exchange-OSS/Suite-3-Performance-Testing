@@ -7,6 +7,8 @@ from typing import Dict
 
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 from edfi_performance_test.api.client.v5.contact import ContactClient
+from edfi_performance_test.api.client.school import SchoolClient
+from edfi_performance_test.api.client.student import StudentClient
 
 
 class StudentContactAssociationClient(EdFiAPIClient):
@@ -53,3 +55,22 @@ class StudentProgramEvaluationClient(EdFiAPIClient):
 
 class StudentSpecialEducationProgramEligibilityAssociationClient(EdFiAPIClient):
     endpoint = "studentSpecialEducationProgramEligibilityAssociations"
+
+    dependencies: Dict = {StudentClient: {}}
+
+    def create_with_dependencies(self, **kwargs):
+        school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
+
+        # Create enrolled student
+        student_reference = self.student_client.create_with_dependencies(
+            schoolId=school_id
+        )
+
+        # Create student program association
+        return self.create_using_dependencies(
+            student_reference,
+            studentReference__studentUniqueId=student_reference["attributes"][
+                "studentUniqueId"
+            ],
+            **kwargs
+        )
