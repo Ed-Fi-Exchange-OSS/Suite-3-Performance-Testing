@@ -50,7 +50,7 @@ class EducationServiceCenterPipecleanTest(EdFiPipecleanTestBase):
 
 
 class FeederSchoolAssociationPipecleanTest(EdFiPipecleanTestBase):
-    update_attribute_name = "beginDate"
+    update_attribute_name = "endDate"
     update_attribute_value = formatted_date(7, 4)
 
 

@@ -78,8 +78,8 @@ class StudentSectionAttendanceEventPipecleanTest(EdFiPipecleanTestBase):
 
 
 class StudentAcademicRecordPipecleanTest(EdFiPipecleanTestBase):
-    update_attribute_name = "termDescriptor"
-    update_attribute_value = build_descriptor("Term", "Spring Semester")
+    update_attribute_name = "cumulativeEarnedCredits"
+    update_attribute_value = 85
 
 
 class StudentCompetencyObjectivePipecleanTest(EdFiPipecleanTestBase):
