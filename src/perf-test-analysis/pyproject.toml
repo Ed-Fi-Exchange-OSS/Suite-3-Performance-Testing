@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "perf-test-analyis"
+name = "perf-test-analysis"
 version = "0.1.0"
 description = "Analysis tools for Ed-Fi performance testing kits"
 authors = ["Ed-Fi Alliance, llc and contributors"]
