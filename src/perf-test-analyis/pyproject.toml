@@ -5,7 +5,7 @@ description = "Analysis tools for Ed-Fi performance testing kits"
 authors = ["Ed-Fi Alliance, llc and contributors"]
 license = "Apache-2.0"
 readme = "README.md"
-packages = [{include = "perf_test_analyis"}]
+packages = [{include = "edfi_perf_test_analysis"}]
 
 [tool.poetry.dependencies]
 python = "^3.9"
