@@ -164,6 +164,11 @@ class LearningStandardFactory(APIFactory):
             ),
         ]
     )
+    contentStandard = factory.Dict(
+        dict(
+            title="Content Standard Demo",
+        )
+    )
 
 
 class ObjectiveAssessmentFactory(APIFactory):
