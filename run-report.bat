@@ -1,6 +1,6 @@
 @echo off
 
-cd .\src\perf-test-analyis
+cd .\src\perf-test-analysis
 
 IF NOT EXIST "%1 Test Analysis.ipynb" GOTO end
 
