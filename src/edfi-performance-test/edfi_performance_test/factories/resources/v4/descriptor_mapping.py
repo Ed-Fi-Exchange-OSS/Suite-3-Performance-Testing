@@ -11,4 +11,4 @@ class DescriptorMappingFactory(APIFactory):
     mappedNamespace = "uri://ed-fi.org/AcademicSubjectDescriptor"
     mappedValue = "Advanced Algebra"
     namespace = "uri://ed-fi.org/AcademicSubjectDescriptor"
-    value = RandomSuffixAttribute("Algebra II", suffix_length=10)
+    value = RandomSuffixAttribute("Algebra II", suffix_length=5)
