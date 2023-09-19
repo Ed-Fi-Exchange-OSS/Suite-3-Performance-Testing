@@ -11,4 +11,4 @@ from edfi_performance_test.tasks.volume.ed_fi_volume_test_base import EdFiVolume
 class DescriptorMappingVolumeTest(EdFiVolumeTestBase):
     @task
     def run_descriptor_mapping_scenarios(self):
-        self.run_scenario("Value", "Life and Physical Sciences")
+        self.run_scenario("Value", "Life and Physical Sciences I")

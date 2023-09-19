@@ -4,10 +4,11 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 from edfi_performance_test.factories.resources.api_factory import APIFactory
+from edfi_performance_test.factories.utils import RandomSuffixAttribute
 
 
 class DescriptorMappingFactory(APIFactory):
     mappedNamespace = "uri://ed-fi.org/AcademicSubjectDescriptor"
     mappedValue = "Advanced Algebra"
     namespace = "uri://ed-fi.org/AcademicSubjectDescriptor"
-    value = "Algebra II"
+    value = RandomSuffixAttribute("Algebra II", suffix_length=10)
