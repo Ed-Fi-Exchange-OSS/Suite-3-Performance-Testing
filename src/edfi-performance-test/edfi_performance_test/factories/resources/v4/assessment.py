@@ -13,7 +13,7 @@ from edfi_performance_test.api.client.student import StudentClient
 
 class StudentAssessmentEducationOrganizationAssociationFactory(APIFactory):
     educationOrganizationAssociationTypeDescriptor = build_descriptor(
-        "educationOrganizationAssociationType", "Administration"
+        "EducationOrganizationAssociationType", "Administration"
     )
     educationOrganizationReference = factory.Dict(
         dict(educationOrganizationId=None)

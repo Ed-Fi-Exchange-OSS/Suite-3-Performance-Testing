@@ -3,7 +3,6 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-from edfi_performance_test.api.client.school import SchoolClient
 from edfi_performance_test.factories.descriptors.utils import build_descriptor
 from edfi_performance_test.factories.utils import formatted_date
 from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
@@ -36,11 +35,8 @@ class EducationOrganizationNetworkAssociationPipecleanTest(EdFiPipecleanTestBase
 
 
 class EducationOrganizationPeerAssociationPipecleanTest(EdFiPipecleanTestBase):
+    # all endpoints fields are required - just test PUT path works
     def _touch_put_endpoint(self, resource_id, default_attributes):
-        # This resource has no non-FK data attributes, so we'll update one of those
-        default_attributes["educationOrganizationReference"][
-            "educationOrganizationId"
-        ] = SchoolClient.shared_elementary_school_id()
         self.update(resource_id, **default_attributes)
 
 

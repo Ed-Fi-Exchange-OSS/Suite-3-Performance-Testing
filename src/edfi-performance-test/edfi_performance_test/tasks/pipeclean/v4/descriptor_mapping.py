@@ -9,5 +9,6 @@ from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
 
 
 class DescriptorMappingPipecleanTest(EdFiPipecleanTestBase):
-    update_attribute_name = "value"
-    update_attribute_value = "Life and Physical Sciences I"
+    # all endpoints fields are required - just test PUT path works
+    def _touch_put_endpoint(self, resource_id, default_attributes):
+        self.update(resource_id, **default_attributes)

@@ -16,8 +16,6 @@ class DescriptorPipecleanTestBase(EdFiPipecleanTestBase):
     def __init__(self, descriptor: str, parent, *args, **kwargs):
         super(DescriptorPipecleanTestBase, self).__init__(parent, *args, **kwargs)
 
-        # self.update_attribute_name = "codeValue"
-        # self.update_attribute_value = random_chars(15)
         self.namespace = f"{descriptor[0].upper()}{descriptor[1:]}"
         self.descriptorName = descriptor
 
@@ -34,9 +32,10 @@ class DescriptorPipecleanTestBase(EdFiPipecleanTestBase):
         return import_from_dotted_path(class_path)
 
     def _touch_put_endpoint(self, resource_id, default_attributes):
-        testing = self.get_item(resource_id)
+        # endpoint + DescriptorId is required for PUT
+        actualData = self.get_item(resource_id)
         attName = self.descriptorName+"DescriptorId"
-        default_attributes[attName] = testing[attName]
+        default_attributes[attName] = actualData[attName]
         default_attributes["description"] = random_chars(15)
         self.update(resource_id, **default_attributes)
 
