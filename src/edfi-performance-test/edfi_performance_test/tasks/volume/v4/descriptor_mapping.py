@@ -8,7 +8,7 @@ from locust import task
 from edfi_performance_test.tasks.volume.ed_fi_volume_test_base import EdFiVolumeTestBase
 
 
-class ChartOfAccountVolumeTest(EdFiVolumeTestBase):
+class DescriptorMappingVolumeTest(EdFiVolumeTestBase):
     @task
-    def run_grade_scenarios(self):
-        self.run_scenario("accountName", "Test Char of Account II")
+    def run_descriptor_mapping_scenarios(self):
+        self.run_scenario("Value", "Life and Physical Sciences I")

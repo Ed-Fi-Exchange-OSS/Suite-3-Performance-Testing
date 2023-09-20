@@ -16,3 +16,15 @@ def get_dir_modules(path: str, namespace_prefix: str) -> List[str]:
         )
     ]
     return task_list
+
+
+def get_inheritors(classType) -> List:
+    subclasses = []
+    work = [classType]
+    while work:
+        parent = work.pop()
+        for child in parent.__subclasses__():
+            if child not in subclasses:
+                subclasses.append(child)
+                work.append(child)
+    return subclasses

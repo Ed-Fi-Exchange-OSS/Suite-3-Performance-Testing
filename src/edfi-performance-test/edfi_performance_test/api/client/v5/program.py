@@ -6,28 +6,17 @@
 from typing import Dict
 
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
-from edfi_performance_test.api.client.v5.contact import ContactClient
 
 
-class StudentContactAssociationClient(EdFiAPIClient):
-    endpoint = "studentContactAssociations"
-
-    def create_with_dependencies(self, **kwargs):
-        # Create contact
-        contact_unique_id = kwargs.pop("contactUniqueId", ContactClient.shared_contact_id())
-
-        # Create contact - student association
-        return self.create_using_dependencies(
-            contactReference__contactUniqueId=contact_unique_id,
-            **kwargs
-        )
+class ProgramEvaluationClient(EdFiAPIClient):
+    endpoint = "programEvaluations"
 
 
-class StudentProgramEvaluationClient(EdFiAPIClient):
-    endpoint = "studentProgramEvaluations"
+class ProgramEvaluationElementClient(EdFiAPIClient):
+    endpoint = "programEvaluationElements"
 
     dependencies: Dict = {
-        "edfi_performance_test.api.client.v5.program.ProgramEvaluationClient": {},
+        "edfi_performance_test.api.client.v5.program.ProgramEvaluationClient": {}
     }
 
     def create_with_dependencies(self, **kwargs):
@@ -51,5 +40,29 @@ class StudentProgramEvaluationClient(EdFiAPIClient):
         )
 
 
-class StudentSpecialEducationProgramEligibilityAssociationClient(EdFiAPIClient):
-    endpoint = "studentSpecialEducationProgramEligibilityAssociations"
+class ProgramEvaluationObjetiveClient(EdFiAPIClient):
+    endpoint = "programEvaluationObjectives"
+
+    dependencies: Dict = {
+        "edfi_performance_test.api.client.v5.program.ProgramEvaluationClient": {}
+    }
+
+    def create_with_dependencies(self, **kwargs):
+        prog_eval_ref = self.program_evaluation_client.create_with_dependencies()
+
+        return self.create_using_dependencies(
+            prog_eval_ref,
+            programEvaluationReference__programEducationOrganizationId=prog_eval_ref[
+                "attributes"]["programReference"]["educationOrganizationId"],
+            programEvaluationReference__programEvaluationPeriodDescriptor=prog_eval_ref[
+                "attributes"]["programEvaluationPeriodDescriptor"],
+            programEvaluationReference__programEvaluationTitle=prog_eval_ref[
+                "attributes"]["programEvaluationTitle"],
+            programEvaluationReference__programEvaluationTypeDescriptor=prog_eval_ref[
+                "attributes"]["programEvaluationTypeDescriptor"],
+            programEvaluationReference__programName=prog_eval_ref[
+                "attributes"]["programReference"]["programName"],
+            programEvaluationReference__programTypeDescriptor=prog_eval_ref[
+                "attributes"]["programReference"]["programTypeDescriptor"],
+            **kwargs
+        )

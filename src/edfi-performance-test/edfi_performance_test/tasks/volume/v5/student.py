@@ -6,10 +6,17 @@
 
 from edfi_performance_test.tasks.volume.student import (
     StudentParentAssociationVolumeTest,
+    StudentDisciplineIncidentAssociationVolumeTest,
 )
 
 
 class SkipStudentParentAssociationVolumeTest(StudentParentAssociationVolumeTest):
+    @classmethod
+    def skip_all_scenarios(cls):
+        return True
+
+
+class SkipStudentDisciplineIncidentAssociationVolumeTest(StudentDisciplineIncidentAssociationVolumeTest):
     @classmethod
     def skip_all_scenarios(cls):
         return True
