@@ -5,6 +5,7 @@
 import asyncio
 import sys
 import logging
+import urllib.request
 
 from dotenv import load_dotenv
 from errorhandler import ErrorHandler
@@ -13,6 +14,9 @@ from edfi_performance_test.helpers.argparser import parse_main_arguments
 from edfi_performance_test.helpers.main_arguments import MainArguments
 from edfi_performance_test.helpers.log_level import LogLevel
 from edfi_performance_test.performance_tester import run
+
+
+logger = logging.getLogger(__name__)
 
 
 def _redefine_debug_as_verbose(configuration: MainArguments, logger: str) -> None:
@@ -48,11 +52,30 @@ def _configure_logging(configuration: MainArguments) -> None:
     _redefine_debug_as_verbose(configuration, "urllib3.connectionpool")
 
 
+def _url_reachable(url):
+    try:
+        urllib.request.urlopen(url)
+    except urllib.error.HTTPError as e:
+        # Return code error (e.g. 404, 501, ...)
+        logger.fatal('HTTPError: {}'.format(e.code))
+        return False
+    except urllib.error.URLError as e:
+        # Not an HTTP-specific error (e.g. connection refused)
+        logger.fatal('URLError: {}'.format(e.reason))
+        return False
+    else:
+        return True
+
+
 async def main() -> None:
 
     load_dotenv()
     configuration = parse_main_arguments()
     _configure_logging(configuration)
+
+    # Validate the base url is correct
+    if not (_url_reachable(configuration.baseUrl)):
+        sys.exit(1)
 
     # Important that this comes _after_ the logging configuration
     error_tracker = ErrorHandler()
@@ -60,9 +83,8 @@ async def main() -> None:
     await run(configuration)
 
     if error_tracker.fired:
-        print(
-            "A fatal error occurred, please review the log output for more information.",
-            file=sys.stderr,
+        logger.fatal(
+            "A fatal error occurred, please review the log output for more information."
         )
         sys.exit(1)
     sys.exit(0)

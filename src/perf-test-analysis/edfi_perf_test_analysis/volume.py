@@ -64,7 +64,7 @@ def _display_server_counters(results_dir: str, test_type: str, server: str) -> N
 
 
 def run_analysis() -> Tuple[str, pd.DataFrame]:
-    results_dir = get_result_directory() [0]
+    results_dir = get_result_directory()[0]
     if results_dir == "":
         results_dir = select_directory()
     test_type = "volume"
@@ -83,7 +83,7 @@ def run_analysis() -> Tuple[str, pd.DataFrame]:
 
 def run_comparison(left_dir: str, df_left: pd.DataFrame) -> None:
 
-    right_dir = get_result_directory() [1]
+    right_dir = get_result_directory()[1]
     if right_dir == "":
         right_dir = select_directory()
 
