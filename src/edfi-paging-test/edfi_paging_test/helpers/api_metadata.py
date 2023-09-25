@@ -8,6 +8,8 @@ import requests
 import urllib3
 from functools import cache
 from typing import Any, List, Dict
+from urllib.request import urlopen
+from urllib.error import HTTPError, URLError
 
 # Supres insecure request warnings from the console
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -137,3 +139,30 @@ def normalize_resource_paths(resource_paths: List[str]) -> List[str]:
             resource_paths,
         )
     )
+
+
+def valid_url(api_base_url: str) -> str:
+    """
+    Validate the URL accessibility.
+
+    Parameters:
+        api_base_url: String
+
+    Returns:
+        Boolean:
+            True: when accessible.
+            False: when an error occurs.
+    """
+    error = ""
+    try:
+        urlopen(api_base_url)
+    except HTTPError as e:
+        # Return code error (e.g. 404, 501, ...)
+        error = f'HTTPError: {e.code}'
+    except URLError as e:
+        # Not an HTTP-specific error (e.g. connection refused)
+        error = f'URLError: {e.reason}'
+    except TimeoutError:
+        error = 'Request time out'
+
+    return error

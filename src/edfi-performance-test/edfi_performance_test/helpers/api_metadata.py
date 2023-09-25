@@ -4,8 +4,8 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 import json
-import urllib.request
-
+from urllib.request import urlopen
+from urllib.error import HTTPError, URLError
 
 DEFAULT_DATA_STANDARD_VERSION = 3
 
@@ -20,7 +20,7 @@ def get_model_version(baseUrl: str = "") -> int:
         Version: String
     """
 
-    with urllib.request.urlopen(baseUrl) as url:
+    with urlopen(baseUrl) as url:
         data = json.load(url)
 
         for info in data['dataModels']:
@@ -31,3 +31,30 @@ def get_model_version(baseUrl: str = "") -> int:
         version = int(DEFAULT_DATA_STANDARD_VERSION)
 
     return version
+
+
+def valid_url(api_base_url: str) -> str:
+    """
+    Validate the URL accessibility.
+
+    Parameters:
+        api_base_url: String
+
+    Returns:
+        Boolean:
+            True: when accessible.
+            False: when an error occurs.
+    """
+    error = ""
+    try:
+        urlopen(api_base_url)
+    except HTTPError as e:
+        # Return code error (e.g. 404, 501, ...)
+        error = f'HTTPError: {e.code}'
+    except URLError as e:
+        # Not an HTTP-specific error (e.g. connection refused)
+        error = f'URLError: {e.reason}'
+    except TimeoutError:
+        error = 'Request time out'
+
+    return error

@@ -6,7 +6,6 @@
 import asyncio
 import sys
 import logging
-import urllib.request
 
 from dotenv import load_dotenv
 from errorhandler import ErrorHandler
@@ -49,29 +48,10 @@ def _configure_logging(configuration: MainArguments) -> None:
     _redefine_debug_as_verbose(configuration, "urllib3.connectionpool")
 
 
-def _url_reachable(url):
-    try:
-        urllib.request.urlopen(url)
-    except urllib.error.HTTPError as e:
-        # Return code error (e.g. 404, 501, ...)
-        logger.fatal('HTTPError: {}'.format(e.code))
-        return False
-    except urllib.error.URLError as e:
-        # Not an HTTP-specific error (e.g. connection refused)
-        logger.fatal('URLError: {}'.format(e.reason))
-        return False
-    else:
-        return True
-
-
 async def main() -> None:
     load_dotenv()
     configuration = parse_main_arguments()
     _configure_logging(configuration)
-
-    # Validate the base url is correct
-    if not (_url_reachable(configuration.baseUrl)):
-        sys.exit(1)
 
     # Important that this comes _after_ the logging configuration
     error_tracker = ErrorHandler()

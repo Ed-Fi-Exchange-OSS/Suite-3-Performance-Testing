@@ -23,6 +23,7 @@ from edfi_performance_test.tasks.change_query.change_query_tests import (
     ChangeQueryTestUser,
 )
 from edfi_performance_test.helpers.test_type import TestType
+from edfi_performance_test.helpers.api_metadata import valid_url
 
 
 logger = logging.getLogger(__name__)
@@ -121,6 +122,11 @@ async def run(args: MainArguments) -> None:
     try:
         logger.info("Starting performance test...")
         start = time.time()
+
+        # Validate the base url is correct
+        error_url = valid_url(args.baseUrl)
+        if error_url:
+            raise RuntimeError(error_url)
 
         set_config_values(args)
 
