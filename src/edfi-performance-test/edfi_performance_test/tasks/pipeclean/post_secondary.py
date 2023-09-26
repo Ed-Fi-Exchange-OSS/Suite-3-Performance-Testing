@@ -6,6 +6,7 @@
 from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
     EdFiPipecleanTestBase,
 )
+from edfi_performance_test.api.client.post_secondary import PostSecondaryInstitutionClient
 
 
 class PostSecondaryInstitutionPipecleanTest(EdFiPipecleanTestBase):
@@ -16,4 +17,7 @@ class PostSecondaryInstitutionPipecleanTest(EdFiPipecleanTestBase):
 class PostSecondaryEventPipecleanTest(EdFiPipecleanTestBase):
     # all endpoints fields are required - just test PUT path works
     def _touch_put_endpoint(self, resource_id, default_attributes):
+        default_attributes["postSecondaryInstitutionReference"][
+            "postSecondaryInstitutionId"
+        ] = PostSecondaryInstitutionClient.shared_post_secondary_institute_id()
         self.update(resource_id, **default_attributes)

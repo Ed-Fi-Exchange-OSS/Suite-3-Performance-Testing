@@ -5,7 +5,6 @@
 
 from edfi_performance_test.factories.utils import (
     random_chars,
-    RandomSuffixAttribute,
 )
 from edfi_performance_test.factories.resources.api_factory import APIFactory
 
@@ -13,6 +12,6 @@ from edfi_performance_test.factories.resources.api_factory import APIFactory
 class DescriptorFactory(APIFactory):
     _newDescriptor = random_chars(15)
     codeValue = _newDescriptor
-    description = RandomSuffixAttribute(_newDescriptor, suffix_length=5)
+    description = _newDescriptor
     shortDescription = _newDescriptor
     namespace = "uri://ed-fi.org/Descriptor"
