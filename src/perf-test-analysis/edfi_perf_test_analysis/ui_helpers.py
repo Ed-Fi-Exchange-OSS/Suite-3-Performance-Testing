@@ -10,8 +10,8 @@ from tkinter import Tk, filedialog
 from IPython.display import display, Markdown, HTML
 import pandas as pd
 import os
-import glob
 from typing import Tuple
+
 
 def markdown(message: str) -> None:
     display(Markdown(message))
@@ -80,7 +80,7 @@ def get_result_directory() -> Tuple[str, str]:
 
     result_dir_root = path.abspath('./notebook_input.txt')
     if not path.exists(result_dir_root):
-         return ("","")
+        return ("", "")
 
     with open(result_dir_root) as f:
         result_root_dir = f.read().rstrip('\n')
@@ -98,7 +98,7 @@ def get_result_directory() -> Tuple[str, str]:
         result_file = csv_files[0]
 
         index = -2
-        #find compare_dir with same type of test results as in the result_dir
+        # find compare_dir with same type of test results as in the result_dir
         while not os.path.exists(os.path.join(time_sorted_list[index], result_file)):
             index = index - 1
         compare_dir = time_sorted_list[index]

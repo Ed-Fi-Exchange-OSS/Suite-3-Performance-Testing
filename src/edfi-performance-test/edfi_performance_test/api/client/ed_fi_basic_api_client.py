@@ -132,9 +132,10 @@ class EdFiBasicAPIClient:
     @staticmethod
     def is_not_expected_result(response, expected_responses):
         if response.status_code not in expected_responses:
-            print(
+            logger.error(
                 f"{response.request.method} {response.request.url} - RESPONSE CODE: {response.status_code} : {response.text}"
             )
+
             return True
         return False
 

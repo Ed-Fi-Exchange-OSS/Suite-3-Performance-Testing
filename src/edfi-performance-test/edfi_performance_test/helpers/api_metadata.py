@@ -4,8 +4,7 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 import json
-import urllib.request
-
+from urllib.request import urlopen
 
 DEFAULT_DATA_STANDARD_VERSION = 3
 
@@ -20,7 +19,7 @@ def get_model_version(baseUrl: str = "") -> int:
         Version: String
     """
 
-    with urllib.request.urlopen(baseUrl) as url:
+    with urlopen(baseUrl) as url:
         data = json.load(url)
 
         for info in data['dataModels']:
