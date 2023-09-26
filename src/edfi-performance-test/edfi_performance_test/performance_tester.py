@@ -124,8 +124,8 @@ async def run(args: MainArguments) -> None:
         start = time.time()
 
         # Validate the base url is correct
-        error_url = valid_url(args.baseUrl)
-        if error_url:
+        valid_baseUrl, error_url = valid_url(args.baseUrl)
+        if not valid_baseUrl:
             raise RuntimeError(error_url)
 
         set_config_values(args)

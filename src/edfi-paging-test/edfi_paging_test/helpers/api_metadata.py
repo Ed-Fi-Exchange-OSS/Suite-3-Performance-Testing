@@ -141,7 +141,7 @@ def normalize_resource_paths(resource_paths: List[str]) -> List[str]:
     )
 
 
-def valid_url(api_base_url: str) -> str:
+def valid_url(api_base_url: str):
     """
     Validate the URL accessibility.
 
@@ -152,17 +152,17 @@ def valid_url(api_base_url: str) -> str:
         Boolean:
             True: when accessible.
             False: when an error occurs.
+        String: Error Text
     """
-    error = ""
+
     try:
         urlopen(api_base_url)
+        return True, ""
     except HTTPError as e:
         # Return code error (e.g. 404, 501, ...)
-        error = f'HTTPError: {e.code}'
+        return False, f'HTTPError: {e.code}'
     except URLError as e:
         # Not an HTTP-specific error (e.g. connection refused)
-        error = f'URLError: {e.reason}'
+        return False, f'URLError: {e.reason}'
     except TimeoutError:
-        error = 'Request time out'
-
-    return error
+        return False, 'Request time out'
