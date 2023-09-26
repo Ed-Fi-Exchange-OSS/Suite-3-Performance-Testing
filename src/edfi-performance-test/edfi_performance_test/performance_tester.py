@@ -23,7 +23,6 @@ from edfi_performance_test.tasks.change_query.change_query_tests import (
     ChangeQueryTestUser,
 )
 from edfi_performance_test.helpers.test_type import TestType
-# from edfi_performance_test.helpers.api_metadata import valid_url
 
 
 logger = logging.getLogger(__name__)
