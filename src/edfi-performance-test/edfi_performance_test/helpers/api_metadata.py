@@ -5,7 +5,6 @@
 
 import json
 from urllib.request import urlopen
-from urllib.error import HTTPError, URLError
 
 DEFAULT_DATA_STANDARD_VERSION = 3
 
@@ -31,30 +30,3 @@ def get_model_version(baseUrl: str = "") -> int:
         version = int(DEFAULT_DATA_STANDARD_VERSION)
 
     return version
-
-
-def valid_url(api_base_url: str):
-    """
-    Validate the URL accessibility.
-
-    Parameters:
-        api_base_url: String
-
-    Returns:
-        Boolean:
-            True: when accessible.
-            False: when an error occurs.
-        String: Error Text
-    """
-
-    try:
-        urlopen(api_base_url)
-        return True, ""
-    except HTTPError as e:
-        # Return code error (e.g. 404, 501, ...)
-        return False, f'HTTPError: {e.code}'
-    except URLError as e:
-        # Not an HTTP-specific error (e.g. connection refused)
-        return False, f'URLError: {e.reason}'
-    except TimeoutError:
-        return False, 'Request time out'

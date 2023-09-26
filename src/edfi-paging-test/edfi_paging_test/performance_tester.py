@@ -18,7 +18,6 @@ from edfi_paging_test.helpers.output_format import OutputFormat
 from edfi_paging_test.helpers.api_metadata import (
     get_resource_paths,
     normalize_resource_paths,
-    valid_url
 )
 from edfi_paging_test.reporter.summary import Summary
 
@@ -68,11 +67,6 @@ async def run(args: MainArguments) -> None:
     try:
         logger.info("Starting paging volume test...")
         start = time.time()
-
-        # Validate the base url is correct
-        valid_baseUrl, error_url = valid_url(args.baseUrl)
-        if not valid_baseUrl:
-            raise RuntimeError(error_url)
 
         normalized_resources: List[str] = normalize_resource_paths(
             get_resource_paths(args.baseUrl, not args.ignoreCertificateErrors)
