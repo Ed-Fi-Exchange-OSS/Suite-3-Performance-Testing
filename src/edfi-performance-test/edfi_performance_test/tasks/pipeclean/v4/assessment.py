@@ -6,12 +6,12 @@
 from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
     EdFiPipecleanTestBase,
 )
-from edfi_performance_test.api.client.school import SchoolClient
+from edfi_performance_test.factories.utils import current_year
 
 
 class StudentAssessmentEducationOrganizationAssociationPipecleanTest(EdFiPipecleanTestBase):
     def _touch_put_endpoint(self, resource_id, default_attributes):
-        default_attributes["educationOrganizationReference"][
-            "educationOrganizationId"
-        ] = SchoolClient.shared_elementary_school_id()
+        default_attributes["schoolYearTypeReference"][
+            "schoolYear"
+        ] = current_year()
         self.update(resource_id, **default_attributes)

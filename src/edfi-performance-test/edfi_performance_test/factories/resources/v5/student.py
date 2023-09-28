@@ -11,7 +11,7 @@ from edfi_performance_test.factories.utils import (
     RandomDateAttribute
 )
 from edfi_performance_test.api.client.student import StudentClient
-from edfi_performance_test.api.client.school import SchoolClient
+from edfi_performance_test.api.client.education import LocalEducationAgencyClient
 from edfi_performance_test.api.client.program import ProgramClient
 
 
@@ -46,11 +46,11 @@ class StudentProgramEvaluationFactory(APIFactory):
 class StudentSpecialEducationProgramEligibilityAssociationFactory(APIFactory):
     consentToEvaluationReceivedDate = RandomDateAttribute()
     educationOrganizationReference = factory.Dict(
-        dict(educationOrganizationId=SchoolClient.shared_elementary_school_id())
+        dict(educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id())
     )
     programReference = factory.Dict(
         dict(
-            educationOrganizationId=SchoolClient.shared_elementary_school_id(),
+            educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
             programName=ProgramClient.shared_program_name(),
             programTypeDescriptor=build_descriptor(
                 "ProgramType", ProgramClient.shared_program_name()
@@ -58,7 +58,7 @@ class StudentSpecialEducationProgramEligibilityAssociationFactory(APIFactory):
         )
     )
     studentReference = factory.Dict(
-        dict(studentUniqueId=StudentClient.shared_student_id())
+        dict(studentUniqueId=111111)
     )
     evaluationCompleteIndicator = False
     ideaPartDescriptor = build_descriptor("IdeaPart", "IDEA Part B")

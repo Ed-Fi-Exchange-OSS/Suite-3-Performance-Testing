@@ -4,11 +4,26 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 
+import threading
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 
 
 class PostSecondaryInstitutionClient(EdFiAPIClient):
     endpoint = "postSecondaryInstitutions"
+
+    _post_secondary_institute_id = None
+    _lock = threading.Lock()
+
+    @classmethod
+    def shared_post_secondary_institute_id(cls):
+        if cls._post_secondary_institute_id is not None:
+            return cls._post_secondary_institute_id
+        else:
+            with cls._lock:
+                if cls._post_secondary_institute_id is not None:
+                    return cls._post_secondary_institute_id
+                cls._post_secondary_institute_id = cls.create_shared_resource("postSecondaryInstitutionId")
+            return cls._post_secondary_institute_id
 
 
 class PostSecondaryEventClient(EdFiAPIClient):
