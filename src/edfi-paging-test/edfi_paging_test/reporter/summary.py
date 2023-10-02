@@ -20,8 +20,8 @@ class Summary:
     def __post_init__(self):
         if (self.run_configration):
             self.run_configration.resourceList = (self.run_configration.resourceList or ["all"])
-            self.run_configration.contentType = self.run_configration.contentType
-            self.run_configration.log_level = self.run_configration.log_level
+            self.run_configration.contentType = self.run_configration.contentType.value  # type: ignore
+            self.run_configration.log_level = self.run_configration.log_level.value  # type: ignore
 
     def get_DataFrame(self) -> DataFrame:
         """
