@@ -1,5 +1,5 @@
 import pytest
-import re
+# import re
 from pandas import DataFrame, read_csv, read_json
 from os import path
 from edfi_paging_test.reporter.summary import Summary
@@ -474,4 +474,5 @@ def describe_when_creating_summary_json() -> None:
             with open(EXPECTED_FILE) as f:
                 actual = f.read()
 
-                assert actual == re.sub('\\s+', '', CONTENTS)
+                # assert actual == re.sub('\\s+', '', CONTENTS)
+                assert actual == CONTENTS
