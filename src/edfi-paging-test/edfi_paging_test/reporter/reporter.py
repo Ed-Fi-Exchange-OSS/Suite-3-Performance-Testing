@@ -44,7 +44,7 @@ def _calculate_statistics(df: DataFrame) -> DataFrame:
                 "MeanTime": s["MeanTime"].mean(),
                 # "Unbiased" estimate of standard deviation for a sample
                 # (ddof=1, panda's default). Equivalent of Excel STDEV.S()
-                "StDeviation": s["StDeviation"].std().round(6),
+                "StDeviation": s["StDeviation"].std().round(6),  # type: ignore
                 "NumberOfErrors": s[(s["StatusCode"] >= 400)]["StatusCode"].count(),
             }
         )
