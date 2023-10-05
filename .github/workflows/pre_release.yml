@@ -15,19 +15,18 @@ on:
 
 env:
   PACKAGE_NAME: Suite_3_Performance_Test_Suite_Package_Pre-Release
-  PERFORMANCE_PACK: edfi-performance-test
-  PERFORMANCE_SRC_DIR: src/edfi-performance-test
-  PAGING_PACK: edfi-paging-test
-  PAGING_SRC_DIR: src/edfi-paging-test
-  TEST_ANALYSIS_PACK: perf-test-analysis
-  TEST_ANALYSIS_SRC_DIR: src/perf-test-analysis
   TEST_RUNNER: TestRunner.psm1 # to do: need to be part of the package
   RUN_TEST: run-tests.ps1 # to do: need to be part of the package
 
 jobs:
-  build1: # Performance
+  build:
     runs-on: ubuntu-20.04
-
+    strategy:
+        matrix:
+            package:
+                - edfi-performance-test
+                - edfi-paging-test
+                - perf-test-analysis
     steps:
       - name: Checkout code
         uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b  # v3.0.2
@@ -44,58 +43,13 @@ jobs:
       - name: Build Performance
         run: |
           # Next line keeps poetry from trying to use the runner's default Python version
-          pushd ${{ env.PERFORMANCE_SRC_DIR }} && poetry env use "3.9" && popd
-          python ./eng/build.py ci:publish ${{ env.PERFORMANCE_PACK }}
-
-
-  build2: # Paging
-    runs-on: ubuntu-20.04
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b  # v3.0.2
-
-      - name: Install Poetry
-        run: pipx install poetry
-
-      - name: Install Python 3.9
-        uses: actions/setup-python@98f2ad02fd48d057ee3b4d4f66525b231c3e52b6 # v3.1.2
-        with:
-          python-version: "3.9"
-          cache: "poetry"
-
-      - name: Build Paging
-        run: |
-          # Next line keeps poetry from trying to use the runner's default Python version
-          pushd ${{ env.PAGING_SRC_DIR }} && poetry env use "3.9" && popd
-          python ./eng/build.py ci:publish ${{ env.PAGING_PACK }}
-
-  build3: # Test analysis
-    runs-on: ubuntu-20.04
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b  # v3.0.2
-
-      - name: Install Poetry
-        run: pipx install poetry
-
-      - name: Install Python 3.9
-        uses: actions/setup-python@98f2ad02fd48d057ee3b4d4f66525b231c3e52b6 # v3.1.2
-        with:
-          python-version: "3.9"
-          cache: "poetry"
-
-      - name: Build Paging
-        run: |
-          # Next line keeps poetry from trying to use the runner's default Python version
-          pushd ${{ env.TEST_ANALYSIS_SRC_DIR }} && poetry env use "3.9" && popd
-          python ./eng/build.py ci:publish ${{ env.TEST_ANALYSIS_PACK }}
+          pushd src/ ${{ matrix.package }} && poetry env use "3.9" && popd
+          python ./eng/build.py ci:publish ${{ matrix.package }}
 
   package:
     runs-on: ubuntu-latest
 
-    needs: [build1, build2, build3]
+    needs: build
 
     steps:
       - name: Checkout code
@@ -112,4 +66,4 @@ jobs:
         uses: actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8 # v3.1.0
         with:
             name: ${{ env.PACKAGE_NAME }}
-            path: ${{ github.workspace }}/NugetPackages/*.nupkg
+            path: ${{ github.workspace }}/Suite-3-Performance-Testing/NugetPackages/*.nupkg
