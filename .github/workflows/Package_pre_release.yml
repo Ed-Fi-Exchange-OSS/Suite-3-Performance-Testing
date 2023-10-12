@@ -1,0 +1,67 @@
+# SPDX-License-Identifier: Apache-2.0
+# Licensed to the Ed-Fi Alliance under one or more agreements.
+# The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
+# See the LICENSE and NOTICES files in the project root for more information.
+
+name: Package Pre-Release
+on:
+  push:
+    paths:
+      - 'src/**'
+      - '!src/**/*.md'
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  PACKAGE_NAME: Suite_3_Performance_Test_Suite_Package_Pre-Release
+
+jobs:
+  source-code:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608  # v4.1.0
+
+      - name: Getting Code
+        run: |
+
+         mkdir -p ./package/src
+
+         cp -r ${{ github.workspace }}/src/ ./package/src/
+
+      - name: Upload Package
+        if: success()
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+        with:
+            name: ${{ env.PACKAGE_NAME }}_${{ github.run_number }}
+            path: ${{ github.workspace }}/package/src
+
+
+  aditional-files:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608  # v4.1.0
+
+      - name: Packing Other Files
+        if: success()
+        run: |
+
+         mkdir -p ./package
+
+         cp ${{ github.workspace }}/*.bat ./package/
+         cp ${{ github.workspace }}/*.psm1 ./package/
+         cp ${{ github.workspace }}/eng/deploy.ps1 ./package/
+         cp ${{ github.workspace }}/deploy.env ./package/.env
+
+      - name: Upload other files
+        if: success()
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+        with:
+            name: ${{ env.PACKAGE_NAME }}_${{ github.run_number }}
+            path: ${{ github.workspace }}/package/*.*
