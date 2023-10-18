@@ -5,7 +5,10 @@
 
 name: Start Azure VM
 on:
-  workflow_dispatch:
+  pull_request:
+    branches:
+        - main
+#  workflow_dispatch:
 
 env:
     PrincipalPassword: ${{ secrets.AZURE_SERVICE_PRINCIPAL_PASSWORD }}
