@@ -36,14 +36,24 @@ jobs:
             echo "Valid"
           fi
 
-      - name: Run Powershell Start Session
+      - name: Set env variables
         if: steps.check-value.outcome == 'success'
+        run: |
+          $env:AzureADServicePrincipalPassword = ${{ env.PrincipalPassword}}
+          $env:AzureADApplicationId = ${{env.ADApplicationId}}
+          $env:AzureTenantId = ${{env.TenantId}}
+          $env:AzureSubscriptionId = ${{ env.SubscriptionId }}
+
+        shell: pwsh
+
+      - name: Run Powershell Start Session
         working-directory: ./eng/
         run: |
 
           . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1
 
-          Start-AzureManagementSession -AzureADServicePrincipalPassword ${{ env.PrincipalPassword}} -AzureADApplicationId ${{env.ADApplicationId}} -AzureTenantId ${{env.TenantId}} -AzureSubscriptionId ${{ env.SubscriptionId }}
+          #Start-AzureManagementSession -AzureADServicePrincipalPassword ${{ env.PrincipalPassword}} -AzureADApplicationId ${{env.ADApplicationId}} -AzureTenantId ${{env.TenantId}} -AzureSubscriptionId ${{ env.SubscriptionId }}
+          Start-AzureManagementSession
           Start-AzureVmsInParallel -AzureTestVmUsername ${{env.VmUserId}} -AzureTestVmPassword ${{env.VMPassword}}
 
         shell: pwsh
