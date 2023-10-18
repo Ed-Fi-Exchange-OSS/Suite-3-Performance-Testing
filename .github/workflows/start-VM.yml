@@ -39,10 +39,12 @@ jobs:
       - name: Set env variables
         if: steps.check-value.outcome == 'success'
         run: |
-          $env:AzureADServicePrincipalPassword = ${{ env.PrincipalPassword}}
-          $env:AzureADApplicationId = ${{env.ADApplicationId}}
-          $env:AzureTenantId = ${{env.TenantId}}
-          $env:AzureSubscriptionId = ${{ env.SubscriptionId }}
+          echo "Test " >> $GITHUB_ENV
+          env:
+            AzureADServicePrincipalPassword: ${{ env.PrincipalPassword}}
+            AzureADApplicationId: ${{env.ADApplicationId}}
+            AzureTenantId: ${{env.TenantId}}
+            AzureSubscriptionId: ${{ env.SubscriptionId }}
 
         shell: pwsh
 
