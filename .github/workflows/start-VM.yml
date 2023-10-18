@@ -26,7 +26,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608  # v4.1.0
 
+      - name: Verify env values
+        run: |
+          if [ -z "${{ env.PrincipalPassword}}"]; then
+            echo "No value in Principal Password"
+            exit 1
+          fi
+
       - name: Run Powershell Start Session
+        if: success()
         working-directory: ./eng/
         run: |
 
