@@ -5,12 +5,6 @@
 
 name: Package Pre-Release-Code
 on:
-  push:
-    paths:
-      - 'src/**'
-      - '!src/**/*.md'
-    branches:
-      - main
   workflow_dispatch:
 
 env:
