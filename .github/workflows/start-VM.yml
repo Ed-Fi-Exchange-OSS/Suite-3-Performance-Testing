@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: Apache-2.0
+# Licensed to the Ed-Fi Alliance under one or more agreements.
+# The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
+# See the LICENSE and NOTICES files in the project root for more information.
+
+name: Start Azure VM
+on:
+  workflow_dispatch:
+
+env:
+    PrincipalPassword: ${{ secrets.AZURE_SERVICE_PRINCIPAL_PASSWORD }}
+    ADApplicationId: ${{ secrets.AZURE_TEST_VM_USER_NAME }}
+    TenantId: ${{ secrets.AZURE_TENANT_ID }}
+    SubscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+    VmUserId: ${{ secrets.AZURE_TEST_VM_USER_NAME }}
+    VMPassword: ${{ secrets.AZURE_TEST_VM_PASSWORD }}
+
+jobs:
+  start-vm:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608  # v4.1.0
+
+      - name: Run Powershell Start Session
+        working-directory: ./eng/
+        run: |
+
+          . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1
+
+          Start-AzureManagementSession -AzureADServicePrincipalPassword ${{ env.PrincipalPassword}} -AzureADApplicationId ${{env.ADApplicationId}} -AzureTenantId ${{env.TenantId}} -AzureSubscriptionId ${{ env.SubscriptionId }}
+          Start-AzureVmsInParallel -AzureTestVmUsername ${{env.VmUserId}} -AzureTestVmPassword ${{env.VMPassword}}
+
+        shell: pwsh
