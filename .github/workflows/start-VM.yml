@@ -26,10 +26,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608  # v4.1.0
 
-      - name: Start Session
+      - name: Start VM
         if: ${{ env.AzureADServicePrincipalPassword != '' }}
         shell: powershell
         working-directory: ./eng/
         run: |
-            .\AzureTestLab.ps1 Start-AzureManagementSession
-            .\AzureTestLab.ps1 Start-AzureVmsInParallel
+            . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1
+            Start-AzureManagementSession
+            Start-AzureVmsInParallel
