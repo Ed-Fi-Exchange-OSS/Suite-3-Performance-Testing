@@ -32,10 +32,13 @@ jobs:
         shell: powershell
         run: |
 
-          . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1
+            ./AzureTestLab.ps1 Start-AzureManagementSession
+            ./AzureTestLab.ps1 Start-AzureVmsInParallel
 
-          Start-AzureManagementSession
-          Start-AzureVmsInParallel
+#          . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1
+
+#          Start-AzureManagementSession
+#          Start-AzureVmsInParallel
 
 #          Start-AzureManagementSession -$env:AzureADServiceAzureADServicePrincipalPassword ${{ env.AzureADServicePrincipalPassword}} -$env:AzureAzureADApplicationId ${{env.AzureADApplicationId}} -$env:AzureAzureTenantId ${{env.AzureTenantId}} -$env:AzureAzureSubscriptionId ${{ env.AzureSubscriptionId }}
 #          Start-AzureVmsInParallel -AzureTestAzureTestVmUsername ${{env.VmUserId}} -AzureTestAzureTestVmPassword ${{env.AzureTestVmPassword}}
