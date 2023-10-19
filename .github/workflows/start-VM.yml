@@ -24,15 +24,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608  # v4.1.0
 
+      - name: Install AzureRM module require
+        shell: powershell
+        run: |
+            Install-Module -Name AzureRm -Force
+            Import-Module -Name AzureRm -Force
+
       - name: Start VM
         if: ${{ env.AzureADServicePrincipalPassword != '' && env.AzureADApplicationId != '' && env.AzureTenantId && env.AzureSubscriptionId != '' }}
         shell: powershell
         working-directory: ./eng/
         run: |
-
             $PSVersionTable
-
-            Write-host "Starting VM."
 
             . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1
             Start-AzureManagementSession
