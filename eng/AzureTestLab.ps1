@@ -23,14 +23,12 @@ $virtualMachines = $testRunnerServer, $databaseServer, $webServer
 #   $env:AzureADServicePrincipalPassword
 function Start-AzureManagementSession {
     Write-Host "================================================================================================"
+    Write-Host "Start Azure Management $($env:AzureADServicePrincipalPassword.Length)                        ..."
+    Write-Host "================================================================================================"
 
     $securePassword = $env:AzureADServicePrincipalPassword | ConvertTo-SecureString -AsPlainText -Force
-    Write-Host "sec:  '$securePassword' "
-    Write-Host "ADA:  '$env:AzureADApplicationId' "
+
     $credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $env:AzureADApplicationId, $securePassword
-    Write-Host "cred:  '$credential' "
-    Write-Host "sub:  '$env:AzureSubscriptionId' "
-    Write-Host "ten:  '$env:AzureTenantId' "
     Connect-AzureRmAccount -ServicePrincipal -Credential $credential -TenantId $env:AzureTenantId -SubscriptionId $env:AzureSubscriptionId
 }
 

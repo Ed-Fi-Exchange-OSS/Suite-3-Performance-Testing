@@ -15,8 +15,6 @@ env:
     AzureADApplicationId: ${{ secrets.AZURE_TEST_VM_USER_NAME }}
     AzureTenantId: ${{ secrets.AZURE_TENANT_ID }}
     AzureSubscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-    VmUserId: ${{ secrets.AZURE_TEST_VM_USER_NAME }}
-    AzureTestVmPassword: ${{ secrets.AZURE_TEST_VM_PASSWORD }}
 
 jobs:
   start-vm:
@@ -27,14 +25,10 @@ jobs:
         uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608  # v4.1.0
 
       - name: Start VM
-        if: ${{ env.AzureADServicePrincipalPassword != '' }}
+        if: ${{ env.AzureADServicePrincipalPassword != '' && env.AzureADApplicationId != '' && env.AzureTenantId && env.AzureSubscriptionId != '' }}
         shell: powershell
         working-directory: ./eng/
         run: |
-
-            # Install-Module -Force -Name AzureRM  -AllowClobber
-
-            #            Import-Module -Force -Name AzureRM
 
             $PSVersionTable
 
