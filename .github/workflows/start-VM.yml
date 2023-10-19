@@ -11,12 +11,12 @@ on:
 #  workflow_dispatch:
 
 env:
-    PrincipalPassword: ${{ secrets.AZURE_SERVICE_PRINCIPAL_PASSWORD }}
-    ADApplicationId: ${{ secrets.AZURE_TEST_VM_USER_NAME }}
-    TenantId: ${{ secrets.AZURE_TENANT_ID }}
-    SubscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+    AzureADServicePrincipalPassword: ${{ secrets.AZURE_SERVICE_PRINCIPAL_PASSWORD }}
+    AzureADApplicationId: ${{ secrets.AZURE_TEST_VM_USER_NAME }}
+    AzureTenantId: ${{ secrets.AZURE_TENANT_ID }}
+    AzureSubscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
     VmUserId: ${{ secrets.AZURE_TEST_VM_USER_NAME }}
-    VMPassword: ${{ secrets.AZURE_TEST_VM_PASSWORD }}
+    AzureTestVmPassword: ${{ secrets.AZURE_TEST_VM_PASSWORD }}
 
 jobs:
   start-vm:
@@ -26,25 +26,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608  # v4.1.0
 
-      - name: Verify env values
-        id: check-value
-        run: |
-          if [ -z "${{ env.PrincipalPassword }}" ]; then
-            echo "No value in Principal Password"
-            exit 1
-          else
-            echo "Valid"
-          fi
-
       - name: Run Powershell Start Session
-        if: steps.check-value.outcome == 'success'
+        if: ${{ env.AzureADServicePrincipalPassword != '' }}
         working-directory: ./eng/
         run: |
 
           . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1
 
-          Start-AzureManagementSession -$env:AzureADServicePrincipalPassword ${{ env.PrincipalPassword}} -$env:AzureADApplicationId ${{env.ADApplicationId}} -$env:AzureTenantId ${{env.TenantId}} -$env:AzureSubscriptionId ${{ env.SubscriptionId }}
-          # Start-AzureManagementSession
-          Start-AzureVmsInParallel -AzureTestVmUsername ${{env.VmUserId}} -AzureTestVmPassword ${{env.VMPassword}}
+          Start-AzureManagementSession
+          Start-AzureVmsInParallel
+
+#          Start-AzureManagementSession -$env:AzureADServiceAzureADServicePrincipalPassword ${{ env.AzureADServicePrincipalPassword}} -$env:AzureAzureADApplicationId ${{env.AzureADApplicationId}} -$env:AzureAzureTenantId ${{env.AzureTenantId}} -$env:AzureAzureSubscriptionId ${{ env.AzureSubscriptionId }}
+#          Start-AzureVmsInParallel -AzureTestAzureTestVmUsername ${{env.VmUserId}} -AzureTestAzureTestVmPassword ${{env.AzureTestVmPassword}}
 
         shell: pwsh
