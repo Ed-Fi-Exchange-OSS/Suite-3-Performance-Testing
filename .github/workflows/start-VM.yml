@@ -32,8 +32,12 @@ jobs:
         working-directory: ./eng/
         run: |
 
-            Install-Module -Name AzureRM -Force -AllowClobber
-            Import-Module AzureRM
+            Install-Module -Force -Scope Global -Name AzureRM
+            if (Get-IsWindows -and -not Get-InstalledModule | Where-Object -Property Name -eq "AzureRM") {
+                Import-Module -Force -Scope CurrentUser -Name AzureRM
+            }
+
+            Write-host "Starting VM."
 
             . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1
             Start-AzureManagementSession
