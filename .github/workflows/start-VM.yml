@@ -35,7 +35,6 @@ jobs:
         shell: powershell
         working-directory: ./eng/
         run: |
-            $PSVersionTable
 
             . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1
             Start-AzureManagementSession
