@@ -33,9 +33,7 @@ jobs:
         run: |
 
             Install-Module -Force -Name AzureRM  -AllowClobber
-            if (Get-IsWindows -and -not Get-InstalledModule | Where-Object -Property Name -eq "AzureRM ") {
-                Import-Module -Force -Scope CurrentUser -Name AzureRM
-            }
+            Import-Module -Force -Scope CurrentUser -Name AzureRM
 
             Write-host "Starting VM."
 
