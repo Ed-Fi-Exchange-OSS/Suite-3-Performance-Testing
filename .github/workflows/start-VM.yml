@@ -33,7 +33,7 @@ jobs:
         run: |
 
             .\AzureTestLab.ps1 Start-AzureManagementSession
-            .\AzureTestLab.ps1 Start-AzureVmsInParallel
+#            .\AzureTestLab.ps1 Start-AzureVmsInParallel
 
 #          . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1
 
