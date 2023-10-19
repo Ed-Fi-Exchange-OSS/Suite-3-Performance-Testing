@@ -28,19 +28,9 @@ jobs:
 
       - name: Run Powershell Start Session
         if: ${{ env.AzureADServicePrincipalPassword != '' }}
-        working-directory: ./eng/
+#        working-directory: ./eng/
         shell: powershell
         run: |
 
-            .\AzureTestLab.ps1 Start-AzureManagementSession
-#            .\AzureTestLab.ps1 Start-AzureVmsInParallel
-
-#          . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1
-
-#          Start-AzureManagementSession
-#          Start-AzureVmsInParallel
-
-#          Start-AzureManagementSession -$env:AzureADServiceAzureADServicePrincipalPassword ${{ env.AzureADServicePrincipalPassword}} -$env:AzureAzureADApplicationId ${{env.AzureADApplicationId}} -$env:AzureAzureTenantId ${{env.AzureTenantId}} -$env:AzureAzureSubscriptionId ${{ env.AzureSubscriptionId }}
-#          Start-AzureVmsInParallel -AzureTestAzureTestVmUsername ${{env.VmUserId}} -AzureTestAzureTestVmPassword ${{env.AzureTestVmPassword}}
-
-
+            . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1 Start-AzureManagementSession
+            . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1 Start-AzureVmsInParallel
