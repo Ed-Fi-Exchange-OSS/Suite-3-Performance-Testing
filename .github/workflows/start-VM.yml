@@ -32,7 +32,7 @@ jobs:
         working-directory: ./eng/
         run: |
 
-            Install-Module -Force -Name AzureRM  -AllowClobber
+            # Install-Module -Force -Name AzureRM  -AllowClobber
 
             #            Import-Module -Force -Name AzureRM
 
