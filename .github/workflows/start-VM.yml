@@ -27,7 +27,7 @@ jobs:
       - name: Install AzureRM module require
         shell: powershell
         run: |
-            Install-Module -Name AzureRm -Force
+            Install-Module -Name AzureRm -Force -AllowClobber
             Import-Module -Name AzureRm -Force
 
       - name: Start VM
