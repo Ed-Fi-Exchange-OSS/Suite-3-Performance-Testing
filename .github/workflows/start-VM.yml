@@ -31,6 +31,10 @@ jobs:
         shell: powershell
         working-directory: ./eng/
         run: |
+
+            Install-Module -Name AzureRM -Force -AllowClobber
+            Import-Module AzureRM
+
             . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1
             Start-AzureManagementSession
             Start-AzureVmsInParallel
