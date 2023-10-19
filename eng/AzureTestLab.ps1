@@ -23,6 +23,8 @@ $virtualMachines = $testRunnerServer, $databaseServer, $webServer
 #   $env:AzureADServicePrincipalPassword
 function Start-AzureManagementSession {
     Write-Host "================================================================================================"
+    Import-Module AzureRM
+
     $securePassword = $env:AzureADServicePrincipalPassword | ConvertTo-SecureString -AsPlainText -Force
     Write-Host "sec:  '$securePassword' "
     Write-Host "ADA:  '$env:AzureADApplicationId' "

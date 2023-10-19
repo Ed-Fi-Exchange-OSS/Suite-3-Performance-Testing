@@ -33,7 +33,10 @@ jobs:
         run: |
 
             Install-Module -Force -Name AzureRM  -AllowClobber
-            Import-Module -Force -Name AzureRM
+
+            #            Import-Module -Force -Name AzureRM
+
+            $PSVersionTable
 
             Write-host "Starting VM."
 
