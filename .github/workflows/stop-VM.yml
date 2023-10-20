@@ -5,7 +5,9 @@
 
 name: Stop Azure VM
 on:
-    workflow_dispatch:
+  pull_request:
+    branches:
+      - main
 
 env:
     AzureADServicePrincipalPassword: ${{ secrets.AZURE_SERVICE_PRINCIPAL_PASSWORD }}
