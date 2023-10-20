@@ -25,7 +25,6 @@ function Start-AzureManagementSession {
     $securePassword = $env:AzureADServicePrincipalPassword | ConvertTo-SecureString -AsPlainText -Force
 
     $credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $env:AzureADApplicationId, $securePassword
-    # Connect-AzureRmAccount -ServicePrincipal -Credential $credential -TenantId $env:AzureTenantId -SubscriptionId $env:AzureSubscriptionId
     Connect-AzAccount -ServicePrincipal -Credential $credential -Tenant $env:AzureTenantId -Subscription $env:AzureSubscriptionId
 }
 
@@ -63,7 +62,6 @@ function Stop-AzureVmsInParallel() {
 
     $jobs = @()
     foreach ($virtualMachine in $virtualMachines) {
-        #$jobs += Stop-AzureRmVM -ResourceGroupName $resourceGroup -Name $virtualMachine -Force -AsJob |
         $jobs += Stop-AzVM -ResourceGroupName $resourceGroup -Name $virtualMachine -Force -AsJob |
                  Add-Member -MemberType NoteProperty -Name VmName -Value $virtualMachine -PassThru
     }
@@ -80,7 +78,6 @@ function Start-AzureVmsInParallel() {
 
     $jobs = @()
     foreach ($virtualMachine in $virtualMachines) {
-        #$jobs += Start-AzureRmVM -ResourceGroupName $resourceGroup -Name $virtualMachine -AsJob |
         $jobs += Start-AzVM -ResourceGroupName $resourceGroup -Name $virtualMachine -AsJob |
                  Add-Member -MemberType NoteProperty -Name VmName -Value $virtualMachine -PassThru
     }
@@ -94,7 +91,6 @@ function Start-AzureVmsInParallel() {
 # Run this one time, in an Azure RM session, to create an Azure Active Directory application and service principal for automating access to performance testing resources.
 # The password will use the default expiration of 1 year.
 function Register-PerformanceTestingServicePrincipal([string]$subscriptionId, [string]$tenantId) {
-    #Set-AzureRMContext -SubscriptionId $subscriptionId -TenantId $tenantId
     Set-AzContext -Subscription $subscriptionId -Tenant $tenantId
 
     $applicationUri = "http://ODS-3-Performance-Tests"
@@ -105,12 +101,10 @@ function Register-PerformanceTestingServicePrincipal([string]$subscriptionId, [s
 
     # Create an Octopus Deploy Application in Active Directory
     Write-Output "Creating Azure Active Directory application '$applicationDisplayName'..."
-    #$application = New-AzureRmADApplication -DisplayName $applicationDisplayName -HomePage $applicationUri -IdentifierUris $applicationUri -Password $securePassword
     $application = New-AzADApplication -DisplayName $applicationDisplayName -HomePage $applicationUri -IdentifierUri $applicationUri -PasswordCredentials $securePassword
     $application | Format-Table
 
     Write-Output "Creating Azure Active Directory service principal for ApplicationId '$($application.ApplicationId)'..."
-    #$servicePrincipal = New-AzureRmADServicePrincipal -ApplicationId $application.ApplicationId
     $servicePrincipal = New-AzADServicePrincipal -ApplicationId $application.ApplicationId
     $servicePrincipal | Format-Table
 
@@ -118,7 +112,6 @@ function Register-PerformanceTestingServicePrincipal([string]$subscriptionId, [s
     Start-Sleep -Seconds 30
 
     Write-Output "Assigning the Contributor role to the service principal for resource group '$resourceGroup'..."
-    #New-AzureRmRoleAssignment -RoleDefinitionName Contributor -ServicePrincipalName $application.ApplicationId -ResourceGroupName $resourceGroup
     New-AzRoleAssignment -RoleDefinitionName Contributor ApplicationId $application.ApplicationId -ResourceGroupName $resourceGroup
 
     Write-Output "Connect to Azure using the following Application ID and the given password: $($application.ApplicationId)"
@@ -127,10 +120,8 @@ function Register-PerformanceTestingServicePrincipal([string]$subscriptionId, [s
 # Assigns a new password to the service principal set up by Register-PerformanceTestingServicePrincipal.
 # These passwords expire every year.
 function Update-PerformanceTestingServicePrincipalPassword([string]$subscriptionId, [string]$tenantId) {
-    #Set-AzureRMContext -SubscriptionId $subscriptionId -TenantId $tenantId
     Set-AzContext -Subscription $subscriptionId -Tenant $tenantId
     $securePassword = Read-Host "New password for new Azure Active Directory Application '$applicationDisplayName'" -AsSecureString
-    #New-AzureRmADAppCredential -DisplayName $applicationDisplayName -Password $securePassword
     New-AzADAppCredential -DisplayName $applicationDisplayName -PasswordCredentials $securePassword
 }
 
