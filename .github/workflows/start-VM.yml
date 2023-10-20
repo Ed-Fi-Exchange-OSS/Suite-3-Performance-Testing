@@ -38,4 +38,5 @@ jobs:
 
             . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1
             Start-AzureManagementSession
-            Start-AzureVmsInParallel
+            Start-AzureVmsInParallelTest
+            # Start-AzureVmsInParallel

@@ -87,6 +87,23 @@ function Start-AzureVmsInParallel() {
     Start-Sleep -Seconds 30
 }
 
+# As parallel background jobs, initiate the starting of several Azure
+# VMs, demanding that all jobs complete successfully.
+function Start-AzureVmsInParallelTest() {
+    Write-Host "==============================================================================="
+    Write-Host "Starting $($virtualMachines.Length) Azure VMs. This can take several minutes..."
+    Write-Host "==============================================================================="
+
+    foreach ($virtualMachine in $virtualMachines) {
+        Start-AzureRmVM -ResourceGroupName $resourceGroup -Name $virtualMachine  |
+                 Add-Member -MemberType NoteProperty -Name VmName -Value $virtualMachine -PassThru
+    }
+
+    Write-Host "Waiting 30s to allow services to start up."
+    Start-Sleep -Seconds 30
+}
+
+
 # Run this one time, in an Azure RM session, to create an Azure Active Directory application and service principal for automating access to performance testing resources.
 # The password will use the default expiration of 1 year.
 function Register-PerformanceTestingServicePrincipal([string]$subscriptionId, [string]$tenantId) {
