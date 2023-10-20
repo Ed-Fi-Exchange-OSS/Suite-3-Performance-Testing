@@ -12,6 +12,8 @@ env:
     AzureADApplicationId: ${{ vars.AZURE_SERVICE_APPLICATION_ID }}
     AzureTenantId: ${{ secrets.AZURE_TENANT_ID }}
     AzureSubscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+    AzureTestVmUsername: ${{ secrets.AZURE_TEST_VM_USER_NAME }}
+    AzureTestVmPassword: ${{ secrets.AZURE_TEST_VM_PASSWORD }}
 
 jobs:
   stop-vm:

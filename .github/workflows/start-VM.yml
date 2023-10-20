@@ -15,6 +15,8 @@ env:
     AzureADApplicationId: ${{ vars.AZURE_SERVICE_APPLICATION_ID }}
     AzureTenantId: ${{ secrets.AZURE_TENANT_ID }}
     AzureSubscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+    AzureTestVmUsername: ${{ secrets.AZURE_TEST_VM_USER_NAME }}
+    AzureTestVmPassword: ${{ secrets.AZURE_TEST_VM_PASSWORD }}
 
 jobs:
   start-vm:
@@ -29,6 +31,7 @@ jobs:
         run: |
             Install-Module -Name AzureRM -Force -AllowClobber
             Import-Module -Name AzureRM -Force
+            Disable-AzureDataCollection
 
       - name: Start VM
         if: ${{ env.AzureADServicePrincipalPassword != '' && env.AzureADApplicationId != '' && env.AzureTenantId && env.AzureSubscriptionId != '' }}
