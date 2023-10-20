@@ -27,8 +27,8 @@ jobs:
       - name: Install AzureRM module require
         shell: powershell
         run: |
-            Install-Module -Name AzureRm -Force -AllowClobber -RequiredVersion 7.1.0
-            Import-Module -Name AzureRm -Force
+            Install-Module -Name AzureRM -Force -AllowClobber
+            Import-Module -Name AzureRM -Force
 
       - name: Start VM
         if: ${{ env.AzureADServicePrincipalPassword != '' && env.AzureADApplicationId != '' && env.AzureTenantId && env.AzureSubscriptionId != '' }}
