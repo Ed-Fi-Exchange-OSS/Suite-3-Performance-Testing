@@ -12,7 +12,7 @@ on:
 
 env:
     AzureADServicePrincipalPassword: ${{ secrets.AZURE_SERVICE_PRINCIPAL_PASSWORD }}
-    AzureADApplicationId: ${{ secrets.AZURE_TEST_VM_USER_NAME }}
+    AzureADApplicationId: ${{ vars.AZURE_SERVICE_APPLICATION_ID }}
     AzureTenantId: ${{ secrets.AZURE_TENANT_ID }}
     AzureSubscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
