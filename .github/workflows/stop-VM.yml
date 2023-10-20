@@ -35,5 +35,5 @@ jobs:
         run: |
 
             . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1
-            Start-AzureManagementSession
-            Stop-AzureVmsInParallel
+            Start-AzureManagementSessionAz
+            Stop-AzureVmsInParallelAz
