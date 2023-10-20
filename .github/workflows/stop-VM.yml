@@ -5,9 +5,6 @@
 
 name: Stop Azure VM
 on:
-    pull_request:
-        branches:
-            - main
     workflow_dispatch:
 
 env:
@@ -30,8 +27,6 @@ jobs:
         shell: powershell
         run: |
             Install-Module -Name Az -Repository PSGallery -Force -AllowClobber
-#            Install-Module -Name AzureRm -Force -AllowClobber
-#            Import-Module -Name AzureRm -Force
 
       - name: Stop VM
         if: ${{ env.AzureADServicePrincipalPassword != '' && env.AzureADApplicationId != '' && env.AzureTenantId && env.AzureSubscriptionId != '' }}

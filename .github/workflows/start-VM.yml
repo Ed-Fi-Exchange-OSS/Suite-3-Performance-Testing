@@ -30,9 +30,6 @@ jobs:
         shell: powershell
         run: |
             Install-Module -Name Az -Repository PSGallery -Force -AllowClobber
-#            Install-Module -Name AzureRM -Force -AllowClobber
-#            Import-Module -Name AzureRM -Force
-#            # Disable-AzureDataCollection
 
       - name: Start VM
         if: ${{ env.AzureADServicePrincipalPassword != '' && env.AzureADApplicationId != '' && env.AzureTenantId && env.AzureSubscriptionId != '' }}
