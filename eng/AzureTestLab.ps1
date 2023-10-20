@@ -134,7 +134,7 @@ function Start-AzureVmsInParallelAz() {
 # Run this one time, in an Azure RM session, to create an Azure Active Directory application and service principal for automating access to performance testing resources.
 # The password will use the default expiration of 1 year.
 function Register-PerformanceTestingServicePrincipal([string]$subscriptionId, [string]$tenantId) {
-    Set-AzureRMContext -Subscription $subscriptionId -Tenant $tenantId
+    Set-AzureRMContext -SubscriptionId $subscriptionId -TenantId $tenantId
 
     $applicationUri = "http://ODS-3-Performance-Tests"
 
