@@ -26,9 +26,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608  # v4.1.0
 
-      - name: Install AzureRM module require
+      - name: Install Az module require
         shell: powershell
         run: |
+            Uninstall-AzureRm
             Install-Module -Name Az -Repository PSGallery -Force -AllowClobber
 #            Install-Module -Name AzureRM -Force -AllowClobber
 #            Import-Module -Name AzureRM -Force

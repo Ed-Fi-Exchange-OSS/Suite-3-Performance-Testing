@@ -5,7 +5,10 @@
 
 name: Stop Azure VM
 on:
-  workflow_dispatch:
+    pull_request:
+        branches:
+            - main
+    #  workflow_dispatch:
 
 env:
     AzureADServicePrincipalPassword: ${{ secrets.AZURE_SERVICE_PRINCIPAL_PASSWORD }}
@@ -23,11 +26,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608  # v4.1.0
 
-      - name: Install AzureRM module require
+      - name: Install Az module require
         shell: powershell
         run: |
-            Install-Module -Name AzureRm -Force -AllowClobber
-            Import-Module -Name AzureRm -Force
+            Uninstall-AzureRm
+            Install-Module -Name Az -Repository PSGallery -Force -AllowClobber
+#            Install-Module -Name AzureRm -Force -AllowClobber
+#            Import-Module -Name AzureRm -Force
 
       - name: Stop VM
         if: ${{ env.AzureADServicePrincipalPassword != '' && env.AzureADApplicationId != '' && env.AzureTenantId && env.AzureSubscriptionId != '' }}
