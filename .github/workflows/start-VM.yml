@@ -29,7 +29,6 @@ jobs:
       - name: Install Az module require
         shell: powershell
         run: |
-            Uninstall-AzureRm
             Install-Module -Name Az -Repository PSGallery -Force -AllowClobber
 #            Install-Module -Name AzureRM -Force -AllowClobber
 #            Import-Module -Name AzureRM -Force
