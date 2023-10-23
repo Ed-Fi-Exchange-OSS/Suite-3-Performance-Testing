@@ -3,13 +3,6 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-[CmdLetBinding()]
-param(
-    # Github use Az module Github.
-    [string]
-    $Origin
-)
-
 $ErrorActionPreference = "Stop"
 
 $resourceGroup = "ods-3-performance"
@@ -30,9 +23,9 @@ $virtualMachines = $testRunnerServer, $databaseServer, $webServer
 #   $env:AzureADServicePrincipalPassword
 function Start-AzureManagementSession {
     $securePassword = $env:AzureADServicePrincipalPassword | ConvertTo-SecureString -AsPlainText -Force
-    Write-Host " Testing '$Origin'."
+    Write-Host " Testing '$env:Origin'."
     $credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $env:AzureADApplicationId, $securePassword
-    if ([string]::IsNullOrWhiteSpace($Origin)){
+    if ([string]::IsNullOrWhiteSpace($env:Origin)){
         Connect-AzureRmAccount -ServicePrincipal -Credential $credential -TenantId $env:AzureTenantId -SubscriptionId $env:AzureSubscriptionId
     }else {
         # Az is not supperted by TeamCity.
@@ -105,7 +98,7 @@ function Start-AzureVmsInParallel() {
 
     $jobs = @()
     foreach ($virtualMachine in $virtualMachines) {
-        if ([string]::IsNullOrWhiteSpace($Origin)){
+        if ([string]::IsNullOrWhiteSpace($env:Origin)){
             $jobs += Start-AzureRmVM -ResourceGroupName $resourceGroup -Name $virtualMachine -AsJob |
                  Add-Member -MemberType NoteProperty -Name VmName -Value $virtualMachine -PassThru
         }else{

@@ -17,6 +17,7 @@ env:
     AzureSubscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
     AzureTestVmUsername: ${{ secrets.AZURE_TEST_VM_USER_NAME }}
     AzureTestVmPassword: ${{ secrets.AZURE_TEST_VM_PASSWORD }}
+    Origin: "Github"
 
 jobs:
   start-vm:
@@ -37,5 +38,6 @@ jobs:
         working-directory: ./eng/
         run: |
 
-            . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1 Start-AzureManagementSession -Origin "Github"
-            . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1 Start-AzureVmsInParallel -Origin "Github"
+            . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1
+            Start-AzureManagementSession
+            Start-AzureVmsInParallel
