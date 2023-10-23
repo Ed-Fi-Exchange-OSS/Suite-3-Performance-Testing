@@ -15,17 +15,19 @@ $virtualMachines = $testRunnerServer, $databaseServer, $webServer
 # Start an Azure management session within the current PowerShell session, assuming the following environment
 # variables. Useful when scripting Azure management from TeamCity. This is necessary before other *-AzureRm*
 # commands can be executed.
+# Source is added for call from GitHub and uses the module Az
 #
 # Relies on environment variables:
 #   $env:AzureSubscriptionId
 #   $env:AzureTenantId
 #   $env:AzureADApplicationId
 #   $env:AzureADServicePrincipalPassword
+#   $env:Source
 function Start-AzureManagementSession {
     $securePassword = $env:AzureADServicePrincipalPassword | ConvertTo-SecureString -AsPlainText -Force
-    Write-Host " Testing '$env:Origin'."
+
     $credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $env:AzureADApplicationId, $securePassword
-    if ([string]::IsNullOrWhiteSpace($env:Origin)){
+    if ([string]::IsNullOrWhiteSpace($env:Source)){
         Connect-AzureRmAccount -ServicePrincipal -Credential $credential -TenantId $env:AzureTenantId -SubscriptionId $env:AzureSubscriptionId
     }else {
         # Az is not supperted by TeamCity.
@@ -66,24 +68,14 @@ function Stop-AzureVmsInParallel() {
 
     $jobs = @()
     foreach ($virtualMachine in $virtualMachines) {
-        $jobs += Stop-AzureRmVM -ResourceGroupName $resourceGroup -Name $virtualMachine -Force -AsJob |
+        if ([string]::IsNullOrWhiteSpace($env:Source)){
+            $jobs += Stop-AzureRmVM -ResourceGroupName $resourceGroup -Name $virtualMachine -Force -AsJob |
                  Add-Member -MemberType NoteProperty -Name VmName -Value $virtualMachine -PassThru
-    }
-
-    Wait-RequiredJobs $jobs
-}
-
-# Stop an Azure VM with Github Actions.
-# Az is not supperted by TeamCity
-function Stop-AzureVmsInParallelAz() {
-    Write-Host "================================================================================================"
-    Write-Host "Stopping and deallocating $($virtualMachines.Length) Azure VMs. This can take several minutes..."
-    Write-Host "================================================================================================"
-
-    $jobs = @()
-    foreach ($virtualMachine in $virtualMachines) {
-        $jobs += Stop-AzVM -ResourceGroupName $resourceGroup -Name $virtualMachine -Force -AsJob |
+        }else{
+            # Az is not supperted by TeamCity
+            $jobs += Stop-AzVM -ResourceGroupName $resourceGroup -Name $virtualMachine -Force -AsJob |
                  Add-Member -MemberType NoteProperty -Name VmName -Value $virtualMachine -PassThru
+        }
     }
 
     Wait-RequiredJobs $jobs
@@ -98,7 +90,7 @@ function Start-AzureVmsInParallel() {
 
     $jobs = @()
     foreach ($virtualMachine in $virtualMachines) {
-        if ([string]::IsNullOrWhiteSpace($env:Origin)){
+        if ([string]::IsNullOrWhiteSpace($env:Source)){
             $jobs += Start-AzureRmVM -ResourceGroupName $resourceGroup -Name $virtualMachine -AsJob |
                  Add-Member -MemberType NoteProperty -Name VmName -Value $virtualMachine -PassThru
         }else{
@@ -117,7 +109,11 @@ function Start-AzureVmsInParallel() {
 # Run this one time, in an Azure RM session, to create an Azure Active Directory application and service principal for automating access to performance testing resources.
 # The password will use the default expiration of 1 year.
 function Register-PerformanceTestingServicePrincipal([string]$subscriptionId, [string]$tenantId) {
-    Set-AzureRMContext -SubscriptionId $subscriptionId -TenantId $tenantId
+    if ([string]::IsNullOrWhiteSpace($env:Source)){
+        Set-AzureRMContext -SubscriptionId $subscriptionId -TenantId $tenantId
+    }else{
+        Set-AzContext -Subscription $subscriptionId -Tenant $tenantId
+    }
 
     $applicationUri = "http://ODS-3-Performance-Tests"
 
@@ -127,66 +123,48 @@ function Register-PerformanceTestingServicePrincipal([string]$subscriptionId, [s
 
     # Create an Octopus Deploy Application in Active Directory
     Write-Output "Creating Azure Active Directory application '$applicationDisplayName'..."
-    $application = New-AzureRmADApplication -DisplayName $applicationDisplayName -HomePage $applicationUri -IdentifierUris $applicationUri -Password $securePassword
+    if ([string]::IsNullOrWhiteSpace($env:Source)){
+        $application = New-AzureRmADApplication -DisplayName $applicationDisplayName -HomePage $applicationUri -IdentifierUris $applicationUri -Password $securePassword
+    }else{
+        $application = New-AzADApplication -DisplayName $applicationDisplayName -HomePage $applicationUri -IdentifierUri $applicationUri -PasswordCredentials $securePassword
+    }
     $application | Format-Table
 
     Write-Output "Creating Azure Active Directory service principal for ApplicationId '$($application.ApplicationId)'..."
-    $servicePrincipal = New-AzureRmADServicePrincipal -ApplicationId $application.ApplicationId
+    if ([string]::IsNullOrWhiteSpace($env:Source)){
+        $servicePrincipal = New-AzureRmADServicePrincipal -ApplicationId $application.ApplicationId
+    }else{
+        $servicePrincipal = New-AzADServicePrincipal -ApplicationId $application.ApplicationId
+    }
     $servicePrincipal | Format-Table
 
     Write-Output "Sleeping for 30s to give the service principal a chance to finish creating..."
     Start-Sleep -Seconds 30
 
     Write-Output "Assigning the Contributor role to the service principal for resource group '$resourceGroup'..."
-    New-AzureRmRoleAssignment -RoleDefinitionName Contributor -ServicePrincipalName $application.ApplicationId -ResourceGroupName $resourceGroup
+    if ([string]::IsNullOrWhiteSpace($env:Source)){
+        New-AzureRmRoleAssignment -RoleDefinitionName Contributor -ServicePrincipalName $application.ApplicationId -ResourceGroupName $resourceGroup
+    }else{
+        New-AzRoleAssignment -RoleDefinitionName Contributor ApplicationId $application.ApplicationId -ResourceGroupName $resourceGroup
+    }
 
     Write-Output "Connect to Azure using the following Application ID and the given password: $($application.ApplicationId)"
 }
-
-# Register Performance Testing ServicePrincipal for Github Actions.
-# Az is not supperted by TeamCity
-function Register-PerformanceTestingServicePrincipalAz([string]$subscriptionId, [string]$tenantId) {
-    Set-AzContext -Subscription $subscriptionId -Tenant $tenantId
-
-    $applicationUri = "http://ODS-3-Performance-Tests"
-
-    Write-Host "This command will create a new Azure Active Directory Application named '$applicationDisplayName', an associated Azure Active Directory Service Principal for use in automating Azure operations, and grant it rights to the '$resourceGroup' Resource Group"
-
-    $securePassword = Read-Host "Password for new Azure Active Directory Application" -AsSecureString
-
-    # Create an Octopus Deploy Application in Active Directory
-    Write-Output "Creating Azure Active Directory application '$applicationDisplayName'..."
-    $application = New-AzADApplication -DisplayName $applicationDisplayName -HomePage $applicationUri -IdentifierUri $applicationUri -PasswordCredentials $securePassword
-    $application | Format-Table
-
-    Write-Output "Creating Azure Active Directory service principal for ApplicationId '$($application.ApplicationId)'..."
-    $servicePrincipal = New-AzADServicePrincipal -ApplicationId $application.ApplicationId
-    $servicePrincipal | Format-Table
-
-    Write-Output "Sleeping for 30s to give the service principal a chance to finish creating..."
-    Start-Sleep -Seconds 30
-
-    Write-Output "Assigning the Contributor role to the service principal for resource group '$resourceGroup'..."
-    New-AzRoleAssignment -RoleDefinitionName Contributor ApplicationId $application.ApplicationId -ResourceGroupName $resourceGroup
-
-    Write-Output "Connect to Azure using the following Application ID and the given password: $($application.ApplicationId)"
-}
-
 
 # Assigns a new password to the service principal set up by Register-PerformanceTestingServicePrincipal.
 # These passwords expire every year.
 function Update-PerformanceTestingServicePrincipalPassword([string]$subscriptionId, [string]$tenantId) {
-    Set-AzureRMContext -SubscriptionId $subscriptionId -TenantId $tenantId
+    if ([string]::IsNullOrWhiteSpace($env:Source)){
+        Set-AzureRMContext -SubscriptionId $subscriptionId -TenantId $tenantId
+    }else{
+        Set-AzContext -Subscription $subscriptionId -Tenant $tenantId
+    }
     $securePassword = Read-Host "New password for new Azure Active Directory Application '$applicationDisplayName'" -AsSecureString
-    New-AzureRmADAppCredential -DisplayName $applicationDisplayName -Password $securePassword
-}
-
-# Register Performance Testing ServicePrincipal for Github Actions.
-# Az is not supperted by TeamCity
-function Update-PerformanceTestingServicePrincipalPasswordAz([string]$subscriptionId, [string]$tenantId) {
-    Set-AzContext -Subscription $subscriptionId -Tenant $tenantId
-    $securePassword = Read-Host "New password for new Azure Active Directory Application '$applicationDisplayName'" -AsSecureString
-    New-AzADAppCredential -DisplayName $applicationDisplayName -PasswordCredentials $securePassword
+    if ([string]::IsNullOrWhiteSpace($env:Source)){
+        New-AzureRmADAppCredential -DisplayName $applicationDisplayName -Password $securePassword
+    }else{
+        New-AzADAppCredential -DisplayName $applicationDisplayName -PasswordCredentials $securePassword
+    }
 }
 
 # This command exposes this computer for remote PowerShell execution over HTTPS.

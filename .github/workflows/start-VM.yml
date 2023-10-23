@@ -17,7 +17,7 @@ env:
     AzureSubscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
     AzureTestVmUsername: ${{ secrets.AZURE_TEST_VM_USER_NAME }}
     AzureTestVmPassword: ${{ secrets.AZURE_TEST_VM_PASSWORD }}
-    Origin: "Github"
+    Source: "Github"
 
 jobs:
   start-vm:
