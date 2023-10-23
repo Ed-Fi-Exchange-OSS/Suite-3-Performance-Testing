@@ -5,7 +5,10 @@
 
 name: Start Azure VM
 on:
-  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+#  workflow_dispatch:
 
 env:
     AzureADServicePrincipalPassword: ${{ secrets.AZURE_SERVICE_PRINCIPAL_PASSWORD }}
@@ -35,5 +38,5 @@ jobs:
         run: |
 
             . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1
-            Start-AzureManagementSessionAz
-            Start-AzureVmsInParallelAz
+            Start-AzureManagementSession -Origin "Github"
+            Start-AzureVmsInParallel -Origin "Github"

@@ -3,6 +3,13 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
+[CmdLetBinding()]
+param(
+    # Github use Az module Github.
+    [string]
+    $Origin
+)
+
 $ErrorActionPreference = "Stop"
 
 $resourceGroup = "ods-3-performance"
@@ -25,16 +32,12 @@ function Start-AzureManagementSession {
     $securePassword = $env:AzureADServicePrincipalPassword | ConvertTo-SecureString -AsPlainText -Force
 
     $credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $env:AzureADApplicationId, $securePassword
-    Connect-AzureRmAccount -ServicePrincipal -Credential $credential -TenantId $env:AzureTenantId -SubscriptionId $env:AzureSubscriptionId
-}
-
-# Start an Azure management session with Github Actions. This is necessary before other *-Az*
-# Az is not supperted by TeamCity
-function Start-AzureManagementSessionAz {
-    $securePassword = $env:AzureADServicePrincipalPassword | ConvertTo-SecureString -AsPlainText -Force
-
-    $credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $env:AzureADApplicationId, $securePassword
-    Connect-AzAccount -ServicePrincipal -Credential $credential -Tenant $env:AzureTenantId -Subscription $env:AzureSubscriptionId
+    if ([string]::IsNullOrWhiteSpace($Origin)){
+        Connect-AzureRmAccount -ServicePrincipal -Credential $credential -TenantId $env:AzureTenantId -SubscriptionId $env:AzureSubscriptionId
+    }else {
+        # Az is not supperted by TeamCity.
+        Connect-AzAccount -ServicePrincipal -Credential $credential -Tenant $env:AzureTenantId -Subscription $env:AzureSubscriptionId
+    }
 }
 
 # Given a list of PowerShell job objects, wait for them all to complete,
@@ -102,27 +105,14 @@ function Start-AzureVmsInParallel() {
 
     $jobs = @()
     foreach ($virtualMachine in $virtualMachines) {
-        $jobs += Start-AzureRmVM -ResourceGroupName $resourceGroup -Name $virtualMachine -AsJob |
+        if ([string]::IsNullOrWhiteSpace($Origin)){
+            $jobs += Start-AzureRmVM -ResourceGroupName $resourceGroup -Name $virtualMachine -AsJob |
                  Add-Member -MemberType NoteProperty -Name VmName -Value $virtualMachine -PassThru
-    }
-
-    Wait-RequiredJobs $jobs
-
-    Write-Host "Waiting 30s to allow services to start up."
-    Start-Sleep -Seconds 30
-}
-
-# Start an Azure VM with Github Actions.
-# Az is not supperted by TeamCity
-function Start-AzureVmsInParallelAz() {
-    Write-Host "==============================================================================="
-    Write-Host "Starting $($virtualMachines.Length) Azure VMs. This can take several minutes..."
-    Write-Host "==============================================================================="
-
-    $jobs = @()
-    foreach ($virtualMachine in $virtualMachines) {
-        $jobs += Start-AzVM -ResourceGroupName $resourceGroup -Name $virtualMachine -AsJob |
-                 Add-Member -MemberType NoteProperty -Name VmName -Value $virtualMachine -PassThru
+        }else{
+            # Az is not supperted by TeamCity
+            $jobs += Start-AzVM -ResourceGroupName $resourceGroup -Name $virtualMachine -AsJob |
+                Add-Member -MemberType NoteProperty -Name VmName -Value $virtualMachine -PassThru
+        }
     }
 
     Wait-RequiredJobs $jobs
