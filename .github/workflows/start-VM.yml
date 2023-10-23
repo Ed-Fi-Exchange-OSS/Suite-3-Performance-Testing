@@ -37,6 +37,5 @@ jobs:
         working-directory: ./eng/
         run: |
 
-            . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1
-            Start-AzureManagementSession -Origin "Github"
-            Start-AzureVmsInParallel -Origin "Github"
+            . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1 Start-AzureManagementSession -Origin "Github"
+            . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1 Start-AzureVmsInParallel -Origin "Github"
