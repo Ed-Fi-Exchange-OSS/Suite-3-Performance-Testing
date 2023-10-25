@@ -32,7 +32,6 @@ jobs:
         shell: powershell
         working-directory: ./eng/
         run: |
-            (Invoke-RestMethod -Uri 'https://ipinfo.io/json').ip
 
             . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1
             Invoke-TestRunnerFromTeamCity pageVolume
