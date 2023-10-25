@@ -34,7 +34,7 @@ jobs:
         run: |
 
             . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1
-            Invoke-TestRunnerFromTeamCity pipieclean
+            Invoke-TestRunnerFromTeamCity pipeclean
 
       - name: Extracting Results
         shell: powershell
