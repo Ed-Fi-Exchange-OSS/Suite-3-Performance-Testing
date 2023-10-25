@@ -34,4 +34,10 @@ jobs:
         run: |
 
             . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1
-            Invoke-TestRunnerFromTeamCity pageVolume
+            Invoke-TestRunnerFromTeamCity pipieclean
+
+      - name: Extracting Results
+        shell: powershell
+        run: |
+
+            ls C:\Users\edFiAdmin\artifacts
