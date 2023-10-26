@@ -254,7 +254,7 @@ function Register-Credentials {
 #   $env:AzureTestVmUsername
 function Invoke-TestRunnerFromTeamCity($testType) {
 
-    Write-Host "Folder artifacts: " + artifacts
+    Write-Host "Folder artifacts: " artifacts
 
     if (!(Test-Path artifacts)) { New-Item -ItemType Directory -Force -Path artifacts | Out-Null }
 
