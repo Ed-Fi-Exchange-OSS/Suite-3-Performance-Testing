@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: Apache-2.0
+# Licensed to the Ed-Fi Alliance under one or more agreements.
+# The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
+# See the LICENSE and NOTICES files in the project root for more information.
+
+name: Run Pipeclean Test VM
+on:
+  pull_request:
+    branches:
+      - main
+#  workflow_dispatch:
+
+env:
+    AzureTestVmUsername: ${{ secrets.AZURE_TEST_VM_USER_NAME }}
+    AzureTestVmPassword: ${{ secrets.AZURE_TEST_VM_PASSWORD }}
+
+jobs:
+  paging-test-vm:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608  # v4.1.0
+
+      - name: Execute Test Runner
+        if: ${{ env.AzureTestVmUsername != '' && env.AzureTestVmPassword != '' }}
+        shell: powershell
+        working-directory: ./eng/
+        run: |
+
+            . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1
+            Invoke-TestRunnerFromTeamCity pipeclean
+
+      - name: Upload Package
+        if: success()
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+        with:
+            name: TestResults
+            path: ${{ github.workspace }}/eng/artifacts/
