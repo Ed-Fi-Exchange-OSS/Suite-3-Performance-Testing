@@ -36,10 +36,9 @@ jobs:
             . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1
             Invoke-TestRunnerFromTeamCity pipeclean
 
-      - name: Extracting Results
-        shell: powershell
-        working-directory: ./eng/artifacts/
-        run: |
-
-            ls
-
+      - name: Upload Package
+        if: success()
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+        with:
+            name: Results
+            path: ${{ github.workspace }}/eng/artifacts/
