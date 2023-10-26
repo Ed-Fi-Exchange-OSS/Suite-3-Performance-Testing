@@ -38,13 +38,8 @@ jobs:
 
       - name: Extracting Results
         shell: powershell
+        working-directory: ./eng/
         run: |
 
-            $path = Get-ChildItem -Path ${{ github.workspace }} -Directory -Recurse -Filter "artifacts"
-
-            Write-host "Folder is  $path"
-
-            # $path = Join-Path $path "artifacts"
-
-            # ls $path
+            ls
 
