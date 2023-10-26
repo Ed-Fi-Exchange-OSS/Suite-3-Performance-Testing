@@ -40,4 +40,4 @@ jobs:
         shell: powershell
         run: |
 
-            ls C:\Users\edFiAdmin\artifacts
+            ls
