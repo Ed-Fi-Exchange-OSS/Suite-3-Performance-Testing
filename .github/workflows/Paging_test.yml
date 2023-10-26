@@ -42,7 +42,9 @@ jobs:
 
             $path = Get-ChildItem -Path ${{ github.workspace }} -Directory -Recurse -Filter "artifacts"
 
-            $path = Join-Path $path "artifacts"
+            Write-host "Folder is  $path"
 
-            ls $path
+            # $path = Join-Path $path "artifacts"
+
+            # ls $path
 
