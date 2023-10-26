@@ -11,13 +11,8 @@ on:
 #  workflow_dispatch:
 
 env:
-    AzureADServicePrincipalPassword: ${{ secrets.AZURE_SERVICE_PRINCIPAL_PASSWORD }}
-    AzureADApplicationId: ${{ vars.AZURE_SERVICE_APPLICATION_ID }}
-    AzureTenantId: ${{ secrets.AZURE_TENANT_ID }}
-    AzureSubscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
     AzureTestVmUsername: ${{ secrets.AZURE_TEST_VM_USER_NAME }}
     AzureTestVmPassword: ${{ secrets.AZURE_TEST_VM_PASSWORD }}
-    Source: "Github"
 
 jobs:
   paging-test-vm:
@@ -34,11 +29,11 @@ jobs:
         run: |
 
             . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1
-            Invoke-TestRunnerFromTeamCity pipeclean
+            Invoke-TestRunnerFromTeamCity pageVolume
 
       - name: Upload Package
         if: success()
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         with:
-            name: Results
+            name: TestResults
             path: ${{ github.workspace }}/eng/artifacts/

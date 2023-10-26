@@ -253,9 +253,6 @@ function Register-Credentials {
 #   $env:AzureTestVmPassword
 #   $env:AzureTestVmUsername
 function Invoke-TestRunnerFromTeamCity($testType) {
-
-    Write-Host "Folder artifacts: " artifacts
-
     if (!(Test-Path artifacts)) { New-Item -ItemType Directory -Force -Path artifacts | Out-Null }
 
     $securePassword = $env:AzureTestVmPassword | ConvertTo-SecureString -AsPlainText -Force
