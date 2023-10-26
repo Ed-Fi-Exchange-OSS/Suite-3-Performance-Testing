@@ -38,7 +38,7 @@ jobs:
 
       - name: Extracting Results
         shell: powershell
-        working-directory: ./eng/
+        working-directory: ./eng/artifacts/
         run: |
 
             ls
