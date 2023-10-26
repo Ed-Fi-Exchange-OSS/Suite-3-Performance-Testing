@@ -40,4 +40,5 @@ jobs:
         shell: powershell
         run: |
 
-            ls artifacts
+            Get-ChildItem -Path ${{ github.workspace }} -Directory -Recurse -Filter "artifacts"
+
