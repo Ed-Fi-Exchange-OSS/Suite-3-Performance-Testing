@@ -40,5 +40,9 @@ jobs:
         shell: powershell
         run: |
 
-            Get-ChildItem -Path ${{ github.workspace }} -Directory -Recurse -Filter "artifacts"
+            $path = Get-ChildItem -Path ${{ github.workspace }} -Directory -Recurse -Filter "artifacts"
+
+            $path = Join-Path $path "artifacts"
+
+            ls $path
 
