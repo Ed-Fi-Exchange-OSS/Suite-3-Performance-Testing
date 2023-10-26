@@ -40,4 +40,4 @@ jobs:
         shell: powershell
         run: |
 
-            ls
+            ls artifacts
