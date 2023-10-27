@@ -5,17 +5,14 @@
 
 name: Run Pipeclean Test VM
 on:
-  pull_request:
-    branches:
-      - main
-#  workflow_dispatch:
+  workflow_dispatch:
 
 env:
     AzureTestVmUsername: ${{ secrets.AZURE_TEST_VM_USER_NAME }}
     AzureTestVmPassword: ${{ secrets.AZURE_TEST_VM_PASSWORD }}
 
 jobs:
-  paging-test-vm:
+  pipeclean-test-vm:
     runs-on: windows-latest
 
     steps:
