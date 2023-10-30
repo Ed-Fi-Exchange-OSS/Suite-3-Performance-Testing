@@ -15,7 +15,7 @@ env:
     AzureTestVmPassword: ${{ secrets.AZURE_TEST_VM_PASSWORD }}
 
 jobs:
-  volume-test-vm:
+  volume-test:
     runs-on: windows-latest
 
     steps:
