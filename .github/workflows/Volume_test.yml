@@ -5,10 +5,7 @@
 
 name: Run Volome Test
 on:
-  pull_request:
-    branches:
-      - main
-#  workflow_dispatch:
+  workflow_dispatch:
 
 env:
     AzureTestVmUsername: ${{ secrets.AZURE_TEST_VM_USER_NAME }}
