@@ -3,7 +3,7 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-name: Run Volome Test
+name: Run Volume Test
 on:
   workflow_dispatch:
 
@@ -24,7 +24,6 @@ jobs:
         shell: powershell
         working-directory: ./eng/
         run: |
-
             . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1
             Invoke-TestRunnerFromTeamCity volume
 
