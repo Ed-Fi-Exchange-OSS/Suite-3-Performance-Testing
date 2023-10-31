@@ -3,7 +3,7 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-name: Package Pre-Release
+name: Package Pre Release
 on:
   workflow_dispatch:
 
@@ -23,7 +23,6 @@ jobs:
 
       - name: Preparing Package Pre Release
         run: |
-
          mkdir -p ./package/
 
          cp -r ${{ github.workspace }}/src/ ./package/
