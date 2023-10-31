@@ -24,7 +24,6 @@ jobs:
         shell: powershell
         working-directory: ./eng/
         run: |
-
             . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1
             Invoke-TestRunnerFromTeamCity pipeclean
 
