@@ -432,20 +432,25 @@ function Invoke-TestRunner {
                     if ($isLocalhost) {
                         $record = Invoke-Command -ScriptBlock $getMetricsBlock
                     } else {
-                        $sessionOptions = New-PSSessionOption -SkipCACheck -SkipCNCheck
-                        $psSession = New-PSSession -ComputerName $server -Credential $credential -UseSSL -SessionOption $sessionOptions -ErrorAction Stop
+                        try {
+                            $sessionOptions = New-PSSessionOption -SkipCACheck -SkipCNCheck
+                            $psSession = New-PSSession -ComputerName $server -Credential $credential -UseSSL -SessionOption $sessionOptions -ErrorAction Stop
 
-                        $record = Invoke-Command -Session $psSession -ScriptBlock $getMetricsBlock
+                            $record = Invoke-Command -Session $psSession -ScriptBlock $getMetricsBlock
+                        }
+                        finally {
+                            if ($null -ne $psSession) {
+                                $psSession | Remove-PSSession
+                            }
+                        }
                     }
                     $record | Select-Object * -ExcludeProperty PSComputerName,RunspaceId,PSShowComputerName `
-                            | Export-Csv -Path $csvPath -Append -NoTypeInformation
+                    | Export-Csv -Path $csvPath -Append -NoTypeInformation
                     Start-Sleep -Seconds $sleepTime
                 }
             }
-            finally {
-                if ($null -ne $psSession) {
-                    $psSession | Remove-PSSession
-                }
+            catch {
+                Write-ErrorLog $_.Exception.Message
             }
         }
 
@@ -632,21 +637,28 @@ function Invoke-TestRunner {
                 Start-Service W3SVC
             }
         } else {
-            $sessionOptions = New-PSSessionOption -SkipCACheck -SkipCNCheck
-            $webCredential = Get-CredentialOrDefault -Server $webServer
-            $psSession = New-PSSession -ComputerName $webServer -Credential $webCredential -UseSSL -SessionOption $sessionOptions -ErrorAction Stop
+            try {
+                $sessionOptions = New-PSSessionOption -SkipCACheck -SkipCNCheck
+                $webCredential = Get-CredentialOrDefault -Server $webServer
+                $psSession = New-PSSession -ComputerName $webServer -Credential $webCredential -UseSSL -SessionOption $sessionOptions -ErrorAction Stop
 
-            # It is necessary to stop IIS before trying to copy log files, otherwise
-            # they will be locked and `Copy-Item` will throw an errror.
-            Write-DebugLog "Stopping IIS" -LogLevel $logLevel
-            Invoke-Command -Session $psSession -ScriptBlock { Stop-Service W3SVC }
-            Start-Sleep 1
+                # It is necessary to stop IIS before trying to copy log files, otherwise
+                # they will be locked and `Copy-Item` will throw an errror.
+                Write-DebugLog "Stopping IIS" -LogLevel $logLevel
+                Invoke-Command -Session $psSession -ScriptBlock { Stop-Service W3SVC }
+                Start-Sleep 1
 
-            Write-DebugLog "Copying WebAPI log file(s)" -LogLevel $logLevel
-            Copy-Item $logFile -Destination $runnerOutputPath -FromSession $psSession -Recurse
+                Write-DebugLog "Copying WebAPI log file(s)" -LogLevel $logLevel
+                Copy-Item $logFile -Destination $runnerOutputPath -FromSession $psSession -Recurse
 
-            Write-DebugLog "Restarting IIS" -LogLevel $logLevel
-            Invoke-Command -Session $psSession -ScriptBlock { Start-Service W3SVC }
+                Write-DebugLog "Restarting IIS" -LogLevel $logLevel
+                Invoke-Command -Session $psSession -ScriptBlock { Start-Service W3SVC }
+            }
+            finally {
+                if ($null -ne $psSession) {
+                    $psSession | Remove-PSSession
+                }
+            }
         }
     }
     finally {
