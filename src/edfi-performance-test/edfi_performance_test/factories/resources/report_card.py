@@ -7,7 +7,6 @@ import factory
 
 from edfi_performance_test.api.client.education import LocalEducationAgencyClient
 from edfi_performance_test.api.client.school import SchoolClient
-from edfi_performance_test.api.client.student import StudentClient
 from edfi_performance_test.factories.resources.api_factory import APIFactory
 from edfi_performance_test.factories.descriptors.utils import build_descriptor
 
@@ -19,7 +18,7 @@ class ReportCardFactory(APIFactory):
         )
     )
     studentReference = factory.Dict(
-        dict(studentUniqueId=StudentClient.shared_student_id())
+        dict(studentUniqueId=None)
     )  # Prepopulated student
     gradingPeriodReference = factory.Dict(
         dict(

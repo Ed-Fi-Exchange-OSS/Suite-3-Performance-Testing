@@ -15,12 +15,16 @@ class StudentContactAssociationClient(EdFiAPIClient):
     endpoint = "studentContactAssociations"
 
     def create_with_dependencies(self, **kwargs):
+        # Prepopulated student
+        studentUniqueId = kwargs.pop("studentUniqueId", StudentClient.shared_student_id())
+
         # Create contact
         contact_unique_id = kwargs.pop("contactUniqueId", ContactClient.shared_contact_id())
 
         # Create contact - student association
         return self.create_using_dependencies(
             contactReference__contactUniqueId=contact_unique_id,
+            studentReference__studentUniqueId=studentUniqueId,
             **kwargs
         )
 
@@ -33,6 +37,9 @@ class StudentProgramEvaluationClient(EdFiAPIClient):
     }
 
     def create_with_dependencies(self, **kwargs):
+        # Prepopulated student
+        studentUniqueId = kwargs.pop("studentUniqueId", StudentClient.shared_student_id())
+
         prog_eval_ref = self.program_evaluation_client.create_with_dependencies()
 
         return self.create_using_dependencies(
@@ -49,6 +56,7 @@ class StudentProgramEvaluationClient(EdFiAPIClient):
                 "attributes"]["programReference"]["programName"],
             programEvaluationReference__programTypeDescriptor=prog_eval_ref[
                 "attributes"]["programReference"]["programTypeDescriptor"],
+            studentReference__studentUniqueId=studentUniqueId,
             **kwargs
         )
 

@@ -6,6 +6,7 @@
 from typing import Dict
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 from edfi_performance_test.api.client.grading_period import GradingPeriodClient
+from edfi_performance_test.api.client.student import StudentClient
 
 
 class ReportCardClient(EdFiAPIClient):
@@ -16,6 +17,8 @@ class ReportCardClient(EdFiAPIClient):
     }
 
     def create_with_dependencies(self, **kwargs):
+        # Prepopulated student
+        studentUniqueId = kwargs.pop("studentUniqueId", StudentClient.shared_student_id())
         period_reference = self.grading_period_client.create_with_dependencies()
 
         return self.create_using_dependencies(
@@ -23,4 +26,5 @@ class ReportCardClient(EdFiAPIClient):
             gradingPeriodReference__periodSequence=period_reference["attributes"][
                 "periodSequence"
             ],
+            studentReference__studentUniqueId=studentUniqueId,
         )

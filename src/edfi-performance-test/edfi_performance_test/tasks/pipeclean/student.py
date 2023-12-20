@@ -149,3 +149,8 @@ class StudentProgramAttendanceEventPipecleanTest(EdFiPipecleanTestBase):
 class StudentSchoolFoodServiceProgramAssociationPipecleanTest(EdFiPipecleanTestBase):
     update_attribute_name = "directCertification"
     update_attribute_value = False
+
+
+class StudentAssessmentPipecleanTest(EdFiPipecleanTestBase):
+    update_attribute_name = "serialNumber"
+    update_attribute_value = 2
