@@ -6,7 +6,6 @@
 import factory
 
 from edfi_performance_test.api.client.education import LocalEducationAgencyClient
-from edfi_performance_test.api.client.program import ProgramClient
 from edfi_performance_test.api.client.school import SchoolClient
 from edfi_performance_test.factories.resources.api_factory import APIFactory
 from edfi_performance_test.factories.descriptors.utils import build_descriptor
@@ -358,10 +357,8 @@ class StudentCTEProgramAssociationFactory(APIFactory):
     programReference = factory.Dict(
         dict(
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
-            programTypeDescriptor=build_descriptor(
-                "ProgramType", ProgramClient.shared_program_name()
-            ),
-            programName=ProgramClient.shared_program_name(),
+            programTypeDescriptor=None,
+            programName=None,
         )
     )  # Prepopulated program
     beginDate = RandomDateAttribute()
@@ -416,10 +413,8 @@ class StudentHomelessProgramAssociationFactory(APIFactory):
     programReference = factory.Dict(
         dict(
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
-            programTypeDescriptor=build_descriptor(
-                "ProgramType", ProgramClient.shared_program_name()
-            ),
-            programName=ProgramClient.shared_program_name(),
+            programTypeDescriptor=None,
+            programName=None,
         )
     )  # Prepopulated program
     studentReference = factory.Dict(
@@ -468,10 +463,8 @@ class StudentLanguageInstructionProgramAssociationFactory(APIFactory):
     programReference = factory.Dict(
         dict(
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
-            programTypeDescriptor=build_descriptor(
-                "ProgramType", ProgramClient.shared_program_name()
-            ),
-            programName=ProgramClient.shared_program_name(),
+            programTypeDescriptor=None,
+            programName=None,
         )
     )  # Prepopulated program
     studentReference = factory.Dict(
@@ -510,10 +503,8 @@ class StudentMigrantEducationProgramAssociationFactory(APIFactory):
     programReference = factory.Dict(
         dict(
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
-            programTypeDescriptor=build_descriptor(
-                "ProgramType", ProgramClient.shared_program_name()
-            ),
-            programName=ProgramClient.shared_program_name(),
+            programTypeDescriptor=None,
+            programName=None,
         )
     )  # Prepopulated program
     studentReference = factory.Dict(
@@ -533,10 +524,8 @@ class StudentNeglectedOrDelinquentProgramAssociationFactory(APIFactory):
     programReference = factory.Dict(
         dict(
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
-            programTypeDescriptor=build_descriptor(
-                "ProgramType", ProgramClient.shared_program_name()
-            ),
-            programName=ProgramClient.shared_program_name(),
+            programTypeDescriptor=None,
+            programName=None,
         )
     )  # Prepopulated program
     studentReference = factory.Dict(
@@ -555,10 +544,8 @@ class StudentProgramAttendanceEventFactory(APIFactory):
     programReference = factory.Dict(
         dict(
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
-            programTypeDescriptor=build_descriptor(
-                "ProgramType", ProgramClient.shared_program_name()
-            ),
-            programName=ProgramClient.shared_program_name(),
+            programTypeDescriptor=None,
+            programName=None,
         )
     )  # Prepopulated program
     studentReference = factory.Dict(
@@ -580,10 +567,8 @@ class StudentSchoolFoodServiceProgramAssociationFactory(APIFactory):
     programReference = factory.Dict(
         dict(
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
-            programTypeDescriptor=build_descriptor(
-                "ProgramType", ProgramClient.shared_program_name()
-            ),
-            programName=ProgramClient.shared_program_name(),
+            programTypeDescriptor=None,
+            programName=None,
         )
     )  # Prepopulated program
     studentReference = factory.Dict(
