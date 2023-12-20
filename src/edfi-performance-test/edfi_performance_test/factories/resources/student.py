@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0
 # Licensed to the Ed-Fi Alliance under one or more agreements.
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
@@ -424,14 +424,14 @@ class StudentHomelessProgramAssociationFactory(APIFactory):
     )  # Prepopulated program
     studentReference = factory.Dict(
         dict(studentUniqueId=None)
-    )  # Prepopulated student
+    )
     awaitingFosterCare = True
 
 
 class StudentInterventionAssociationFactory(APIFactory):
     studentReference = factory.Dict(
         dict(studentUniqueId=None)
-    )  # Prepopulated student
+    )
     interventionReference = factory.Dict(
         dict(
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
@@ -518,7 +518,7 @@ class StudentMigrantEducationProgramAssociationFactory(APIFactory):
     )  # Prepopulated program
     studentReference = factory.Dict(
         dict(studentUniqueId=None)
-    )  # Prepopulated student
+    )
     priorityForServices = False
     lastQualifyingMove = formatted_date(6, 6)
 
@@ -588,7 +588,7 @@ class StudentSchoolFoodServiceProgramAssociationFactory(APIFactory):
     )  # Prepopulated program
     studentReference = factory.Dict(
         dict(studentUniqueId=None)
-    )  # Prepopulated student
+    )
     directCertification = True
 
 
