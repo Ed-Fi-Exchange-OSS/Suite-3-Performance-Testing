@@ -39,9 +39,3 @@ class ObjectiveAssessmentVolumeTest(EdFiVolumeTestBase):
     @task
     def run_assessment_scenario(self):
         self.run_scenario("maxRawScore", 9)
-
-
-class StudentAssessmentVolumeTest(EdFiVolumeTestBase):
-    @task
-    def run_assessment_scenario(self):
-        self.run_scenario("serialNumber", "1")

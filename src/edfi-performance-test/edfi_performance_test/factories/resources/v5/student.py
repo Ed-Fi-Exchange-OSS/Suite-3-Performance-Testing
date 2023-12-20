@@ -10,14 +10,13 @@ from edfi_performance_test.factories.descriptors.utils import build_descriptor
 from edfi_performance_test.factories.utils import (
     RandomDateAttribute
 )
-from edfi_performance_test.api.client.student import StudentClient
 from edfi_performance_test.api.client.education import LocalEducationAgencyClient
 from edfi_performance_test.api.client.program import ProgramClient
 
 
 class StudentContactAssociationFactory(APIFactory):
     studentReference = factory.Dict(
-        dict(studentUniqueId=StudentClient.shared_student_id())
+        dict(studentUniqueId=None)
     )
     contactReference = factory.Dict(dict(contactUniqueId=None))  # Must be entered by user
     emergencyContactStatus = True
@@ -38,7 +37,7 @@ class StudentProgramEvaluationFactory(APIFactory):
         )
     )
     studentReference = factory.Dict(
-        dict(studentUniqueId=StudentClient.shared_student_id())
+        dict(studentUniqueId=None)
     )
     evaluationDuration = 60
 

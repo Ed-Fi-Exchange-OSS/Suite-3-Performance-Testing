@@ -7,6 +7,7 @@ from typing import Dict
 
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 from edfi_performance_test.api.client.school import SchoolClient
+from edfi_performance_test.api.client.student import StudentClient
 
 
 class StudentAssessmentEducationOrganizationAssociationClient(EdFiAPIClient):
@@ -19,6 +20,8 @@ class StudentAssessmentEducationOrganizationAssociationClient(EdFiAPIClient):
     }
 
     def create_with_dependencies(self, **kwargs):
+        # Prepopulated student
+        studentUniqueId = kwargs.pop("studentUniqueId", StudentClient.shared_student_id())
 
         assessment_reference = self.assessment_client.create_with_dependencies()
 
@@ -34,8 +37,6 @@ class StudentAssessmentEducationOrganizationAssociationClient(EdFiAPIClient):
             studentAssessmentReference__studentAssessmentIdentifier=assessment_reference[
                 "attributes"
             ]["studentAssessmentIdentifier"],
-            studentAssessmentReference__studentUniqueId=assessment_reference[
-                "attributes"
-            ]["studentReference"]["studentUniqueId"],
+            studentAssessmentReference__studentUniqueId=studentUniqueId,
             **kwargs
         )

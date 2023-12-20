@@ -84,6 +84,13 @@ class StaffFactory(APIFactory):
             ),
         ]
     )
+    languages = factory.List(
+        [
+            dict(
+                languageDescriptor=build_descriptor("Language", "spa"),
+            ),
+        ]
+    )
 
 
 class StaffAbsenceEventFactory(APIFactory):

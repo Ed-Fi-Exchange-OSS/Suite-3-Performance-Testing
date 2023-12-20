@@ -8,7 +8,6 @@ import factory
 from edfi_performance_test.factories.resources.api_factory import APIFactory
 from edfi_performance_test.factories.descriptors.utils import build_descriptor
 from edfi_performance_test.factories.utils import current_year
-from edfi_performance_test.api.client.student import StudentClient
 
 
 class StudentAssessmentEducationOrganizationAssociationFactory(APIFactory):
@@ -24,6 +23,6 @@ class StudentAssessmentEducationOrganizationAssociationFactory(APIFactory):
             assessmentIdentifier=None,
             namespace="uri://ed-fi.org/Assessment/Assessment.xml",
             studentAssessmentIdentifier=None,
-            studentUniqueId=StudentClient.shared_student_id(),
+            studentUniqueId=None,
         )
     )
