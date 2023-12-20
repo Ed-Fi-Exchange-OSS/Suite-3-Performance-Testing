@@ -9,6 +9,10 @@ from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 from edfi_performance_test.api.client.v5.contact import ContactClient
 from edfi_performance_test.api.client.school import SchoolClient
 from edfi_performance_test.api.client.student import StudentClient
+from edfi_performance_test.api.client.program import ProgramClient
+from edfi_performance_test.factories.descriptors.utils import (
+    build_descriptor,
+)
 
 
 class StudentContactAssociationClient(EdFiAPIClient):
@@ -68,6 +72,7 @@ class StudentSpecialEducationProgramEligibilityAssociationClient(EdFiAPIClient):
 
     def create_with_dependencies(self, **kwargs):
         school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
+        program = ProgramClient.shared_program_name()
 
         # Create enrolled student
         student_reference = self.student_client.create_with_dependencies(
@@ -80,5 +85,9 @@ class StudentSpecialEducationProgramEligibilityAssociationClient(EdFiAPIClient):
             studentReference__studentUniqueId=student_reference["attributes"][
                 "studentUniqueId"
             ],
+            programReference__programName=program,
+            programReference__programTypeDescriptor=build_descriptor(
+                "ProgramType", program
+            ),
             **kwargs
         )

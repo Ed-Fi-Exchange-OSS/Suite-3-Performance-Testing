@@ -11,7 +11,6 @@ from edfi_performance_test.factories.utils import (
     RandomDateAttribute
 )
 from edfi_performance_test.api.client.education import LocalEducationAgencyClient
-from edfi_performance_test.api.client.program import ProgramClient
 
 
 class StudentContactAssociationFactory(APIFactory):
@@ -50,10 +49,8 @@ class StudentSpecialEducationProgramEligibilityAssociationFactory(APIFactory):
     programReference = factory.Dict(
         dict(
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
-            programName=ProgramClient.shared_program_name(),
-            programTypeDescriptor=build_descriptor(
-                "ProgramType", ProgramClient.shared_program_name()
-            ),
+            programName=None,
+            programTypeDescriptor=None,
         )
     )
     studentReference = factory.Dict(
