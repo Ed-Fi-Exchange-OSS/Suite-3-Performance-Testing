@@ -15,3 +15,4 @@ function Install-PowerShellTools {
 
 $ErrorActionPreference = "Stop"
 Install-PowerShellTools
+# @vimayya are these files still needed now that I have modified them and using them in ./terraform ?

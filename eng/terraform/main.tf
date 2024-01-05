@@ -59,6 +59,16 @@ module "sql_vm" {
   admin_username = var.sql_admin_username
   admin_password = var.sql_admin_password
 }
+# DB VM Config
+module "sql_config" {
+  source           = "./modules/vm_scripts"
+  vm_computer_name = module.sql_vm.vm_computer_name
+  vm_id            = module.sql_vm.vm_id
+  script_filename  = "install-db-server-prerequisites.ps1"
+  depends_on = [
+    module.sql_vm
+  ]
+}
 
 # Web VM
 module "web_vm" {
@@ -80,9 +90,17 @@ module "web_vm" {
   admin_username = var.web_admin_username
   admin_password = var.web_admin_password
 }
-
-# Test Runner VM
-
+# Web VM Config
+module "web_config" {
+  source           = "./modules/vm_scripts"
+  vm_computer_name = module.web_vm.vm_computer_name
+  vm_id            = module.web_vm.vm_id
+  script_filename  = "install-web-server-prerequisites.ps1"
+  depends_on = [
+    module.web_vm
+  ]
+}
+# # Test Runner VM
 module "runner_vm" {
   source              = "./modules/vm"
   resource_group_name = azurerm_resource_group.base_rg.name
@@ -102,7 +120,18 @@ module "runner_vm" {
   admin_username = var.runner_admin_username
   admin_password = var.runner_admin_password
 }
+# Runner VM Config
+module "runner_config" {
+  source           = "./modules/vm_scripts"
+  vm_computer_name = module.runner_vm.vm_computer_name
+  vm_id            = module.runner_vm.vm_id
+  script_filename  = "install-test-runner-prerequisites.ps1"
+  depends_on = [
+    module.runner_vm
+  ]
+}
 
+### Terraform state Buckets
 resource "random_id" "rand_storage" {
   byte_length = 3
 }
@@ -114,6 +143,6 @@ resource "azurerm_storage_account" "tf_state" {
   account_replication_type = "LRS"
 }
 resource "azurerm_storage_container" "tf_state" {
-  name                  = "tfstate"
-  storage_account_name  = azurerm_storage_account.tf_state.name
+  name                 = "tfstate"
+  storage_account_name = azurerm_storage_account.tf_state.name
 }
