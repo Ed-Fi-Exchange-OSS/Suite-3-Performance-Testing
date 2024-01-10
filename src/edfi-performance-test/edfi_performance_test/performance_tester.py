@@ -118,9 +118,6 @@ def run_change_query_tests(args: MainArguments) -> None:
 
 
 async def run(args: MainArguments) -> None:
-
-    logger.debug(args)
-
     try:
         logger.info("Starting performance test...")
         start = time.time()

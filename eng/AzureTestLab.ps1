@@ -15,17 +15,24 @@ $virtualMachines = $testRunnerServer, $databaseServer, $webServer
 # Start an Azure management session within the current PowerShell session, assuming the following environment
 # variables. Useful when scripting Azure management from TeamCity. This is necessary before other *-AzureRm*
 # commands can be executed.
+# Source is added for call from GitHub and uses the module Az
 #
 # Relies on environment variables:
 #   $env:AzureSubscriptionId
 #   $env:AzureTenantId
 #   $env:AzureADApplicationId
 #   $env:AzureADServicePrincipalPassword
+#   $env:Source
 function Start-AzureManagementSession {
     $securePassword = $env:AzureADServicePrincipalPassword | ConvertTo-SecureString -AsPlainText -Force
 
     $credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $env:AzureADApplicationId, $securePassword
-    Connect-AzureRmAccount -ServicePrincipal -Credential $credential -TenantId $env:AzureTenantId -SubscriptionId $env:AzureSubscriptionId
+    if ([string]::IsNullOrWhiteSpace($env:Source)){
+        Connect-AzureRmAccount -ServicePrincipal -Credential $credential -TenantId $env:AzureTenantId -SubscriptionId $env:AzureSubscriptionId
+    }else {
+        # Az is not supperted by TeamCity.
+        Connect-AzAccount -ServicePrincipal -Credential $credential -Tenant $env:AzureTenantId -Subscription $env:AzureSubscriptionId
+    }
 }
 
 # Given a list of PowerShell job objects, wait for them all to complete,
@@ -61,8 +68,14 @@ function Stop-AzureVmsInParallel() {
 
     $jobs = @()
     foreach ($virtualMachine in $virtualMachines) {
-        $jobs += Stop-AzureRmVM -ResourceGroupName $resourceGroup -Name $virtualMachine -Force -AsJob |
+        if ([string]::IsNullOrWhiteSpace($env:Source)){
+            $jobs += Stop-AzureRmVM -ResourceGroupName $resourceGroup -Name $virtualMachine -Force -AsJob |
                  Add-Member -MemberType NoteProperty -Name VmName -Value $virtualMachine -PassThru
+        }else{
+            # Az is not supperted by TeamCity
+            $jobs += Stop-AzVM -ResourceGroupName $resourceGroup -Name $virtualMachine -Force -AsJob |
+                 Add-Member -MemberType NoteProperty -Name VmName -Value $virtualMachine -PassThru
+        }
     }
 
     Wait-RequiredJobs $jobs
@@ -77,8 +90,14 @@ function Start-AzureVmsInParallel() {
 
     $jobs = @()
     foreach ($virtualMachine in $virtualMachines) {
-        $jobs += Start-AzureRmVM -ResourceGroupName $resourceGroup -Name $virtualMachine -AsJob |
+        if ([string]::IsNullOrWhiteSpace($env:Source)){
+            $jobs += Start-AzureRmVM -ResourceGroupName $resourceGroup -Name $virtualMachine -AsJob |
                  Add-Member -MemberType NoteProperty -Name VmName -Value $virtualMachine -PassThru
+        }else{
+            # Az is not supperted by TeamCity
+            $jobs += Start-AzVM -ResourceGroupName $resourceGroup -Name $virtualMachine -AsJob |
+                Add-Member -MemberType NoteProperty -Name VmName -Value $virtualMachine -PassThru
+        }
     }
 
     Wait-RequiredJobs $jobs
@@ -90,7 +109,11 @@ function Start-AzureVmsInParallel() {
 # Run this one time, in an Azure RM session, to create an Azure Active Directory application and service principal for automating access to performance testing resources.
 # The password will use the default expiration of 1 year.
 function Register-PerformanceTestingServicePrincipal([string]$subscriptionId, [string]$tenantId) {
-    Set-AzureRMContext -SubscriptionId $subscriptionId -TenantId $tenantId
+    if ([string]::IsNullOrWhiteSpace($env:Source)){
+        Set-AzureRMContext -SubscriptionId $subscriptionId -TenantId $tenantId
+    }else{
+        Set-AzContext -Subscription $subscriptionId -Tenant $tenantId
+    }
 
     $applicationUri = "http://ODS-3-Performance-Tests"
 
@@ -100,18 +123,30 @@ function Register-PerformanceTestingServicePrincipal([string]$subscriptionId, [s
 
     # Create an Octopus Deploy Application in Active Directory
     Write-Output "Creating Azure Active Directory application '$applicationDisplayName'..."
-    $application = New-AzureRmADApplication -DisplayName $applicationDisplayName -HomePage $applicationUri -IdentifierUris $applicationUri -Password $securePassword
+    if ([string]::IsNullOrWhiteSpace($env:Source)){
+        $application = New-AzureRmADApplication -DisplayName $applicationDisplayName -HomePage $applicationUri -IdentifierUris $applicationUri -Password $securePassword
+    }else{
+        $application = New-AzADApplication -DisplayName $applicationDisplayName -HomePage $applicationUri -IdentifierUri $applicationUri -PasswordCredentials $securePassword
+    }
     $application | Format-Table
 
     Write-Output "Creating Azure Active Directory service principal for ApplicationId '$($application.ApplicationId)'..."
-    $servicePrincipal = New-AzureRmADServicePrincipal -ApplicationId $application.ApplicationId
+    if ([string]::IsNullOrWhiteSpace($env:Source)){
+        $servicePrincipal = New-AzureRmADServicePrincipal -ApplicationId $application.ApplicationId
+    }else{
+        $servicePrincipal = New-AzADServicePrincipal -ApplicationId $application.ApplicationId
+    }
     $servicePrincipal | Format-Table
 
     Write-Output "Sleeping for 30s to give the service principal a chance to finish creating..."
     Start-Sleep -Seconds 30
 
     Write-Output "Assigning the Contributor role to the service principal for resource group '$resourceGroup'..."
-    New-AzureRmRoleAssignment -RoleDefinitionName Contributor -ServicePrincipalName $application.ApplicationId -ResourceGroupName $resourceGroup
+    if ([string]::IsNullOrWhiteSpace($env:Source)){
+        New-AzureRmRoleAssignment -RoleDefinitionName Contributor -ServicePrincipalName $application.ApplicationId -ResourceGroupName $resourceGroup
+    }else{
+        New-AzRoleAssignment -RoleDefinitionName Contributor ApplicationId $application.ApplicationId -ResourceGroupName $resourceGroup
+    }
 
     Write-Output "Connect to Azure using the following Application ID and the given password: $($application.ApplicationId)"
 }
@@ -119,9 +154,17 @@ function Register-PerformanceTestingServicePrincipal([string]$subscriptionId, [s
 # Assigns a new password to the service principal set up by Register-PerformanceTestingServicePrincipal.
 # These passwords expire every year.
 function Update-PerformanceTestingServicePrincipalPassword([string]$subscriptionId, [string]$tenantId) {
-    Set-AzureRMContext -SubscriptionId $subscriptionId -TenantId $tenantId
+    if ([string]::IsNullOrWhiteSpace($env:Source)){
+        Set-AzureRMContext -SubscriptionId $subscriptionId -TenantId $tenantId
+    }else{
+        Set-AzContext -Subscription $subscriptionId -Tenant $tenantId
+    }
     $securePassword = Read-Host "New password for new Azure Active Directory Application '$applicationDisplayName'" -AsSecureString
-    New-AzureRmADAppCredential -DisplayName $applicationDisplayName -Password $securePassword
+    if ([string]::IsNullOrWhiteSpace($env:Source)){
+        New-AzureRmADAppCredential -DisplayName $applicationDisplayName -Password $securePassword
+    }else{
+        New-AzADAppCredential -DisplayName $applicationDisplayName -PasswordCredentials $securePassword
+    }
 }
 
 # This command exposes this computer for remote PowerShell execution over HTTPS.
@@ -236,17 +279,58 @@ function Invoke-TestRunnerFromTeamCity($testType) {
         $zipPath
     }
 
-    Invoke-Command -Session $session -ArgumentList @($testType) {
-        param($testType)
-        C:\Users\edFiAdmin\run-deployed-tests.bat $testType
+    # Set $zipReportPath locally and remotely for Report.
+    $zipReportPath = Invoke-Command -Session $session {
+        $zipReportPath = Join-Path $testRunnerPath "TestReport.zip"
+        $zipReportPath
+    }
 
-        $latest = Get-ChildItem $testResultsPath | ? { $_.PSIsContainer } | sort CreationTime -desc | select -f 1
+    Invoke-Command -Session $session -ArgumentList $testType, $testResultsPath {
+        param(
+            [string] $testType,
+            [string] $testResultsPath
+            )
+
+        C:\Users\edFiAdmin\run-deployed-tests.bat $testType $testResultsPath
+
+        $latest = Get-ChildItem $testResultsPath | Where-Object { $_.PSIsContainer } | Sort-Object CreationTime -desc | Select-Object -f 1
         $testResultsPath = Join-Path $testResultsPath $latest
 
         Add-Type -Assembly System.IO.Compression.FileSystem
         [System.IO.File]::Delete($zipPath)
         [System.IO.Compression.ZipFile]::CreateFromDirectory($testResultsPath, $zipPath, [System.IO.Compression.CompressionLevel]::Optimal, $false)
+
+        # Create Zip file for the report
+        $reportName = $testType + " Test Analysis.html"
+        $reportPath = Join-Path $testRunnerPath $reportName
+        $reportPath
+
+        if (Test-Path $reportPath -PathType Leaf) {
+            $compress = @{
+                Path = $reportPath
+                CompressionLevel = "Optimal"
+                DestinationPath = $zipReportPath
+            }
+
+            [System.IO.File]::Delete($zipReportPath)
+            Compress-Archive @compress
+        }
     }
 
+    Write-Output "Uploading test results"
     Copy-Item $zipPath -Destination artifacts -FromSession $session -Recurse
+
+    $reportExist = Invoke-Command -Session $session -ArgumentList $zipReportPath {
+        if (Test-Path $zipReportPath -PathType Leaf) {
+            $true
+        }
+    }
+
+    if (-not $reportExist){
+        exit
+    }
+
+    Write-Output "Uploading test reports"
+    Copy-Item $zipReportPath -Destination artifacts -FromSession $session -Recurse
+
 }

@@ -21,6 +21,8 @@ REM Move to the latest deployed version of the test suite.
 cd "$pathToThisDeployment"
 
 call run-tests.bat %*
+
+call run-report.bat %*
 "@
 }
 

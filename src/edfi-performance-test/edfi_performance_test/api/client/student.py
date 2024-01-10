@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0
 # Licensed to the Ed-Fi Alliance under one or more agreements.
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
@@ -7,12 +7,17 @@ from typing import Dict
 
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 from edfi_performance_test.api.client.assessment import LearningObjectiveClient
+from edfi_performance_test.api.client.assessment import AssessmentClient
 from edfi_performance_test.api.client.competency_objective import (
     CompetencyObjectiveClient,
 )
 from edfi_performance_test.api.client.school import SchoolClient
 from edfi_performance_test.factories.utils import RandomSuffixAttribute, formatted_date
 from edfi_performance_test.api.client.parent import ParentClient
+from edfi_performance_test.api.client.program import ProgramClient
+from edfi_performance_test.factories.descriptors.utils import (
+    build_descriptor,
+)
 
 
 class StudentParentAssociationClient(EdFiAPIClient):
@@ -450,6 +455,9 @@ class StudentCompetencyObjectiveClient(EdFiAPIClient):
     }
 
     def create_with_dependencies(self, **kwargs):
+        # Prepopulated student
+        studentUniqueId = kwargs.pop("studentUniqueId", StudentClient.shared_student_id())
+
         # Create grading period
         period_reference = self.grading_period_client.create_with_dependencies()  # type: ignore
 
@@ -470,15 +478,40 @@ class StudentCompetencyObjectiveClient(EdFiAPIClient):
             competencyObjectiveReference__objective=objective_reference[
                 "attributes"
             ]["objective"],
+            studentReference__studentUniqueId=studentUniqueId,
         )
 
 
 class StudentCTEProgramAssociationClient(EdFiAPIClient):
     endpoint = "studentCTEProgramAssociations"
 
+    def create_with_dependencies(self, **kwargs):
+        # Prepopulated student
+        studentUniqueId = kwargs.pop("studentUniqueId", StudentClient.shared_student_id())
+        program = ProgramClient.shared_program_name()
+
+        return self.create_using_dependencies(
+            studentReference__studentUniqueId=studentUniqueId,
+            programReference__programName=program,
+            programReference__programTypeDescriptor=build_descriptor(
+                "ProgramType", program
+            ),
+            **kwargs
+        )
+
 
 class StudentEducationOrganizationResponsibilityAssociationClient(EdFiAPIClient):
     endpoint = "studentEducationOrganizationResponsibilityAssociations"
+
+    def create_with_dependencies(self, **kwargs):
+        # Prepopulated student
+        studentUniqueId = kwargs.pop("studentUniqueId", StudentClient.shared_student_id())
+
+        # Create student academic record
+        return self.create_using_dependencies(
+            studentReference__studentUniqueId=studentUniqueId,
+            **kwargs
+        )
 
 
 class StudentGradebookEntryClient(EdFiAPIClient):
@@ -548,6 +581,21 @@ class StudentGradebookEntryClient(EdFiAPIClient):
 class StudentHomelessProgramAssociationClient(EdFiAPIClient):
     endpoint = "studentHomelessProgramAssociations"
 
+    def create_with_dependencies(self, **kwargs):
+        # Prepopulated student
+        studentUniqueId = kwargs.pop("studentUniqueId", StudentClient.shared_student_id())
+        program = ProgramClient.shared_program_name()
+
+        # Create student academic record
+        return self.create_using_dependencies(
+            studentReference__studentUniqueId=studentUniqueId,
+            programReference__programName=program,
+            programReference__programTypeDescriptor=build_descriptor(
+                "ProgramType", program
+            ),
+            **kwargs
+        )
+
 
 class StudentInterventionAssociationClient(EdFiAPIClient):
     endpoint = "studentInterventionAssociations"
@@ -557,7 +605,10 @@ class StudentInterventionAssociationClient(EdFiAPIClient):
     }
 
     def create_with_dependencies(self, **kwargs):
-        intervention_reference = self.intervention_client.create_with_dependencies()  # type: ignore
+        # Prepopulated student
+        studentUniqueId = kwargs.pop("studentUniqueId", StudentClient.shared_student_id())
+
+        intervention_reference = self.intervention_client.create_with_dependencies()
 
         return self.create_using_dependencies(
             intervention_reference,
@@ -566,6 +617,7 @@ class StudentInterventionAssociationClient(EdFiAPIClient):
             ][
                 "interventionIdentificationCode"
             ],
+            studentReference__studentUniqueId=studentUniqueId,
             **kwargs
         )
 
@@ -578,7 +630,10 @@ class StudentInterventionAttendanceEventClient(EdFiAPIClient):
     }
 
     def create_with_dependencies(self, **kwargs):
-        intervention_reference = self.intervention_client.create_with_dependencies()  # type: ignore
+        # Prepopulated student
+        studentUniqueId = kwargs.pop("studentUniqueId", StudentClient.shared_student_id())
+
+        intervention_reference = self.intervention_client.create_with_dependencies()
 
         return self.create_using_dependencies(
             intervention_reference,
@@ -587,12 +642,28 @@ class StudentInterventionAttendanceEventClient(EdFiAPIClient):
             ][
                 "interventionIdentificationCode"
             ],
+            studentReference__studentUniqueId=studentUniqueId,
             **kwargs
         )
 
 
 class StudentLanguageInstructionProgramAssociationClient(EdFiAPIClient):
     endpoint = "studentLanguageInstructionProgramAssociations"
+
+    def create_with_dependencies(self, **kwargs):
+        # Prepopulated student
+        studentUniqueId = kwargs.pop("studentUniqueId", StudentClient.shared_student_id())
+        program = ProgramClient.shared_program_name()
+
+        # Create student academic record
+        return self.create_using_dependencies(
+            studentReference__studentUniqueId=studentUniqueId,
+            programReference__programName=program,
+            programReference__programTypeDescriptor=build_descriptor(
+                "ProgramType", program
+            ),
+            **kwargs
+        )
 
 
 class StudentLearningObjectiveClient(EdFiAPIClient):
@@ -604,7 +675,10 @@ class StudentLearningObjectiveClient(EdFiAPIClient):
     }
 
     def create_with_dependencies(self, **kwargs):
-        objective_reference = self.objective_client.create_with_dependencies()  # type: ignore
+        # Prepopulated student
+        studentUniqueId = kwargs.pop("studentUniqueId", StudentClient.shared_student_id())
+
+        objective_reference = self.objective_client.create_with_dependencies()
 
         period_reference = self.grading_period_client.create_with_dependencies()  # type: ignore
 
@@ -619,6 +693,7 @@ class StudentLearningObjectiveClient(EdFiAPIClient):
             gradingPeriodReference__periodSequence=period_reference["attributes"][
                 "periodSequence"
             ],
+            studentReference__studentUniqueId=studentUniqueId,
             **kwargs
         )
 
@@ -626,14 +701,97 @@ class StudentLearningObjectiveClient(EdFiAPIClient):
 class StudentMigrantEducationProgramAssociationClient(EdFiAPIClient):
     endpoint = "studentMigrantEducationProgramAssociations"
 
+    def create_with_dependencies(self, **kwargs):
+        # Prepopulated student
+        studentUniqueId = kwargs.pop("studentUniqueId", StudentClient.shared_student_id())
+        program = ProgramClient.shared_program_name()
+
+        # Create student academic record
+        return self.create_using_dependencies(
+            studentReference__studentUniqueId=studentUniqueId,
+            programReference__programName=program,
+            programReference__programTypeDescriptor=build_descriptor(
+                "ProgramType", program
+            ),
+            **kwargs
+        )
+
 
 class StudentNeglectedOrDelinquentProgramAssociationClient(EdFiAPIClient):
     endpoint = "studentNeglectedOrDelinquentProgramAssociations"
+
+    def create_with_dependencies(self, **kwargs):
+        # Prepopulated student
+        studentUniqueId = kwargs.pop("studentUniqueId", StudentClient.shared_student_id())
+        program = ProgramClient.shared_program_name()
+
+        # Create student academic record
+        return self.create_using_dependencies(
+            studentReference__studentUniqueId=studentUniqueId,
+            programReference__programName=program,
+            programReference__programTypeDescriptor=build_descriptor(
+                "ProgramType", program
+            ),
+            **kwargs
+        )
 
 
 class StudentProgramAttendanceEventClient(EdFiAPIClient):
     endpoint = "studentProgramAttendanceEvents"
 
+    def create_with_dependencies(self, **kwargs):
+        # Prepopulated student
+        studentUniqueId = kwargs.pop("studentUniqueId", StudentClient.shared_student_id())
+        program = ProgramClient.shared_program_name()
+
+        # Create student academic record
+        return self.create_using_dependencies(
+            studentReference__studentUniqueId=studentUniqueId,
+            programReference__programName=program,
+            programReference__programTypeDescriptor=build_descriptor(
+                "ProgramType", program
+            ),
+            **kwargs
+        )
+
 
 class StudentSchoolFoodServiceProgramAssociationClient(EdFiAPIClient):
     endpoint = "studentSchoolFoodServiceProgramAssociations"
+
+    def create_with_dependencies(self, **kwargs):
+        # Prepopulated student
+        studentUniqueId = kwargs.pop("studentUniqueId", StudentClient.shared_student_id())
+        program = ProgramClient.shared_program_name()
+
+        # Create student academic record
+        return self.create_using_dependencies(
+            studentReference__studentUniqueId=studentUniqueId,
+            programReference__programName=program,
+            programReference__programTypeDescriptor=build_descriptor(
+                "ProgramType", program
+            ),
+            **kwargs
+        )
+
+
+class StudentAssessmentClient(EdFiAPIClient):
+    endpoint = "studentAssessments"
+
+    dependencies: Dict = {AssessmentClient: {}}
+
+    def create_with_dependencies(self, **kwargs):
+        # Prepopulated student
+        studentUniqueId = kwargs.pop("studentUniqueId", StudentClient.shared_student_id())
+
+        # Create new assessment
+        assessment_reference = self.assessment_client.create_with_dependencies()
+
+        # Create student assessment
+        return self.create_using_dependencies(
+            assessment_reference,
+            assessmentReference__assessmentIdentifier=assessment_reference[
+                "attributes"
+            ]["assessmentIdentifier"],
+            studentReference__studentUniqueId=studentUniqueId,
+            **kwargs
+        )

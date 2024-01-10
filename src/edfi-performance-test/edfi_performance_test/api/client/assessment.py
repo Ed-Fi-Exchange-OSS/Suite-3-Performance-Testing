@@ -55,22 +55,3 @@ class ObjectiveAssessmentClient(EdFiAPIClient):
             ]["assessmentIdentifier"],
             **kwargs
         )
-
-
-class StudentAssessmentClient(EdFiAPIClient):
-    endpoint = "studentAssessments"
-
-    dependencies: Dict = {AssessmentClient: {}}
-
-    def create_with_dependencies(self, **kwargs):
-        # Create new assessment
-        assessment_reference = self.assessment_client.create_with_dependencies() # type: ignore
-
-        # Create student assessment
-        return self.create_using_dependencies(
-            assessment_reference,
-            assessmentReference__assessmentIdentifier=assessment_reference[
-                "attributes"
-            ]["assessmentIdentifier"],
-            **kwargs
-        )

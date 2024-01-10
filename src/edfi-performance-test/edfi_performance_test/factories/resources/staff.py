@@ -50,6 +50,7 @@ class StaffEducationOrganizationAssignmentAssociationFactory(APIFactory):
 class StaffFactory(APIFactory):
     staffUniqueId = UniqueIdAttribute()
     firstName = "John"
+    middleName = "Michael"
     lastSurname = "Loyo"
     hispanicLatinoEthnicity = True
     birthDate = "1959-04-30"
@@ -80,6 +81,13 @@ class StaffFactory(APIFactory):
         [
             dict(
                 raceDescriptor=build_descriptor("Race", "White"),
+            ),
+        ]
+    )
+    languages = factory.List(
+        [
+            dict(
+                languageDescriptor=build_descriptor("Language", "spa"),
             ),
         ]
     )

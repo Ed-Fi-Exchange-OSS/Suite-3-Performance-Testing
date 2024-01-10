@@ -8,12 +8,13 @@ license = "Apache-2.0"
 [tool.poetry.dependencies]
 python = "^3.9"
 ConfigArgParse = "^1.5.3"
-urllib3 = "^1.26.8"
+urllib3 = "1.26.17"
 pandas = "^1.4.1"
 errorhandler = "^2.0.1"
 python-dotenv = "^0.20.0"
 factory-boy = "^3.2.1"
 locust = "^2.15.1"
+gevent = "^23.9.1"
 
 [tool.poetry.dev-dependencies]
 flake8 = "^4.0.1"

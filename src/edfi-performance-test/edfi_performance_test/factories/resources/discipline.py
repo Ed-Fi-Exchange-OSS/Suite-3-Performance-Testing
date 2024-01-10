@@ -52,9 +52,7 @@ class DisciplineActionFactory(APIFactory):
 class DisciplineIncidentFactory(APIFactory):
     incidentDate = RandomDateAttribute()
     incidentIdentifier = UniqueIdAttribute(num_chars=20)
-    schoolReference = factory.Dict(
-        dict(schoolId=SchoolClient.shared_elementary_school_id())
-    )  # Prepopulated school
+    schoolReference = factory.Dict(dict(schoolId=None))  # Prepopulated school
     staffReference = factory.Dict(dict(staffUniqueId=None))  # Must be entered by user
     behaviors = factory.List(
         [

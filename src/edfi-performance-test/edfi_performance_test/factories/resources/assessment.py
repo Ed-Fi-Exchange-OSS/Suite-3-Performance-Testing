@@ -5,11 +5,9 @@
 
 import factory
 
-from edfi_performance_test.api.client.student import StudentClient
 from edfi_performance_test.factories.resources.api_factory import APIFactory
 from edfi_performance_test.factories.descriptors.utils import build_descriptor
 from edfi_performance_test.factories.utils import (
-    RandomDateAttribute,
     RandomSuffixAttribute,
     UniqueIdAttribute,
     random_date_time,
@@ -166,7 +164,11 @@ class LearningStandardFactory(APIFactory):
             ),
         ]
     )
-    contentStandard = factory.Dict(dict(title="State Standard"))
+    contentStandard = factory.Dict(
+        dict(
+            title="Content Standard Demo",
+        )
+    )
 
 
 class ObjectiveAssessmentFactory(APIFactory):
@@ -178,53 +180,3 @@ class ObjectiveAssessmentFactory(APIFactory):
     )
     identificationCode = UniqueIdAttribute()
     maxRawScore = 8
-
-
-class StudentAssessmentFactory(APIFactory):
-    studentAssessmentIdentifier = UniqueIdAttribute()
-    studentReference = factory.Dict(
-        dict(studentUniqueId=StudentClient.shared_student_id())
-    )  # Prepopulated student
-    assessmentReference = factory.Dict(
-        dict(
-            assessmentIdentifier=None,
-            namespace="uri://ed-fi.org/Assessment/Assessment.xml",
-        )
-    )
-    administrationDate = random_date_time()  # Along with studentReference and assessmentReference, this is the PK
-    administrationEnvironmentDescriptor = build_descriptor(
-        "AdministrationEnvironment", "Testing Center"
-    )
-    administrationLanguageDescriptor = build_descriptor("Language", "eng")
-    serialNumber = "0"
-    whenAssessedGradeLevelDescriptor = build_descriptor("GradeLevel", "Sixth grade")
-    performanceLevels = factory.List(
-        [
-            factory.Dict(
-                dict(
-                    assessmentReportingMethodDescriptor=build_descriptor(
-                        "AssessmentReportingMethod", "Scale score"
-                    ),
-                    performanceLevelDescriptor=build_descriptor(
-                        "PerformanceLevel", "Fail"
-                    ),
-                    performanceLevelMet=True,
-                )
-            ),
-        ]
-    )
-    scoreResults = factory.List(
-        [
-            factory.Dict(
-                dict(
-                    assessmentReportingMethodDescriptor=build_descriptor(
-                        "AssessmentReportingMethod", "Scale score"
-                    ),
-                    result="25",
-                    resultDatatypeTypeDescriptor=build_descriptor(
-                        "ResultDatatypeType", "Integer"
-                    ),
-                )
-            )
-        ]
-    )

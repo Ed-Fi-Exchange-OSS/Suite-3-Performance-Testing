@@ -3,7 +3,6 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-from edfi_performance_test.api.client.school import SchoolClient
 from edfi_performance_test.factories.descriptors.utils import build_descriptor
 from edfi_performance_test.factories.utils import formatted_date
 from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
@@ -36,8 +35,11 @@ class EducationOrganizationNetworkAssociationPipecleanTest(EdFiPipecleanTestBase
 
 
 class EducationOrganizationPeerAssociationPipecleanTest(EdFiPipecleanTestBase):
+    """
+    This resource has no non-identity attributes.
+    So we'll just verify that the PUT endpoint works without actually changing any attributes
+    """
     def _touch_put_endpoint(self, resource_id, default_attributes):
-        # This resource has no non-key attributes, so there is nothing to update
         self.update(resource_id, **default_attributes)
 
 

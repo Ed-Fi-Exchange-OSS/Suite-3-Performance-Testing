@@ -9,6 +9,8 @@ from tkinter import Tk, filedialog
 
 from IPython.display import display, Markdown, HTML
 import pandas as pd
+import os
+from typing import Tuple
 
 
 def markdown(message: str) -> None:
@@ -72,3 +74,33 @@ def select_directory() -> str:
     log_info(f"Running analysis on {path.abspath(results_dir)}")
 
     return path.abspath(results_dir)
+
+
+def get_result_directory() -> Tuple[str, str]:
+
+    result_dir_root = path.abspath('./notebook_input.txt')
+    if not path.exists(result_dir_root):
+        return ("", "")
+
+    with open(result_dir_root) as f:
+        result_root_dir = f.read().rstrip('\n')
+
+    result_dir = path.abspath(result_root_dir)
+
+    name_list = os.listdir(result_dir)
+    full_list = [os.path.join(result_dir, i) for i in name_list]
+    time_sorted_list = sorted(full_list, key=os.path.getmtime)
+
+    result_dir = time_sorted_list[-1]
+    if len(time_sorted_list) > 1:
+        all_files = os.listdir(result_dir)
+        csv_files = list(filter(lambda f: f.endswith('.csv'), all_files))
+        result_file = csv_files[0]
+
+        index = -2
+        # find compare_dir with same type of test results as in the result_dir
+        while not os.path.exists(os.path.join(time_sorted_list[index], result_file)):
+            index = index - 1
+        compare_dir = time_sorted_list[index]
+
+    return (result_dir, compare_dir)

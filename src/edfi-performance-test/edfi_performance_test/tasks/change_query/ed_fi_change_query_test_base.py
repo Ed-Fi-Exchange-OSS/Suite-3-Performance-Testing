@@ -5,6 +5,7 @@
 
 import timeit
 import traceback
+import logging
 
 from greenlet import GreenletExit
 from locust import task, SequentialTaskSet, TaskSet
@@ -16,6 +17,9 @@ from edfi_performance_test.helpers.config import (
     get_config_value,
     set_change_version_value,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class EdFiChangeQueryTestBase(TaskSet):
@@ -64,7 +68,7 @@ class EdFiChangeQueryTestBase(TaskSet):
 
         while True:
             if offset > 0 and offset % 10000 == 0:
-                print("Offset has reached: {}".format(offset))
+                logger.info(f"Offset has reached: {offset}")
             query = "?offset={}&limit={}&minChangeVersion={}".format(
                 offset, limit, min_change_version
             )
@@ -79,8 +83,9 @@ class EdFiChangeQueryTestBase(TaskSet):
                 break
             offset += limit
 
-        print("{} Sync: {} seconds".format(self.endpoint, time))
-        print("{} results returned for {}".format(num_of_results, self.endpoint))
+        logger.info(f"{self.endpoint} Sync: {time} secconds")
+
+        logger.info(f"{num_of_results} results returned for: {self.endpoint}")
 
     def _touch_get_list_endpoint(self, query):
         return self.api_client.get_list(query)
@@ -128,9 +133,8 @@ class EdFiChangeQueryTestTerminator(TaskSet):
         if available_change_versions is not None:
             newest_change_version = available_change_versions["newestChangeVersion"]
             set_change_version_value(newest_change_version)
-            print(
-                "Current value of NewestChangeVersion: {}".format(newest_change_version)
-            )
+
+            logger.info(f"Current value of NewestChangeVersion: {newest_change_version}")
 
     @task
     def finish_change_query_test_run(self):

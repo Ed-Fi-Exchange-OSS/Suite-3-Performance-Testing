@@ -5,7 +5,6 @@
 
 import factory
 
-from edfi_performance_test.api.client.student import StudentClient
 from edfi_performance_test.factories.resources.api_factory import APIFactory
 from edfi_performance_test.factories.descriptors.utils import (
     ListOfDescriptors,
@@ -34,7 +33,7 @@ class PostSecondaryInstitutionFactory(APIFactory):
 class PostSecondaryEventFactory(APIFactory):
     eventDate = RandomDateAttribute()
     studentReference = factory.Dict(
-        dict(studentUniqueId=StudentClient.shared_student_id())
+        dict(studentUniqueId=None)
     )
     postSecondaryEventCategoryDescriptor = build_descriptor(
         "PostSecondaryEventCategory", "College Acceptance"

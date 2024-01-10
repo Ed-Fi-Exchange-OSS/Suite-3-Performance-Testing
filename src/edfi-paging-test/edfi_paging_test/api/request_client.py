@@ -73,7 +73,7 @@ class RequestClient:
         self.oauth.mount("https://", requests_adapter)
         self.verify_cert = not args.ignoreCertificateErrors
         # Allow running with an unsecured server
-        if(args.ignoreCertificateErrors):
+        if (args.ignoreCertificateErrors):
             os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
         # Supres insecure request warnings from the console
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -100,7 +100,6 @@ class RequestClient:
             response = get_base_api_response(self.api_base_url, self.verify_cert)
             self.api_info = APIInfo(
                 version=response["version"],
-                api_mode=response["apiMode"],
                 datamodels=response["dataModels"],
                 urls=response["urls"],
             )
@@ -270,7 +269,7 @@ class RequestClient:
         pagination_result = self.get_page(resource, 1)
         page_items = pagination_result.current_page_items
         # Assign to empty list if result is not a list, e.g. an error response from the API
-        items: List[Any] = page_items if(isinstance(page_items, list)) else []
+        items: List[Any] = page_items if (isinstance(page_items, list)) else []
 
         while True:
             pagination_result = self.get_page(

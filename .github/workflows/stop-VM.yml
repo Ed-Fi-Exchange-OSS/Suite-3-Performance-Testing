@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: Apache-2.0
+# Licensed to the Ed-Fi Alliance under one or more agreements.
+# The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
+# See the LICENSE and NOTICES files in the project root for more information.
+
+name: Stop Azure VM
+on:
+  workflow_dispatch:
+
+env:
+    AzureADServicePrincipalPassword: ${{ secrets.AZURE_SERVICE_PRINCIPAL_PASSWORD }}
+    AzureADApplicationId: ${{ vars.AZURE_SERVICE_APPLICATION_ID }}
+    AzureTenantId: ${{ secrets.AZURE_TENANT_ID }}
+    AzureSubscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+    AzureTestVmUsername: ${{ secrets.AZURE_TEST_VM_USER_NAME }}
+    AzureTestVmPassword: ${{ secrets.AZURE_TEST_VM_PASSWORD }}
+    Source: "Github"
+
+jobs:
+  stop-vm:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608  # v4.1.0
+
+      - name: Install Az module require
+        shell: powershell
+        run: |
+            Install-Module -Name Az -Repository PSGallery -Force -AllowClobber
+
+      - name: Stop VM
+        if: ${{ env.AzureADServicePrincipalPassword != '' && env.AzureADApplicationId != '' && env.AzureTenantId && env.AzureSubscriptionId != '' }}
+        shell: powershell
+        working-directory: ./eng/
+        run: |
+
+            . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1
+            Start-AzureManagementSession
+            Stop-AzureVmsInParallel

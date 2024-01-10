@@ -9,6 +9,11 @@ from edfi_performance_test.helpers.config import get_config_value
 
 
 class EdFiVolumeTestBase(EdFiTaskSet):
+
+    @classmethod
+    def skip_all_scenarios(cls):
+        return False
+
     @task
     def run_scenario(
         self, update_attribute_name=None, update_attribute_value=None, **kwargs

@@ -10,6 +10,10 @@ from subprocess import run
 import shutil
 import sys
 from typing import List
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 def _display_help():
@@ -29,13 +33,13 @@ def _display_help():
 For example, to run unit tests with code coverage, on utility `edfi-paging-test`:
 > ./build.py coverage:xml edfi_paging_test
 """
-    print(message)
+    logger.info(message)
     exit(-1)
 
 
 def _run_command(command: List[str], exit_immediately: bool = True):
 
-    print("\033[95m" + " ".join(command) + "\033[0m")
+    logger.info("\033[95m" + " ".join(command) + "\033[0m")
 
     # On Windows, must run inside of cmd.exe in order to get the user's $PATH.
     if os.name == "nt":
@@ -50,7 +54,7 @@ def _run_command(command: List[str], exit_immediately: bool = True):
     if not os.path.exists(package_dir):
         raise RuntimeError(f"Cannot find package {package_name}")
 
-    print(package_dir)
+    logger.info(package_dir)
     result = run(command, cwd=package_dir)
 
     return_code = result.returncode
@@ -186,7 +190,7 @@ def _run_ci_publish():
 
 if __name__ == "__main__":
     if not sys.version_info >= (3, 9):
-        print("This program requires Python 3.9 or newer.", file=sys.stderr)
+        logger.error("This program requires Python 3.9 or newer.", file=sys.stderr)
         exit(-1)
 
     if len(sys.argv) < 3:

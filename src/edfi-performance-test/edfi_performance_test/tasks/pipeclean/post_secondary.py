@@ -15,7 +15,9 @@ class PostSecondaryInstitutionPipecleanTest(EdFiPipecleanTestBase):
 
 
 class PostSecondaryEventPipecleanTest(EdFiPipecleanTestBase):
-    update_attribute_name = "postSecondaryInstitutionReference"
-    update_attribute_value = factory.Dict(
-        dict(postSecondaryInstitutionId=6000203)
-    )
+    """
+    This resource has no non-identity attributes.
+    So we'll just verify that the PUT endpoint works without actually changing any attributes
+    """
+    def _touch_put_endpoint(self, resource_id, default_attributes):
+        self.update(resource_id, **default_attributes)

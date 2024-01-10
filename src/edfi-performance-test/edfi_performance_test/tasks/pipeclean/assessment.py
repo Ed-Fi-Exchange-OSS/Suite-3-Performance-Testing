@@ -34,8 +34,3 @@ class LearningStandardPipecleanTest(EdFiPipecleanTestBase):
 class ObjectiveAssessmentPipecleanTest(EdFiPipecleanTestBase):
     update_attribute_name = "maxRawScore"
     update_attribute_value = 10
-
-
-class StudentAssessmentPipecleanTest(EdFiPipecleanTestBase):
-    update_attribute_name = "serialNumber"
-    update_attribute_value = 2

@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0
 # Licensed to the Ed-Fi Alliance under one or more agreements.
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
@@ -6,9 +6,7 @@
 import factory
 
 from edfi_performance_test.api.client.education import LocalEducationAgencyClient
-from edfi_performance_test.api.client.program import ProgramClient
 from edfi_performance_test.api.client.school import SchoolClient
-from edfi_performance_test.api.client.student import StudentClient
 from edfi_performance_test.factories.resources.api_factory import APIFactory
 from edfi_performance_test.factories.descriptors.utils import build_descriptor
 from edfi_performance_test.factories.resources.address import AddressFactory
@@ -300,6 +298,7 @@ class StudentSectionAttendanceEventFactory(APIFactory):
         "AttendanceEventCategory", "Tardy"
     )
     eventDate = formatted_date(9, 16)
+    attendanceEventReason = "No Note"
 
 
 class StudentAcademicRecordFactory(APIFactory):
@@ -317,8 +316,8 @@ class StudentAcademicRecordFactory(APIFactory):
 
 class StudentCompetencyObjectiveFactory(APIFactory):
     studentReference = factory.Dict(
-        dict(studentUniqueId=StudentClient.shared_student_id())
-    )  # Prepopulated student
+        dict(studentUniqueId=None)
+    )
     gradingPeriodReference = factory.Dict(
         dict(
             schoolId=SchoolClient.shared_elementary_school_id(),  # Prepopulated school
@@ -346,13 +345,15 @@ class StudentCTEProgramAssociationFactory(APIFactory):
         )
     )  # Prepopulated ed org
     studentReference = factory.Dict(
-        dict(studentUniqueId=StudentClient.shared_student_id())
-    )  # Prepopulated student
+        dict(studentUniqueId=None)
+    )
     programReference = factory.Dict(
         dict(
             programTypeDescriptor=build_descriptor("ProgramType", ProgramClient.shared_program_name),
             programName=ProgramClient.shared_program_name,
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
+            programTypeDescriptor=None,
+            programName=None,
         )
     )  # Prepopulated program
     beginDate = RandomDateAttribute()
@@ -364,8 +365,8 @@ class StudentEducationOrganizationResponsibilityAssociationFactory(APIFactory):
         dict(educationOrganizationId=SchoolClient.shared_elementary_school_id())
     )  # Prepopulated school
     studentReference = factory.Dict(
-        dict(studentUniqueId=StudentClient.shared_student_id())
-    )  # Prepopulated student
+        dict(studentUniqueId=None)
+    )
     beginDate = RandomDateAttribute()
     responsibilityDescriptor = build_descriptor("Responsibility", "Graduation")
     endDate = formatted_date(8, 8)
@@ -409,18 +410,20 @@ class StudentHomelessProgramAssociationFactory(APIFactory):
             programTypeDescriptor=build_descriptor("ProgramType", ProgramClient.shared_program_name),
             programName=ProgramClient.shared_program_name,
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
+            programTypeDescriptor=None,
+            programName=None,
         )
     )  # Prepopulated program
     studentReference = factory.Dict(
-        dict(studentUniqueId=StudentClient.shared_student_id())
-    )  # Prepopulated student
+        dict(studentUniqueId=None)
+    )
     awaitingFosterCare = True
 
 
 class StudentInterventionAssociationFactory(APIFactory):
     studentReference = factory.Dict(
-        dict(studentUniqueId=StudentClient.shared_student_id())
-    )  # Prepopulated student
+        dict(studentUniqueId=None)
+    )
     interventionReference = factory.Dict(
         dict(
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
@@ -432,8 +435,8 @@ class StudentInterventionAssociationFactory(APIFactory):
 
 class StudentInterventionAttendanceEventFactory(APIFactory):
     studentReference = factory.Dict(
-        dict(studentUniqueId=StudentClient.shared_student_id())
-    )  # Prepopulated student
+        dict(studentUniqueId=None)
+    )
     interventionReference = factory.Dict(
         dict(
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
@@ -457,22 +460,20 @@ class StudentLanguageInstructionProgramAssociationFactory(APIFactory):
     programReference = factory.Dict(
         dict(
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
-            programTypeDescriptor=build_descriptor(
-                "ProgramType", ProgramClient.shared_program_name()
-            ),
-            programName=ProgramClient.shared_program_name(),
+            programTypeDescriptor=None,
+            programName=None,
         )
     )  # Prepopulated program
     studentReference = factory.Dict(
-        dict(studentUniqueId=StudentClient.shared_student_id())
-    )  # Prepopulated student
+        dict(studentUniqueId=None)
+    )
     englishLearnerParticipation = False
 
 
 class StudentLearningObjectiveFactory(APIFactory):
     studentReference = factory.Dict(
-        dict(studentUniqueId=StudentClient.shared_student_id())
-    )  # Prepopulated student
+        dict(studentUniqueId=None)
+    )
     gradingPeriodReference = factory.Dict(
         dict(
             gradingPeriodDescriptor=build_descriptor(
@@ -499,15 +500,13 @@ class StudentMigrantEducationProgramAssociationFactory(APIFactory):
     programReference = factory.Dict(
         dict(
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
-            programTypeDescriptor=build_descriptor(
-                "ProgramType", ProgramClient.shared_program_name()
-            ),
-            programName=ProgramClient.shared_program_name(),
+            programTypeDescriptor=None,
+            programName=None,
         )
     )  # Prepopulated program
     studentReference = factory.Dict(
-        dict(studentUniqueId=StudentClient.shared_student_id())
-    )  # Prepopulated student
+        dict(studentUniqueId=None)
+    )
     priorityForServices = False
     lastQualifyingMove = formatted_date(6, 6)
 
@@ -522,15 +521,13 @@ class StudentNeglectedOrDelinquentProgramAssociationFactory(APIFactory):
     programReference = factory.Dict(
         dict(
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
-            programTypeDescriptor=build_descriptor(
-                "ProgramType", ProgramClient.shared_program_name()
-            ),
-            programName=ProgramClient.shared_program_name(),
+            programTypeDescriptor=None,
+            programName=None,
         )
     )  # Prepopulated program
     studentReference = factory.Dict(
-        dict(studentUniqueId=StudentClient.shared_student_id())
-    )  # Prepopulated student
+        dict(studentUniqueId=None)
+    )
     servedOutsideOfRegularSession = False
 
 
@@ -544,15 +541,13 @@ class StudentProgramAttendanceEventFactory(APIFactory):
     programReference = factory.Dict(
         dict(
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
-            programTypeDescriptor=build_descriptor(
-                "ProgramType", ProgramClient.shared_program_name()
-            ),
-            programName=ProgramClient.shared_program_name(),
+            programTypeDescriptor=None,
+            programName=None,
         )
     )  # Prepopulated program
     studentReference = factory.Dict(
-        dict(studentUniqueId=StudentClient.shared_student_id())
-    )  # Prepopulated student
+        dict(studentUniqueId=None)
+    )
     attendanceEventCategoryDescriptor = build_descriptor(
         "AttendanceEventCategory", "Excused Absence"
     )
@@ -569,13 +564,61 @@ class StudentSchoolFoodServiceProgramAssociationFactory(APIFactory):
     programReference = factory.Dict(
         dict(
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
-            programTypeDescriptor=build_descriptor(
-                "ProgramType", ProgramClient.shared_program_name()
-            ),
-            programName=ProgramClient.shared_program_name(),
+            programTypeDescriptor=None,
+            programName=None,
         )
     )  # Prepopulated program
     studentReference = factory.Dict(
-        dict(studentUniqueId=StudentClient.shared_student_id())
-    )  # Prepopulated student
+        dict(studentUniqueId=None)
+    )
     directCertification = True
+
+
+class StudentAssessmentFactory(APIFactory):
+    studentAssessmentIdentifier = UniqueIdAttribute()
+    studentReference = factory.Dict(dict(studentUniqueId=None))  # Prepopulated student
+    assessmentReference = factory.Dict(
+        dict(
+            assessmentIdentifier=None,
+            namespace="uri://ed-fi.org/Assessment/Assessment.xml",
+        )
+    )
+    administrationDate = (
+        RandomDateAttribute()
+    )  # Along with studentReference and assessmentReference, this is the PK
+    administrationEnvironmentDescriptor = build_descriptor(
+        "AdministrationEnvironment", "Testing Center"
+    )
+    administrationLanguageDescriptor = build_descriptor("Language", "eng")
+    serialNumber = "0"
+    whenAssessedGradeLevelDescriptor = build_descriptor("GradeLevel", "Sixth grade")
+    performanceLevels = factory.List(
+        [
+            factory.Dict(
+                dict(
+                    assessmentReportingMethodDescriptor=build_descriptor(
+                        "AssessmentReportingMethod", "Scale score"
+                    ),
+                    performanceLevelDescriptor=build_descriptor(
+                        "PerformanceLevel", "Fail"
+                    ),
+                    performanceLevelMet=True,
+                )
+            ),
+        ]
+    )
+    scoreResults = factory.List(
+        [
+            factory.Dict(
+                dict(
+                    assessmentReportingMethodDescriptor=build_descriptor(
+                        "AssessmentReportingMethod", "Scale score"
+                    ),
+                    result="25",
+                    resultDatatypeTypeDescriptor=build_descriptor(
+                        "ResultDatatypeType", "Integer"
+                    ),
+                )
+            )
+        ]
+    )

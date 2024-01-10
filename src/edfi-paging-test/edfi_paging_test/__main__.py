@@ -16,6 +16,9 @@ from edfi_paging_test.performance_tester import run
 from edfi_paging_test.helpers.log_level import LogLevel
 
 
+logger = logging.getLogger(__name__)
+
+
 def _redefine_debug_as_verbose(configuration: MainArguments, logger: str) -> None:
     requests_logger = logging.getLogger(logger)
     if configuration.log_level == LogLevel.VERBOSE:
@@ -56,9 +59,8 @@ async def main() -> None:
     await run(configuration)
 
     if error_tracker.fired:
-        print(
-            "A fatal error occurred, please review the log output for more information.",
-            file=sys.stderr,
+        logger.fatal(
+            "A fatal error occurred, please review the log output for more information."
         )
         sys.exit(1)
     sys.exit(0)

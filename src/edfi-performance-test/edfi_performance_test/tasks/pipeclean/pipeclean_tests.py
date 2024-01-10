@@ -10,10 +10,7 @@ locust which runs each scenario in order.
 """
 import importlib
 import os
-import pkgutil
 import logging
-
-import edfi_performance_test.tasks.pipeclean
 
 from typing import List
 from locust import HttpUser
@@ -21,13 +18,17 @@ from locust import HttpUser
 from edfi_performance_test.tasks.pipeclean.composite import (
     EdFiCompositePipecleanTestBase,
 )
-from edfi_performance_test.tasks.pipeclean.descriptors import (
-    DescriptorPipecleanTestBase,
-)
 from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
     EdFiPipecleanTestBase,
     EdFiPipecleanTaskSequence,
     EdFiPipecleanTestTerminator,
+)
+from edfi_performance_test.helpers.api_metadata import (
+   get_model_version,
+)
+from edfi_performance_test.helpers.module_helper import (
+   get_dir_modules,
+   get_inheritors,
 )
 
 logger = logging.getLogger(__name__)
@@ -42,41 +43,40 @@ class PipeCleanTestUser(HttpUser):
 
     test_list: List[str]
     is_initialized: bool = False
+    pipeclean_test_root_namespace: str = "edfi_performance_test.tasks.pipeclean."
 
     def on_start(self):
         if PipeCleanTestUser.is_initialized:
             return
 
-        tasks_submodules = [
-            name
-            for _, name, _ in pkgutil.iter_modules(
-                [os.path.dirname(edfi_performance_test.tasks.pipeclean.__file__)],
-                prefix="edfi_performance_test.tasks.pipeclean.",
-            )
-        ]
+        # Import root pipeclean modules
+        pipe_clean_dir = os.path.dirname(__file__)
+        tasks_submodules = get_dir_modules(pipe_clean_dir, self.pipeclean_test_root_namespace)
+
+        # Import modules under version specific subfolders
+        pipe_clean_sub_dir_list = [dir for dir in os.listdir(pipe_clean_dir) if os.path.isdir(os.path.join(pipe_clean_dir, dir))]
+        for dir in pipe_clean_sub_dir_list:
+            path = os.path.join(os.path.dirname(__file__), dir)
+            namespace_prefix = self.pipeclean_test_root_namespace + dir + "."
+            if dir[-1].isnumeric() and int(dir[-1]) <= get_model_version(str(PipeCleanTestUser.host)):
+                task_list = get_dir_modules(path, namespace_prefix)
+                tasks_submodules.extend(task_list)
 
         for mod_name in tasks_submodules:
             importlib.import_module(mod_name)
 
         # Collect *PipecleanTest classes and append them to
         # EdFiPipecleanTaskSequence.tasks
-        for subclass in EdFiPipecleanTestBase.__subclasses__():
+        for subclass in get_inheritors(EdFiPipecleanTestBase):
             if (
-                subclass != EdFiCompositePipecleanTestBase
-                and subclass != DescriptorPipecleanTestBase
+                not subclass.__subclasses__()  # include only top most subclass
+                and not subclass.skip_all_scenarios()  # allows overrides to skip endpoints defined in base class
+                and not (issubclass(subclass, EdFiCompositePipecleanTestBase) and os.environ["PERF_DISABLE_COMPOSITES"].lower() == "true")  # skip composites based on the configuration
             ):
                 EdFiPipecleanTaskSequence.tasks.append(subclass)
 
-        # Add composite pipeclean tests
-        if os.environ["PERF_DISABLE_COMPOSITES"].lower() != "true":
-            for subclass in EdFiCompositePipecleanTestBase.__subclasses__():
-                EdFiPipecleanTaskSequence.tasks.append(subclass)
-        else:
+        if os.environ["PERF_DISABLE_COMPOSITES"].lower() == "true":
             logger.info("Composites tests have been disabled")
-
-        # Add descriptor pipeclean tests
-        for descriptorSubclass in DescriptorPipecleanTestBase.__subclasses__():
-            EdFiPipecleanTaskSequence.tasks.append(descriptorSubclass)
 
         # If a list of tests were given, filter out the rest
         if PipeCleanTestUser.test_list:

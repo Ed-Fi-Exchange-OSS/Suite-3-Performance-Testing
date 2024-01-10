@@ -3,8 +3,8 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
+from edfi_performance_test.api.client.student import StudentClient
 
 
 class PostSecondaryInstitutionClient(EdFiAPIClient):
@@ -19,6 +19,9 @@ class PostSecondaryEventClient(EdFiAPIClient):
     }
 
     def create_with_dependencies(self, **kwargs):
+        # Prepopulated student
+        studentUniqueId = kwargs.pop("studentUniqueId", StudentClient.shared_student_id())
+
         # Create new student for association
         institution_reference = self.institution_client.create_with_dependencies()  # type: ignore
 
@@ -29,5 +32,6 @@ class PostSecondaryEventClient(EdFiAPIClient):
             ][
                 "postSecondaryInstitutionId"
             ],
+            studentReference__studentUniqueId=studentUniqueId,
             **kwargs
         )
