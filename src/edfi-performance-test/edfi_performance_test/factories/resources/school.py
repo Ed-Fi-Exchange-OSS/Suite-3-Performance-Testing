@@ -39,7 +39,7 @@ class SchoolFactory(APIFactory):
         )
     )
     gradeLevels = ListOfDescriptors(
-        "GradeLevel", ["Ninth grade", "Tenth grade", "Eleventh grade", "Twelfth grade"]
+        "GradeLevel", ["Second grade"]
     )
     institutionTelephones = ListOfDescriptors(
         "InstitutionTelephoneNumberType",

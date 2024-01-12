@@ -7,6 +7,7 @@ import factory
 
 from edfi_performance_test.api.client.education import LocalEducationAgencyClient
 from edfi_performance_test.api.client.school import SchoolClient
+from edfi_performance_test.api.client.program import ProgramClient
 from edfi_performance_test.factories.resources.api_factory import APIFactory
 from edfi_performance_test.factories.descriptors.utils import build_descriptor
 from edfi_performance_test.factories.resources.address import AddressFactory
@@ -339,6 +340,7 @@ class StudentCompetencyObjectiveFactory(APIFactory):
 
 
 class StudentCTEProgramAssociationFactory(APIFactory):
+
     educationOrganizationReference = factory.Dict(
         dict(
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id()
@@ -348,12 +350,11 @@ class StudentCTEProgramAssociationFactory(APIFactory):
         dict(studentUniqueId=None)
     )
     programReference = factory.Dict(
+
         dict(
+            educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
             programTypeDescriptor=build_descriptor("ProgramType", ProgramClient.shared_program_name),
             programName=ProgramClient.shared_program_name,
-            educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
-            programTypeDescriptor=None,
-            programName=None,
         )
     )  # Prepopulated program
     beginDate = RandomDateAttribute()
@@ -407,11 +408,9 @@ class StudentHomelessProgramAssociationFactory(APIFactory):
     )  # Prepopulated ed org
     programReference = factory.Dict(
         dict(
+            educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
             programTypeDescriptor=build_descriptor("ProgramType", ProgramClient.shared_program_name),
             programName=ProgramClient.shared_program_name,
-            educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
-            programTypeDescriptor=None,
-            programName=None,
         )
     )  # Prepopulated program
     studentReference = factory.Dict(
