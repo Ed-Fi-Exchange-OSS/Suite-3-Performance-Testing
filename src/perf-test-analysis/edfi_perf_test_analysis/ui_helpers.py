@@ -100,7 +100,15 @@ def get_result_directory() -> Tuple[str, str]:
         index = -2
         # find compare_dir with same type of test results as in the result_dir
         while not os.path.exists(os.path.join(time_sorted_list[index], result_file)):
+            # IndexError: list index out of range
+            if abs(index - 1) > len(time_sorted_list):
+                break
             index = index - 1
-        compare_dir = time_sorted_list[index]
+
+        # when it is the first execution of the test there is nothing to compare against
+        if not os.path.exists(os.path.join(time_sorted_list[index], result_file)):
+            compare_dir = result_dir
+        else:
+            compare_dir = time_sorted_list[index]
 
     return (result_dir, compare_dir)
