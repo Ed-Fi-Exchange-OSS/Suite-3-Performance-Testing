@@ -324,3 +324,9 @@ class StudentSchoolFoodServiceProgramAssociationVolumeTest(EdFiVolumeTestBase):
                 "SchoolFoodServiceProgramService", "Free Lunch"
             ),
         )
+
+
+class StudentAssessmentVolumeTest(EdFiVolumeTestBase):
+    @task
+    def run_assessment_scenario(self):
+        self.run_scenario("serialNumber", "1")

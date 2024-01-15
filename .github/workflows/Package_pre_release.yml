@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: Apache-2.0
+# Licensed to the Ed-Fi Alliance under one or more agreements.
+# The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
+# See the LICENSE and NOTICES files in the project root for more information.
+
+name: Package Pre-Release-Code
+on:
+  workflow_dispatch:
+
+env:
+  PACKAGE_NAME: Suite_3_Performance_Test_Suite_Package_Pre-Release
+
+jobs:
+  PackagePreRelease:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608  # v4.1.0
+
+      - name: Preparing Package Pre Release
+        run: |
+
+         mkdir -p ./package/
+
+         cp -r ${{ github.workspace }}/src/ ./package/
+
+         cp ${{ github.workspace }}/*.bat ./package/
+         cp ${{ github.workspace }}/*.psm1 ./package/
+         cp ${{ github.workspace }}/eng/deploy.ps1 ./package/
+         cp ${{ github.workspace }}/deploy.env ./package/.env
+
+      - name: Upload Package
+        if: success()
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+        with:
+            name: ${{ env.PACKAGE_NAME }}
+            path: ${{ github.workspace }}/package/

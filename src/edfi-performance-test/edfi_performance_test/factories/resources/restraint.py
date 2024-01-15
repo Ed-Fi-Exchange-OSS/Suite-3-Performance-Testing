@@ -6,7 +6,6 @@
 import factory
 
 from edfi_performance_test.api.client.school import SchoolClient
-from edfi_performance_test.api.client.student import StudentClient
 from edfi_performance_test.factories.resources.api_factory import APIFactory
 from edfi_performance_test.factories.utils import UniqueIdAttribute, formatted_date
 
@@ -17,6 +16,6 @@ class RestraintEventFactory(APIFactory):
         dict(schoolId=SchoolClient.shared_elementary_school_id())
     )
     studentReference = factory.Dict(
-        dict(studentUniqueId=StudentClient.shared_student_id())
+        dict(studentUniqueId=None)
     )
     eventDate = formatted_date(2, 14)
