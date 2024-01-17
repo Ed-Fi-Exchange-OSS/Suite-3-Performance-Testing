@@ -42,5 +42,5 @@ class CourseTranscriptVolumeTest(EdFiVolumeTestBase):
             schoolId=SchoolClient.shared_high_school_id(),
             courseReference__courseCode="ALG-2",
             finalLetterGradeEarned="A",
-            finalNumericGradeEarned=98,
+            finalNumericGradEarned=98,
         )
