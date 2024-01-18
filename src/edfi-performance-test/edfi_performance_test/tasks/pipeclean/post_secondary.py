@@ -6,7 +6,6 @@
 from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
     EdFiPipecleanTestBase,
 )
-import factory
 
 
 class PostSecondaryInstitutionPipecleanTest(EdFiPipecleanTestBase):

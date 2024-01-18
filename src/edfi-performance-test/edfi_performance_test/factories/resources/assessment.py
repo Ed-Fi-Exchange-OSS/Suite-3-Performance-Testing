@@ -10,7 +10,6 @@ from edfi_performance_test.factories.descriptors.utils import build_descriptor
 from edfi_performance_test.factories.utils import (
     RandomSuffixAttribute,
     UniqueIdAttribute,
-    random_date_time,
 )
 
 

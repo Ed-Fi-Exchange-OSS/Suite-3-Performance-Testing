@@ -15,7 +15,7 @@ class BellScheduleClient(EdFiAPIClient):
 
     def create_with_dependencies(self, **kwargs):
         # Create new class period
-        class_period_reference = self.class_period_client.create_with_dependencies() # type: ignore
+        class_period_reference = self.class_period_client.create_with_dependencies()  # type: ignore
 
         # Create bell schedule
         return self.create_using_dependencies(

@@ -55,4 +55,3 @@ def describe_when_building_a_descriptor_dictionary() -> None:
 
         def it_includes_the_telephone_number(result) -> None:
             assert result["telephoneNumber"] == "(950) 325-9465"
-
