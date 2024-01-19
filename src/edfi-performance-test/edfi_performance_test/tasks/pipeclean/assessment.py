@@ -9,7 +9,7 @@ from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
 
 
 class AssessmentPipecleanTest(EdFiPipecleanTestBase):
-    update_attribute_name = "title"
+    update_attribute_name = "assessmentTitle"
     update_attribute_value = "AP English 3"
 
 

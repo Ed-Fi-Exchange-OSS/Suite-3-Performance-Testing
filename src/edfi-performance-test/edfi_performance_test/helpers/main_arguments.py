@@ -34,6 +34,7 @@ class MainArguments:
     localEducationOrganizationId: int
     log_level: LogLevel = LogLevel.INFO
     disableComposites: bool = False
+    includeID: bool = False
 
     def __str__(self) -> str:
         def _masked(key: str) -> str:

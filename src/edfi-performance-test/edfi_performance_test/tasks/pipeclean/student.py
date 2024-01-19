@@ -23,7 +23,8 @@ class StudentSchoolAssociationPipecleanTest(EdFiPipecleanTestBase):
 
 class StudentPipecleanTest(EdFiPipecleanTestBase):
     def _touch_put_endpoint(self, resource_id, attrs):
-        attrs["telephones"][0]["telephoneNumber"] = "111-222-4444"
+        if "telepphones" in attrs and len(attrs["telephones"]) > 0:
+            attrs["telephones"][0]["telephoneNumber"] = "111-222-4444"
         self.update(resource_id, **attrs)
 
 
