@@ -36,8 +36,8 @@ def get_base_api_response(api_base_url: str, verify_cert: bool = True) -> Dict[s
             api_base_url,
             verify=verify_cert
             ).json()
-    except Exception as e:
-        raise RuntimeError(f"Error fetching: {api_base_url}") from e
+    except requests.exceptions.RequestException as e:
+        raise RuntimeError(f"Error: {e}.") from e
 
 
 @cache

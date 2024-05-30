@@ -59,7 +59,7 @@ def fetch_resource(request_client: RequestClient, target_resource: str) -> None:
 def invalid_resources(
     openapi_resources: List[str], resources_to_check: List[str]
 ) -> List[str]:
-    return [r for r in resources_to_check if r.lower() not in openapi_resources]
+    return [r for r in resources_to_check if r not in openapi_resources]
 
 
 async def run(args: MainArguments) -> None:
