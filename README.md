@@ -1,5 +1,7 @@
 # Suite-3-Performance-Testing
 
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/Ed-Fi-Exchange-OSS/Suite-3-Performance-Testing/badge)](https://securityscorecards.dev/viewer/?uri=github.com/Ed-Fi-Exchange-OSS/Suite-3-Performance-Testing)
+
 Performance testing framework for the Ed-Fi ODS technical suite 3, including the
 following test paths:
 
