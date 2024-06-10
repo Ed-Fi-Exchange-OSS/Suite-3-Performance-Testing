@@ -17,6 +17,8 @@ on:
       - main
   workflow_dispatch:
 
+permissions: read-all
+
 jobs:
   test-edfi-performance-test:
     name: Run unit, style, and type checks

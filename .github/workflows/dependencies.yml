@@ -12,6 +12,8 @@ on:
     paths:
       - 'src/**'
 
+permissions: read-all
+
 jobs:
   scan-actions:
     name: Scan Actions
