@@ -7,6 +7,8 @@ name: Package Pre-Release-Code
 on:
   workflow_dispatch:
 
+permissions: read-all
+
 env:
   PACKAGE_NAME: Suite_3_Performance_Test_Suite_Package_Pre-Release
 
