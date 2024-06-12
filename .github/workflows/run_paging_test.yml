@@ -7,6 +7,8 @@ name: Run Paging Test
 on:
   workflow_dispatch:
 
+permissions: read-all
+
 env:
     AzureTestVmUsername: ${{ secrets.AZURE_TEST_VM_USER_NAME }}
     AzureTestVmPassword: ${{ secrets.AZURE_TEST_VM_PASSWORD }}
