@@ -3,7 +3,7 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-name: Run Pipeclean Test
+name: Run Paging Test
 on:
   workflow_dispatch:
 
@@ -14,7 +14,7 @@ env:
     AzureTestVmPassword: ${{ secrets.AZURE_TEST_VM_PASSWORD }}
 
 jobs:
-  pipeclean-test:
+  paging-test:
     runs-on: windows-latest
 
     steps:
@@ -27,7 +27,7 @@ jobs:
         working-directory: ./eng/
         run: |
             . $env:GITHUB_WORKSPACE/eng/AzureTestLab.ps1
-            Invoke-TestRunnerFromTeamCity pipeclean
+            Invoke-TestRunnerFromTeamCity pageVolume
 
       - name: Upload Package
         if: success()
