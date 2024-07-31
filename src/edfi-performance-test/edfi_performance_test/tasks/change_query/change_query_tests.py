@@ -13,7 +13,7 @@ import os
 import pkgutil
 import edfi_performance_test.tasks.change_query
 
-from locust import HttpUser
+from locust import FastHttpUser
 from typing import List
 
 from edfi_performance_test.tasks.change_query.ed_fi_change_query_test_base import (
@@ -28,7 +28,7 @@ class EdFiChangeQueryTestMixin(object):
     max_wait = 9000
 
 
-class ChangeQueryTestUser(HttpUser):
+class ChangeQueryTestUser(FastHttpUser):
 
     test_list: List[str]
     is_initialized: bool = False

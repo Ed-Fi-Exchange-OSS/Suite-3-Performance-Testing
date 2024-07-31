@@ -13,7 +13,7 @@ import os
 import logging
 
 from typing import List
-from locust import HttpUser
+from locust import FastHttpUser
 
 from edfi_performance_test.tasks.pipeclean.composite import (
     EdFiCompositePipecleanTestBase,
@@ -39,7 +39,7 @@ class EdFiPipecleanTestMixin(object):
     max_wait = 9000
 
 
-class PipeCleanTestUser(HttpUser):
+class PipeCleanTestUser(FastHttpUser):
 
     test_list: List[str]
     is_initialized: bool = False
