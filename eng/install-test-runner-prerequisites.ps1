@@ -16,9 +16,9 @@ function Install-PowerShellTools {
 
 
 function Update-Path {
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") +
-                ";" +
-                [System.Environment]::GetEnvironmentVariable("Path","User")
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") +
+    ";" +
+    [System.Environment]::GetEnvironmentVariable("Path", "User")
 }
 
 function Install-Chocolatey {
@@ -34,7 +34,7 @@ function Install-Chocolatey {
 
 function Install-Pyenv {
     $pyenvVersion = cmd /c pyenv --version
-    if(!$pyenvVersion -or $pyenvVersion -notlike 'pyenv 2.*'){
+    if (!$pyenvVersion -or $pyenvVersion -notlike 'pyenv 2.*') {
         choco install pyenv-win -y
         refreshenv
         # refreshenv doesn't appear to be sufficient to recognize user environment variable changes
@@ -53,8 +53,8 @@ function Install-Poetry {
     python -m pip install --upgrade pip
 
     # Update local and global PATH variables
-    $addition = "$env:USERPROFILE\.pyenv\pyenv-win\versions\3.9.4\Scripts"
-    $env:PATH="$env:PATH;$addition"
+    $addition = "$env:USERPROFILE\AppData\Roaming\Python\Python39\Scripts"
+    $env:PATH = "$env:PATH;$addition"
 
     $value = [Environment]::GetEnvironmentVariable("PATH", "Machine")
     $value = "$value;$addition"

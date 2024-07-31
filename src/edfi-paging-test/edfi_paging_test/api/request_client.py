@@ -159,6 +159,7 @@ class RequestClient:
             return self.oauth.get(
                 url=url,
                 auth=self.oauth.auth,
+                verify=self.verify_cert,
             )
 
         try:
