@@ -17,8 +17,8 @@ function Install-PowerShellTools {
 
 function Update-Path {
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") +
-    ";" +
-    [System.Environment]::GetEnvironmentVariable("Path", "User")
+                ";" +
+                [System.Environment]::GetEnvironmentVariable("Path", "User")
 }
 
 function Install-Chocolatey {

@@ -18,12 +18,14 @@
 
 ## Pre-requisites
 
-The Python, Poetry, and Powershell requirements below can be installed
-with the help of the scripts in the [eng directory](../eng). To isolate this Python environment to the repository, it's recommended to run the scripts from the repository's root.
+The Python, Poetry, and Powershell requirements below can be installed with
+the help of the scripts in the [eng directory](../eng). To isolate this Python
+environment to the repository, it's recommended to run the scripts from the
+repository's root.
 
-```bash
+```pwsh
 ./eng/install-test-runner-prerequisites.ps1
-```  
+```
 
 * Ed-Fi ODS/API Suite 3, version 5.x and 6.x
   * ❗ Most recently, and most thoroughly, tested on 5.3. Versions 5.1 and 5.2
