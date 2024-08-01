@@ -10,7 +10,8 @@ import gevent
 from os import makedirs
 from typing import Type
 
-from locust.debug import run_single_user, User
+from locust import FastHttpUser
+from locust.debug import run_single_user
 from locust.env import Environment
 from locust.stats import stats_history, StatsCSVFileWriter, PERCENTILES_TO_REPORT
 from locust.runners import STATE_STOPPING, STATE_STOPPED, STATE_CLEANUP, Runner
@@ -44,7 +45,7 @@ def monitor_fail_ratio(runner: Runner):
             )
 
 
-def spawn_pref_tests(args: MainArguments, user_class: Type[User]) -> None:
+def spawn_pref_tests(args: MainArguments, user_class: Type[FastHttpUser]) -> None:
     # setup Environment and Runner
 
     # These tests expect that the base URL does NOT end with a slash
