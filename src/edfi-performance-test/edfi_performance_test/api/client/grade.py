@@ -23,7 +23,7 @@ class GradeClient(EdFiAPIClient):
         school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
         course_code = kwargs.pop("courseCode", "ELA-01")
 
-        assoc_reference = self.section_assoc_client.create_with_dependencies(
+        assoc_reference = self.section_assoc_client.create_with_dependencies(  # type: ignore
             schoolId=school_id, courseCode=course_code
         )
         grade_period = assoc_reference["dependency_ids"]["section_client"][

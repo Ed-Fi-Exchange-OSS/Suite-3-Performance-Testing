@@ -16,7 +16,7 @@ class GradebookEntryClient(EdFiAPIClient):
     }
 
     def create_with_dependencies(self, **kwargs):
-        section_reference = self.section_client.create_with_dependencies()
+        section_reference = self.section_client.create_with_dependencies()  # type: ignore
         section_attrs = section_reference["attributes"]
 
         return self.create_using_dependencies(

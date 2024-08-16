@@ -7,6 +7,7 @@ import factory
 
 from edfi_performance_test.api.client.education import LocalEducationAgencyClient
 from edfi_performance_test.api.client.school import SchoolClient
+from edfi_performance_test.api.client.program import ProgramClient
 from edfi_performance_test.factories.resources.api_factory import APIFactory
 from edfi_performance_test.factories.descriptors.utils import build_descriptor
 from edfi_performance_test.factories.resources.address import AddressFactory
@@ -17,6 +18,8 @@ from edfi_performance_test.factories.utils import (
     RandomDateAttribute,
 )
 
+SESSION_NAME = "2016-2017 Fall Semester"
+
 
 class StudentFactory(APIFactory):
     studentUniqueId = UniqueIdAttribute()
@@ -26,73 +29,9 @@ class StudentFactory(APIFactory):
     lastSurname = "Jones"
     generationCodeSuffix = "JR"
     personalTitlePrefix = "Mr"
-    hispanicLatinoEthnicity = False
     birthCity = "Grand Bend"
     birthCountryDescriptor = build_descriptor("Country", "AG")
     birthStateAbbreviationDescriptor = build_descriptor("StateAbbreviation", "TX")
-    addresses = factory.List(
-        [
-            factory.SubFactory(
-                AddressFactory,
-                addressTypeDescriptor=build_descriptor("AddressType", "Temporary"),
-                city="Grand Bend",
-                postalCode="78834",
-                streetNumberName="654 Mission Hills",
-                apartmentRoomSuiteNumber="100",
-                nameOfCounty="Williston",
-            )
-        ]
-    )
-    electronicMails = factory.List(
-        [
-            dict(
-                electronicMailAddress="Austin@edficert.org",
-                electronicMailTypeDescriptor=build_descriptor(
-                    "ElectronicMailType", "Other"
-                ),
-            ),
-        ]
-    )
-    identificationCodes = factory.List(
-        [
-            dict(
-                identificationCode=704,
-                assigningOrganizationIdentificationCode="State",
-                studentIdentificationSystemDescriptor=build_descriptor(
-                    "StudentIdentificationSystem", "State"
-                ),
-            ),
-        ]
-    )
-    studentLanguages = factory.List(
-        [
-            dict(
-                languageDescriptor=build_descriptor("Language", "Spanish"),
-            ),
-        ]
-    )
-    studentLanguageUses = factory.List(
-        [
-            dict(
-                languageUseDescriptor=build_descriptor("LanguageUse", "Home language"),
-            ),
-        ]
-    )
-    studentRaces = factory.List(
-        [
-            dict(raceDescriptor=build_descriptor("Race", "Black - African American")),
-        ]
-    )
-    telephones = factory.List(
-        [
-            dict(
-                telephoneNumber="111-222-3333",
-                telephoneNumberTypeDescriptor=build_descriptor(
-                    "TelephoneNumberType", "Home"
-                ),
-            ),
-        ]
-    )
 
 
 class StudentCohortAssociationFactory(APIFactory):
@@ -153,6 +92,63 @@ class StudentEducationOrganizationAssociationFactory(APIFactory):
         ]
     )
     sexDescriptor = build_descriptor("Sex", "Male")
+    hispanicLatinoEthnicity = True
+    addresses = factory.List(
+        [
+            factory.SubFactory(
+                AddressFactory,
+                addressTypeDescriptor=build_descriptor("AddressType", "Temporary"),
+                city="Grand Bend",
+                postalCode="78834",
+                streetNumberName="654 Mission Hills",
+                apartmentRoomSuiteNumber="100",
+                nameOfCounty="Williston",
+            )
+        ]
+    )
+    electronicMails = factory.List(
+        [
+            dict(
+                electronicMailAddress="Austin@edficert.org",
+                electronicMailTypeDescriptor=build_descriptor(
+                    "ElectronicMailType", "Other"
+                ),
+            ),
+        ]
+    )
+    studentIdentificationCodes = factory.List(
+        [
+            dict(
+                identificationCode=704,
+                assigningOrganizationIdentificationCode="State",
+                studentIdentificationSystemDescriptor=build_descriptor(
+                    "StudentIdentificationSystem", "State"
+                ),
+            ),
+        ]
+    )
+    languages = factory.List(
+        [
+            dict(
+                languageDescriptor=build_descriptor("Language", "Spanish"),
+            ),
+        ]
+    )
+    races = factory.List(
+        [
+            dict(raceDescriptor=build_descriptor("Race", "Black - African American")),
+        ]
+    )
+    telephones = factory.List(
+        [
+            dict(
+                telephoneNumber="111-222-3333",
+                telephoneNumberTypeDescriptor=build_descriptor(
+                    "TelephoneNumberType", "Home"
+                ),
+            ),
+        ]
+    )
 
 
 class StudentParentAssociationFactory(APIFactory):
@@ -176,10 +172,8 @@ class StudentProgramAssociationFactory(APIFactory):
     )  # Prepopulated ed organization
     programReference = factory.Dict(
         dict(
-            programTypeDescriptor=build_descriptor(
-                "ProgramType", "Gifted and Talented"
-            ),
-            programName="Gifted and Talented",
+            programTypeDescriptor=build_descriptor("ProgramType", ProgramClient.shared_program_name()),
+            programName=ProgramClient.shared_program_name(),
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),  # Prepopulated ed organization
         )
     )
@@ -196,7 +190,7 @@ class StudentSchoolAssociationFactory(APIFactory):
     entryDate = RandomDateAttribute()
     entryGradeLevelDescriptor = build_descriptor("GradeLevel", "First Grade")
     classOfSchoolYearTypeReference = factory.Dict(dict(schoolYear=2027))
-    schoolYear = current_year()
+    schoolYearTypeReference = factory.Dict(dict(schoolYear=current_year()))
     entryTypeDescriptor = build_descriptor("EntryType", "Next year school")
     repeatGradeIndicator = False
     residencyStatusDescriptor = build_descriptor(
@@ -216,8 +210,8 @@ class StudentTitleIPartAProgramAssociationFactory(APIFactory):
     )  # Prepopulated ed organization
     programReference = factory.Dict(
         dict(
-            programTypeDescriptor=build_descriptor("ProgramType", "Title I Part A"),
-            programName="Title I Part A",
+            programTypeDescriptor=build_descriptor("ProgramType", ProgramClient.shared_program_name()),
+            programName=ProgramClient.shared_program_name(),
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),  # Prepopulated ed organization
         )
     )
@@ -238,8 +232,8 @@ class StudentSpecialEducationProgramAssociationFactory(APIFactory):
     )  # Prepopulated ed organization
     programReference = factory.Dict(
         dict(
-            programTypeDescriptor=build_descriptor("ProgramType", "Special Education"),
-            programName="Special Education",
+            programTypeDescriptor=build_descriptor("ProgramType", ProgramClient.shared_program_name()),
+            programName=ProgramClient.shared_program_name(),
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),  # Prepopulated ed organization
         )
     )
@@ -257,7 +251,7 @@ class StudentSectionAssociationFactory(APIFactory):
             schoolId=SchoolClient.shared_elementary_school_id(),
             schoolYear=current_year(),
             sectionIdentifier="ELA012017RM555",
-            sessionName="2016-2017 Fall Semester",
+            sessionName=SESSION_NAME,
         )
     )
     studentReference = factory.Dict(
@@ -276,7 +270,7 @@ class StudentSchoolAttendanceEventFactory(APIFactory):
         dict(
             schoolId=SchoolClient.shared_elementary_school_id(),  # Prepopulated school
             schoolYear=2014,  # Prepopulated schoolYear
-            sessionName="2016-2017 Fall Semester",  # Default value for scenarios, but not in the DB
+            sessionName=SESSION_NAME,  # Default value for scenarios, but not in the DB
         )
     )
     studentReference = factory.Dict(
@@ -295,7 +289,7 @@ class StudentSectionAttendanceEventFactory(APIFactory):
             schoolId=SchoolClient.shared_elementary_school_id(),
             schoolYear=current_year(),
             sectionIdentifier="ELA012017RM555",
-            sessionName="2016-2017 Fall Semester",
+            sessionName=SESSION_NAME,
         )
     )
     studentReference = factory.Dict(
@@ -335,7 +329,7 @@ class StudentCompetencyObjectiveFactory(APIFactory):
             ),
         )
     )
-    objectiveCompetencyObjectiveReference = factory.Dict(
+    competencyObjectiveReference = factory.Dict(
         dict(
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),  # Prepopulated ed org
             objective=None,  # Must be entered by the user
@@ -346,6 +340,7 @@ class StudentCompetencyObjectiveFactory(APIFactory):
 
 
 class StudentCTEProgramAssociationFactory(APIFactory):
+
     educationOrganizationReference = factory.Dict(
         dict(
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id()
@@ -355,10 +350,11 @@ class StudentCTEProgramAssociationFactory(APIFactory):
         dict(studentUniqueId=None)
     )
     programReference = factory.Dict(
+
         dict(
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
-            programTypeDescriptor=None,
-            programName=None,
+            programTypeDescriptor=build_descriptor("ProgramType", ProgramClient.shared_program_name()),
+            programName=ProgramClient.shared_program_name(),
         )
     )  # Prepopulated program
     beginDate = RandomDateAttribute()
@@ -385,7 +381,7 @@ class StudentGradebookEntryFactory(APIFactory):
             schoolId=SchoolClient.shared_elementary_school_id(),
             schoolYear=current_year(),
             sectionIdentifier="ELA012017RM555",
-            sessionName="2016-2017 Fall Semester",
+            sessionName=SESSION_NAME,
             gradebookEntryTitle="ALG-1 - First Six Weeks - Homework - 20170821",
             dateAssigned=formatted_date(2, 2),
         )
@@ -396,7 +392,7 @@ class StudentGradebookEntryFactory(APIFactory):
             schoolId=SchoolClient.shared_elementary_school_id(),
             schoolYear=current_year(),
             sectionIdentifier="ELA012017RM555",
-            sessionName="2016-2017 Fall Semester",
+            sessionName=SESSION_NAME,
             studentUniqueId=111111,
             beginDate=formatted_date(5, 5),
         )
@@ -413,8 +409,8 @@ class StudentHomelessProgramAssociationFactory(APIFactory):
     programReference = factory.Dict(
         dict(
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),
-            programTypeDescriptor=None,
-            programName=None,
+            programTypeDescriptor=build_descriptor("ProgramType", ProgramClient.shared_program_name()),
+            programName=ProgramClient.shared_program_name(),
         )
     )  # Prepopulated program
     studentReference = factory.Dict(
