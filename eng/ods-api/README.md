@@ -2,8 +2,7 @@
 
 This directory contains startup scripts for the ODS/API running in Docker, using
 versions 5.3, 5.4, 6.1, and 6.2; and another that supports versions 7.1, 7.2,
-Docker Compose for orchestration. There are two scripts: one that supports
-and 7.3 (prerelease).
+Docker Compose for orchestration.
 
 > [!WARNING]
 > These are poorly secured environments and should not be exposed over the open
