@@ -35,8 +35,6 @@ Recommended approach for the ODS/API: use the `bootstrap.ps1 -Hub` the script in
 a single local instance of the ODS/API, running on PostgreSQL. By default, this will
 run the API on `http://localhost:8001`.
 
-... having trouble with this :-(
-
 Compared to the DMS instructions: don't use `LoadSchoolYear`, change the
 `BaseUrl`, and optionally change the key and secret (default values are shown:
 `minimalKey` and `minimalSecret`).
@@ -55,9 +53,9 @@ Compared to the DMS instructions: don't use `LoadSchoolYear`, change the
 ./Invoke-LoadGrandBend.ps1 -FullDataSet -BaseUrl http://localhost:8001 -Key minimalKey -Secret minimalSecret
 ```
 
-## Maybe unnecessary
+## Correct Education Organization Id
 
-If running Southridge against the ODS/API, then make sure that client
+If running Southridge against the ODS/API using, then make sure that client
 application is setup to work with education organization ID 255901. The
 following script might be useful _if you have only one API client in the
 `EdFi_Admin` database_.
@@ -65,3 +63,6 @@ following script might be useful _if you have only one API client in the
 ```sql
 update dbo.applicationeducationorganizations set educationorganizationid=255901;
 ```
+
+This is not necessary when using the bootstrap startup process in this
+repository's [eng/ods-api](../../eng/ods-api/) directory.
