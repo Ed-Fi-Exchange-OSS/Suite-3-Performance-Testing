@@ -25,6 +25,12 @@ from dbo.Applications
 where ApplicationName = 'Bootstrap Application'
     and not exists (select 1 from dbo.ApplicationEducationOrganizations where EducationOrganizationId = 255901);
 
+insert into dbo.ApplicationEducationOrganizations (EducationOrganizationId, Application_ApplicationId)
+select 19255901, ApplicationId
+from dbo.Applications
+where ApplicationName = 'Bootstrap Application'
+    and not exists (select 1 from dbo.ApplicationEducationOrganizations where EducationOrganizationId = 19255901);
+
 insert into dbo.ApiClients (Key, Secret, Name, IsApproved, UseSandbox, SandboxType, SecretIsHashed, Application_ApplicationId)
 select 'minimalKey', 'minimalSecret', 'Bootstrap', true, false, 0, false, ApplicationId from dbo.Applications
 where not exists (select 1 from dbo.ApiClients where Name = 'Bootstrap');
