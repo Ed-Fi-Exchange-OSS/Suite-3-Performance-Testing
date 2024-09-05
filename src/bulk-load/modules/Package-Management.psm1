@@ -31,97 +31,50 @@ function Invoke-SemanticSort {
         $Versions
     )
 
-
     $Versions `
-        | ForEach-Object { $_ -as [System.Version] } `
-        | Sort-Object -Descending `
-        | ForEach-Object { "$($_.Major).$($_.Minor).$($_.Build)" }
+    | ForEach-Object { $_ -as [System.Version] } `
+    | Sort-Object -Descending `
+    | ForEach-Object { "$($_.Major).$($_.Minor).$($_.Build)" }
 }
 
 <#
 .SYNOPSIS
     Downloads and extracts the latest compatible version of a NuGet package.
 
-.DESCRIPTION
-    Uses the [NuGet Server API](https://docs.microsoft.com/en-us/nuget/api/overview)
-    to look for the latest compatible version of a NuGet package, where version is
-    all or part of a Semantic Version. For example, if $PackageVersion = "5", this
-    will download the most recent 5.minor.patch version. If $PackageVersion = "5.3",
-    then it download the most recent 5.3.patch version. And if $PackageVersion = "5.3.1",
-    then it will look for the exact version 5.3.1 and fail if it does not exist.
-
 .OUTPUTS
     Directory name containing the downloaded files.
 
 .EXAMPLE
-    Get-NugetPackage -PackageName "EdFi.Suite3.RestApi.Databases" -PackageVersion "5.3"
+    Get-NugetPackage -PackageName "EdFi.Suite3.RestApi.Databases" -PackageVersion "5.3.0"
 #>
 function Get-NugetPackage {
     [CmdletBinding()]
     [OutputType([String])]
     param(
+        # Exact package name
         [Parameter(Mandatory = $true)]
         [string]
         $PackageName,
 
+        # Exact package version
         [Parameter(Mandatory = $true)]
         [string]
         $PackageVersion,
 
-        # URL for the pre-release package feed
+        # URL for the NuGet package feed
         [string]
-        $PreReleaseServiceIndex = "https://pkgs.dev.azure.com/ed-fi-alliance/Ed-Fi-Alliance-OSS/_packaging/EdFi/nuget/v3/index.json",
-
-        # URL for the release package feed
-        [string]
-        $ReleaseServiceIndex = "https://pkgs.dev.azure.com/ed-fi-alliance/Ed-Fi-Alliance-OSS/_packaging/EdFi%40Release/nuget/v3/index.json",
-
-        # Enable usage of prereleases
-        [Switch]
-        $PreRelease
+        $NugetServicesURL = "https://pkgs.dev.azure.com/ed-fi-alliance/Ed-Fi-Alliance-OSS/_packaging/EdFi/nuget/v3/index.json"
     )
 
-    # Pre-releases
-    $nugetServicesURL = $ReleaseServiceIndex
-    if ($PreRelease) {
-        $nugetServicesURL = $PreReleaseServiceIndex
-    }
-
     # The first URL just contains metadata for looking up more useful services
-    $nugetServices = Invoke-RestMethod $nugetServicesURL
+    $nugetServices = Invoke-RestMethod $NugetServicesURL
 
     $packageService = $nugetServices.resources `
     | Where-Object { $_."@type" -like "PackageBaseAddress*" } `
     | Select-Object -Property "@id" -ExpandProperty "@id"
 
-
-    $versionSearch = $PackageVersion
-
-    # pad this out to three part semver if only partial
-    switch ($PackageVersion.split(".").length) {
-        1 { $versionSearch = "$PackageVersion.*.*" }
-        2 { $versionSearch = "$PackageVersion.*" }
-    }
     $lowerId = $PackageName.ToLower()
-
-    # Lookup available packages
-    $package = Invoke-RestMethod "$($packageService)$($lowerId)/index.json"
-
-    if ($package.versions.Count -lt 1) {
-        throw "There are no package versions available for $lowerId"
-    }
-
-    # Sort by SemVer
-    $versions = Invoke-SemanticSort $package.versions
-
-    # Find the first available version that matches the requested version
-    $version = $versions | Where-Object { $_ -like $versionSearch } | Select-Object -First 1
-
-    if ($null -eq $version) {
-        throw "Version ``$($PackageVersion)`` does not exist yet."
-    }
-
-    $file = "$($lowerId).$($version)"
+    $file = "$($lowerId).$($PackageVersion)"
     $zip = "$($file).zip"
     $packagesDir = ".packages"
     New-Item -Path $packagesDir -Force -ItemType Directory | Out-Null
@@ -135,7 +88,7 @@ function Get-NugetPackage {
     }
 
     try {
-        Invoke-RestMethod "$($packageService)$($lowerId)/$($version)/$($file).nupkg" -OutFile $zip
+        Invoke-RestMethod "$($packageService)$($lowerId)/$($PackageVersion)/$($file).nupkg" -OutFile $zip
 
         Expand-Archive $zip -Force
 
@@ -157,30 +110,20 @@ function Get-NugetPackage {
 
 .OUTPUTS
     String containing the name of the created directory, e.g.
-    `.packages/edfi.datastandard.sampledata.3.3.1-b`.
+    `.packages/edfi.datastandard.sampledata.5.0.0-dev.1`.
 
 .EXAMPLE
-    Get-SampleData -PackageVersion 3
-
-.EXAMPLE
-    Get-SampleData -PackageVersion 4 -PreRelease
-
+    Get-SampleData -PackageVersion 5.0.0-dev.1
 #>
 function Get-SampleData {
     param (
-        # Requested version, example: "3" (latest 3.x.y), "3.3" (latest 3.3.y), "3.3.1-b" (exact)
+        # Exact package version
         [Parameter(Mandatory = $true)]
         [string]
-        $PackageVersion,
-
-        # Enable usage of prereleases
-        [Switch]
-        $PreRelease
+        $PackageVersion
     )
 
-    Get-NugetPackage -PackageName "EdFi.DataStandard.SampleData" `
-        -PreRelease:$PreRelease `
-        -PackageVersion $PackageVersion | Out-String
+    Get-NugetPackage -PackageName "EdFi.DataStandard.SampleData" -PackageVersion $PackageVersion | Out-String
 }
 
 <#
@@ -189,105 +132,21 @@ function Get-SampleData {
 
 .OUTPUTS
     String containing the name of the created directory, e.g.
-    `.packages/edfi.datastandard.sampledata.3.3.1-b`.
+    `.packages/edfi.suite3.bulkloadclient.console`.
 
 .EXAMPLE
-    Get-BulkLoadClient -PackageVersion 5
-
-.EXAMPLE
-    Get-BulkLoadClient -PackageVersion 6 -PreRelease
+    Get-BulkLoadClient -PackageVersion 6.2.0
 
 #>
 function Get-BulkLoadClient {
     param (
-        # Requested version, example: "5" (latest 5.x.y), "5.3" (latest 5.3.y), "5.3.123" (exact)
+        # Exact package version
         [Parameter(Mandatory = $true)]
         [string]
-        $PackageVersion,
-
-        # Enable usage of prereleases
-        [Switch]
-        $PreRelease
+        $PackageVersion
     )
 
-    Get-NugetPackage -PackageName "EdFi.Suite3.BulkLoadClient.Console" `
-        -PreRelease:$PreRelease `
-        -PackageVersion $PackageVersion | Out-String
-}
-
-<#
-.SYNOPSIS
-    Download and extract the Ed-Fi SmokeTest Console.
-
-.OUTPUTS
-    String containing the name of the created directory, e.g.
-    `.packages/edfi.suite3.smoketest.3.3.1`.
-
-.EXAMPLE
-    Get-SmokeTestTool -PackageVersion 5
-
-.EXAMPLE
-    Get-SmokeTestTool -PackageVersion 6 -PreRelease
-
-#>
-function Get-SmokeTestTool {
-    param (
-        # Requested version, example: "5" (latest 5.x.y), "5.3" (latest 5.3.y), "5.3.123" (exact)
-        [Parameter(Mandatory = $true)]
-        [string]
-        $PackageVersion,
-
-        # Enable usage of prereleases
-        [Switch]
-        $PreRelease
-    )
-
-    Get-NugetPackage -PackageName "EdFi.Suite3.SmokeTest.Console" `
-        -PreRelease:$PreRelease `
-        -PackageVersion $PackageVersion | Out-String
-}
-
-<#
-.SYNOPSIS
-    Download the Ed-Fi Api Sdk dll.
-
-.OUTPUTS
-    String containing the sdk dll path, e.g.
-    `sdk/EdFi.OdsApi.Sdk.dll`.
-#>
-function Get-ApiSdkDll {
-
-    $zip = "EdFi.OdsApi.Sdk.zip"
-
-    $resourceUrl = "https://odsassets.blob.core.windows.net/public/project-tanager/sdk/5.1.0/$zip"
-
-    $directory = "sdk"
-    $file = "EdFi.OdsApi.Sdk.dll"
-
-    if (!(Test-Path $directory -PathType Container)) {
-        New-Item -ItemType Directory -Force -Path $directory | Out-Null
-    }
-
-    Push-Location $directory
-    $fullPath = Join-Path -Path $directory -ChildPath $file
-
-    if ($null -ne (Get-ChildItem $file -ErrorAction SilentlyContinue)) {
-        Pop-Location
-        return $fullPath
-    }
-
-    try {
-        Invoke-WebRequest $resourceUrl -OutFile $zip
-        Expand-Archive $zip -DestinationPath $(Get-Location)
-        Remove-Item $zip
-        return $fullPath
-    }
-    catch {
-        throw $_
-    }
-    finally {
-        Pop-Location
-    }
+    Get-NugetPackage -PackageName "EdFi.Suite3.BulkLoadClient.Console" -PackageVersion $PackageVersion | Out-String
 }
 
 <#

@@ -43,10 +43,11 @@ function Import-SampleData {
         $directory = Get-SouthridgeSampleData
     }
     else {
-        $preRelease = $Version.Contains('-') # example: 5.1.0-dev.1
-
-        $directory = (Get-SampleData -PackageVersion $Version -PreRelease:$preRelease).Trim()
+        $directory = (Get-SampleData -PackageVersion $Version).Trim()
     }
+
+    # This line weirdly fixes a problem where `Join-Path` below thinks that $directory is null.
+    Write-Host ">>> $directory"
 
     # Copy two additional files into the bootstrap directory
     $bootstrap = Join-Path -Path $directory -ChildPath "Bootstrap"
