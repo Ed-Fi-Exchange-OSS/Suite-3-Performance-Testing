@@ -305,7 +305,7 @@ function Get-SouthridgeSampleData {
          Install-Module -Name 7Zip4PowerShell -Force
       }
 
-      $file = "southridge-xml-2023"
+      $file = "southridge-xml-2024"
       $zip = "$($file).7z"
       $packagesDir = ".packages"
 
