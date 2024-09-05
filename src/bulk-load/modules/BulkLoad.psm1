@@ -7,7 +7,7 @@
 $ErrorActionPreference = "Stop"
 
 
-$bulkLoadVersion = "7.2"
+$bulkLoadVersion = "7.2.413"
 
 function Initialize-ToolsAndDirectories {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseSingularNouns', '', Justification = 'Overly aggressive rule.')]
@@ -38,6 +38,7 @@ function Import-SampleData {
         $Version
     )
 
+    $directory = ""
     if ($Template -eq "Southridge") {
         $directory = Get-SouthridgeSampleData
     }
@@ -51,8 +52,8 @@ function Import-SampleData {
     $bootstrap = Join-Path -Path $directory -ChildPath "Bootstrap"
     $sample = Join-Path -Path $directory -ChildPath "Sample XML"
 
-    Copy-Item -Path $sample -Filter "EducationOrganization*.xml" -Destination $bootstrap -Force
-    Copy-Item -Path $sample -Filter "Standards*.xml" -Destination $bootstrap -Force
+    Get-ChildItem -Path $sample -Filter "EducationOrganization*.xml" | Copy-Item -Destination $bootstrap -Force
+    Get-ChildItem -Path $sample -Filter "Standards*.xml" | Copy-Item -Destination $bootstrap -Force
 
     return $directory
 }

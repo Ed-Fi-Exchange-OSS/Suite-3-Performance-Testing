@@ -26,15 +26,16 @@ if (-not [Net.ServicePointManager]::SecurityProtocol.HasFlag([Net.SecurityProtoc
 #>
 function Invoke-SemanticSort {
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string[]]
         $Versions
     )
 
+
     $Versions `
-        | Select-Object {$_.Split(".")} `
-        | Sort-Object {$_.'$_.Split(".")'[0], $_.'$_.Split(".")'[1], $_.'$_.Split(".")'[2]} -Descending `
-        | ForEach-Object { $_.'$_.Split(".")' -Join "." }
+        | ForEach-Object { $_ -as [System.Version] } `
+        | Sort-Object -Descending `
+        | ForEach-Object { "$($_.Major).$($_.Minor).$($_.Build)" }
 }
 
 <#
@@ -59,11 +60,11 @@ function Get-NugetPackage {
     [CmdletBinding()]
     [OutputType([String])]
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $PackageName,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $PackageVersion,
 
@@ -90,21 +91,25 @@ function Get-NugetPackage {
     $nugetServices = Invoke-RestMethod $nugetServicesURL
 
     $packageService = $nugetServices.resources `
-                        | Where-Object { $_."@type" -like "PackageBaseAddress*" } `
-                        | Select-Object -Property "@id" -ExpandProperty "@id"
+    | Where-Object { $_."@type" -like "PackageBaseAddress*" } `
+    | Select-Object -Property "@id" -ExpandProperty "@id"
 
 
     $versionSearch = $PackageVersion
 
     # pad this out to three part semver if only partial
     switch ($PackageVersion.split(".").length) {
-        1 { $versionSearch = "$PackageVersion.*.*"}
+        1 { $versionSearch = "$PackageVersion.*.*" }
         2 { $versionSearch = "$PackageVersion.*" }
     }
     $lowerId = $PackageName.ToLower()
 
     # Lookup available packages
     $package = Invoke-RestMethod "$($packageService)$($lowerId)/index.json"
+
+    if ($package.versions.Count -lt 1) {
+        throw "There are no package versions available for $lowerId"
+    }
 
     # Sort by SemVer
     $versions = Invoke-SemanticSort $package.versions
@@ -164,7 +169,7 @@ function Get-NugetPackage {
 function Get-SampleData {
     param (
         # Requested version, example: "3" (latest 3.x.y), "3.3" (latest 3.3.y), "3.3.1-b" (exact)
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $PackageVersion,
 
@@ -196,7 +201,7 @@ function Get-SampleData {
 function Get-BulkLoadClient {
     param (
         # Requested version, example: "5" (latest 5.x.y), "5.3" (latest 5.3.y), "5.3.123" (exact)
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $PackageVersion,
 
@@ -228,7 +233,7 @@ function Get-BulkLoadClient {
 function Get-SmokeTestTool {
     param (
         # Requested version, example: "5" (latest 5.x.y), "5.3" (latest 5.3.y), "5.3.123" (exact)
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $PackageVersion,
 
@@ -301,32 +306,36 @@ function Get-SouthridgeSampleData {
 
     try {
 
-      if(-not (Get-Module 7Zip4PowerShell -ListAvailable)){
-         Install-Module -Name 7Zip4PowerShell -Force
-      }
+        if (-not (Get-Module 7Zip4PowerShell -ListAvailable)) {
+            Install-Module -Name 7Zip4PowerShell -Force
+        }
 
-      $file = "southridge-xml-2024"
-      $zip = "$($file).7z"
-      $packagesDir = ".packages"
+        $file = "southridge-xml-2024"
+        $zip = "$($file).7z"
+        $packagesDir = ".packages"
 
-      New-Item -Path $packagesDir -Force -ItemType Directory | Out-Null
+        New-Item -Path $packagesDir -Force -ItemType Directory | Out-Null
 
-      Push-Location $packagesDir
+        $destination = Join-Path -Path $packagesDir -ChildPath $file
 
-    if ($null -ne (Get-ChildItem $file -ErrorAction SilentlyContinue)) {
-        # Already exists, don't re-download
-        Pop-Location
-        return "$($packagesDir)/$($file)"
-    }
+        Push-Location $packagesDir
 
-      Invoke-WebRequest -Uri "https://odsassets.blob.core.windows.net/public/Northridge/$($zip)" `
-        -OutFile $zip | Out-String
+        if ($null -ne (Get-ChildItem $file -ErrorAction SilentlyContinue)) {
+            # Already exists, don't re-download
+            Pop-Location
+            return $destination
+        }
 
-      Expand-7Zip $zip $(Get-Location)
+        Write-Host "Downloading Southridge zip file and unzipping into $destination"
+        Invoke-WebRequest -Uri "https://odsassets.blob.core.windows.net/public/Northridge/$($zip)" `
+            -OutFile $zip | Out-String
 
-      Remove-Item $zip
+        Write-Host "$zip"
+        Expand-7Zip $zip $file
 
-      return "$($packagesDir)/$($file)"
+        Remove-Item $zip
+
+        return $destination
     }
     catch {
         throw $_
