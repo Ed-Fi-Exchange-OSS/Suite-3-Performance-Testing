@@ -11,8 +11,9 @@ param(
     [string]
     $Secret = "minimalSecret",
 
-    # 8080 is the default docker port
-    # 5198 is the default when running F5
+    # 8080 is the default docker port. 5198 is the default when running F5 on
+    # DMS. 8001 for the ODS/API running from the Docker Compose files in this
+    # performance testing repository.
     [string]
     $BaseUrl = "http://localhost:8080",
 
@@ -20,6 +21,7 @@ param(
     [switch]
     $FullDataSet,
 
+    # Use with the DMS, do not use with the ODS/API
     [switch]
     $LoadSchoolYear
 )
