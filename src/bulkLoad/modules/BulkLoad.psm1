@@ -39,13 +39,22 @@ function Import-SampleData {
     )
 
     if ($Template -eq "Southridge") {
-        return (Get-SouthridgeSampleData)
+        $directory = Get-SouthridgeSampleData
     }
     else {
         $preRelease = $Version.Contains('-') # example: 5.1.0-dev.1
 
-        return (Get-SampleData -PackageVersion $Version -PreRelease:$preRelease).Trim()
+        $directory = (Get-SampleData -PackageVersion $Version -PreRelease:$preRelease).Trim()
     }
+
+    # Copy two additional files into the bootstrap directory
+    $bootstrap = Join-Path -Path $directory -ChildPath "Bootstrap"
+    $sample = Join-Path -Path $directory -ChildPath "Sample XML"
+
+    Copy-Item -Path $sample -Filter "EducationOrganization*.xml" -Destination $bootstrap -Force
+    Copy-Item -Path $sample -Filter "Standards*.xml" -Destination $bootstrap -Force
+
+    return $directory
 }
 
 function Write-XmlFiles {
