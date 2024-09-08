@@ -60,9 +60,6 @@ class StaffVolumeTest(EdFiVolumeTestBase):
                     ),
                 )
             ],
-            races__0__raceDescriptor=build_descriptor(
-                "Race", "Black - African American"
-            ),
         )
 
 

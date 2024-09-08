@@ -22,6 +22,8 @@ class DisciplineIncidentClient(EdFiAPIClient):
 
         # Create staff
         staff_reference = self.staff_client.create_with_dependencies(schoolId=school_id)
+        if(staff_reference is None or staff_reference["resource_id"] is None):
+            return
 
         # Create discipline incident
         return self.create_using_dependencies(
@@ -48,6 +50,8 @@ class DisciplineActionClient(EdFiAPIClient):
         school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
 
         assoc_reference = self.assoc_client.create_with_dependencies(schoolId=school_id)
+        if(assoc_reference is None or assoc_reference["resource_id"] is None):
+            return
 
         # Create discipline action
         return self.create_using_dependencies(

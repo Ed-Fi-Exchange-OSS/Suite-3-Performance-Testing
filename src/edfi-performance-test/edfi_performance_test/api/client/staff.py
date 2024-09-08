@@ -99,6 +99,8 @@ class StaffCohortAssociationClient(EdFiAPIClient):
 
         # Create staff
         staff_reference = self.staff_client.create_with_dependencies(schoolId=school_id)
+        if(staff_reference is None or staff_reference["resource_id"] is None):
+            return
 
         # Create association between new staff and new cohort
         return self.create_using_dependencies(
@@ -140,6 +142,8 @@ class StaffSchoolAssociationClient(EdFiAPIClient):
 
         # Create staff record
         staff_reference = self.staff_client.create_with_dependencies(schoolId=school_id)
+        if(staff_reference is None or staff_reference["resource_id"] is None):
+            return
 
         return self.create_using_dependencies(
             staff_reference,
@@ -169,7 +173,12 @@ class StaffSectionAssociationClient(EdFiAPIClient):
             courseCode=course_code,
             sectionIdentifier=RandomSuffixAttribute(course_code + "2017RM555"),
         )
+        if(section_reference is None or section_reference["resource_id"] is None):
+            return
+
         staff_reference = self.staff_client.create_with_dependencies(schoolId=school_id)
+        if(staff_reference is None or staff_reference["resource_id"] is None):
+            return
 
         # Create association between staff and section
         sec_attrs = section_reference["attributes"]

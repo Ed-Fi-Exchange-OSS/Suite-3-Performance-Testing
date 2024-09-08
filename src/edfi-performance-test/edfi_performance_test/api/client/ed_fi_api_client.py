@@ -140,6 +140,10 @@ class EdFiAPIClient(EdFiBasicAPIClient):
             return
         if succeed_on != [] and response.status_code not in succeed_on:
             response.failure("Status code {} is a failure".format(response.status_code))
+            # Useful for debugging
+            # logger.error(
+            # f"{response.request.method} {response.request.url} - REQUEST BODY: {payload}"
+            # )
             return
         if self.is_not_expected_result(response, [200, 201]):
             if unique_id is not None:
@@ -173,6 +177,14 @@ class EdFiAPIClient(EdFiBasicAPIClient):
             logger.debug(
                 "Skipping delete of {} instance {} because"
                 " deleteResources=False".format(
+                    self.__class__.__name__.replace("Client", ""), resource_id
+                )
+            )
+            return True
+        if(resource_id is None):
+            logger.debug(
+                "Skipping delete of {} instance {} because"
+                " resource_id is null".format(
                     self.__class__.__name__.replace("Client", ""), resource_id
                 )
             )

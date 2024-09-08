@@ -9,19 +9,18 @@ from edfi_performance_test.api.client.school import SchoolClient
 from edfi_performance_test.factories.resources.api_factory import APIFactory
 from edfi_performance_test.factories.descriptors.utils import build_descriptor
 from edfi_performance_test.factories.utils import (
-    RandomSuffixAttribute,
-    RandomSchoolYearAttribute,
+    UniqueIdAttribute,
 )
 
 
 class CalendarFactory(APIFactory):
     schoolYearTypeReference = factory.Dict(
         {
-            "schoolYear": RandomSchoolYearAttribute(),
+            "schoolYear": 2014,
         }
     )
     calendarTypeDescriptor = build_descriptor("CalendarType", "IEP")
-    calendarCode = RandomSuffixAttribute("107SS111111")
+    calendarCode = UniqueIdAttribute()
     schoolReference = factory.Dict(
         {"schoolId": SchoolClient.shared_elementary_school_id()}
     )
