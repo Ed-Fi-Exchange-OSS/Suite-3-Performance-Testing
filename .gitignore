@@ -78,3 +78,8 @@ override.tf.json
 .terraformrc
 terraform.rc
 **/.ipynb_checkpoints/*
+
+
+# Bulk load related
+.packages/
+.working/
