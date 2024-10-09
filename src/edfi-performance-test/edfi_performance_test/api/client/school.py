@@ -27,6 +27,7 @@ class SchoolClient(EdFiAPIClient):
                     return cls._high_school_id
                 cls._high_school_id = cls.create_shared_resource("schoolId")
                 cls._create_school_course_code(cls._high_school_id, "ALG-2")
+                cls._create_school_course_code(cls._high_school_id, "ELA-01")
                 cls._create_school_graduation_plan(cls._high_school_id, 2020)
             return cls._high_school_id
 

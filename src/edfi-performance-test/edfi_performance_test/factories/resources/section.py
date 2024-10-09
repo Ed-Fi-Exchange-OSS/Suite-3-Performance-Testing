@@ -56,7 +56,7 @@ class SectionAttendanceTakenEventFactory(APIFactory):
     )
     sectionReference = factory.Dict(
         dict(
-            sectionIdentifier=None,  # Must be created
+            sectionIdentifier=RandomSuffixAttribute("ELA012017RM555"),  # Must be created
             localCourseCode="ELA-01",
             schoolId=SchoolClient.shared_elementary_school_id(),
             schoolYear=2014,

@@ -24,6 +24,8 @@ class PostSecondaryEventClient(EdFiAPIClient):
 
         # Create new student for association
         institution_reference = self.institution_client.create_with_dependencies()
+        if(institution_reference is None or institution_reference["resource_id"] is None):
+            return
 
         return self.create_using_dependencies(
             institution_reference,
