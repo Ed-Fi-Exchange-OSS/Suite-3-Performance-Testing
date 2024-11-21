@@ -46,6 +46,8 @@ class EdFiVolumeTestBase(EdFiTaskSet):
         update_attribute_value,
         **kwargs
     ):
+        if get_config_value("INCLUDE_ID_IN_BODY").lower() == "true":
+            resource_attrs["id"] = resource_id
         resource_attrs[update_attribute_name] = update_attribute_value
         self.update(resource_id, **resource_attrs)
 

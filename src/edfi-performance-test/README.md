@@ -1,8 +1,8 @@
 # Performance Tests
 
-Provides performance metrics for the ODS / API  SIS Certification endpoints aimed at analysis of
-bottlenecks, and providing recommendations for server sizing for representative
-agency simulation sizes.
+Provides performance metrics for the ODS / API  SIS Certification endpoints
+aimed at analysis of bottlenecks, and providing recommendations for server
+sizing for representative agency simulation sizes.
 
 ## Getting Started
 
@@ -24,8 +24,8 @@ directory:
 poetry run python edfi_performance_test -b "https://localhost:54746" -k "testkey" -s "testsecret" -t "volume"
 ```
 
-Test failure ratio is monitored throughout and run is stopped if more than 50% of the
-tests experience failures.
+Test failure ratio is monitored throughout and run is stopped if more than 50%
+of the tests experience failures.
 
 ### Supported arguments
 
@@ -35,7 +35,7 @@ tests experience failures.
 | `-k`  or `--key`                          | yes (no default)        | The web API OAuth key                                                                                         |
 | `-s`  or `--secret`                       | yes (no default)        | The web API OAuth secret                                                                                      |
 | `-i`  or `--ignoreCertificateErrors`      | no (default: false)     | Ignore certificate errors                                                                                     |
-| `-t`  or `--testType`                     | no (default: PIPECLEAN) | Type of the performance tests to run: VOLUME, PIPECLEAN, CHANGE_QUERY                                         |
+| `-t`  or `--testType`                     | no (default: pipeclean) | Type of the performance tests to run: volume, pipeclean, change_query                                         |
 | `-tl` or `--testList`                     | no (no default)         | (Optional) List of test files to run - if not provided, all tests will be run                                 |
 | `-d`  or `--deleteResources`              | no (default: true)      | Delete resources during test run                                                                              |
 | `-f`  or `--failDeliberately`             | no (default: true)      | Deliberately introduce requests that result in failure                                                        |
@@ -48,8 +48,8 @@ tests experience failures.
 | `-e`  or `--localEducationOrganizationId` | no (default: 255901)    | Override the default LEA education organization ID                                                            |
 
 Each argument can also be set by environment variable, or by using as `.env`
-file. See [.env.example](edfi_performance_test/.env.example). Arguments provided at
-the command line override any arguments provided by environment variable.
+file. See [.env.example](edfi_performance_test/.env.example). Arguments provided
+at the command line override any arguments provided by environment variable.
 
 ### Dev Operations
 

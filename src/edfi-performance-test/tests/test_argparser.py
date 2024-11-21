@@ -143,6 +143,7 @@ def describe_when_parsing_from_env_vars() -> None:
         os.environ["PERF_TEST_LIST"] = '["a", "b"]'
         os.environ["PERF_FAIL_DELIBERATELY"] = "True"
         os.environ["PERF_DISABLE_COMPOSITES"] = "True"
+        os.environ["INCLUDE_ID_IN_BODY"] = "False"
         sys.argv = ["pytest"]
 
         return parse_main_arguments()

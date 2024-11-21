@@ -10,5 +10,6 @@ from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
 
 
 class ClassPeriodPipecleanTest(EdFiPipecleanTestBase):
+    # This is an allowed natural key update, which should automatically cascade through the API without error
     update_attribute_name = "classPeriodName"
     update_attribute_value = RandomSuffixAttribute("Class Period 01", suffix_length=10)
