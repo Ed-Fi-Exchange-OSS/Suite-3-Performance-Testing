@@ -45,7 +45,7 @@ resource "azurerm_windows_virtual_machine" "vm" {
 
   os_disk {
     caching              = "ReadWrite"
-    storage_account_type = "Standard_LRS"
+    storage_account_type = "StandardSSD_LRS"
     #disk_size_gb         = var.os_disk_size
   }
 
@@ -60,7 +60,7 @@ resource "azurerm_managed_disk" "vm_data" {
   name                 = "${local.base_vm_name}-VM_Data_0"
   location             = var.location
   resource_group_name  = var.resource_group_name
-  storage_account_type = "Standard_LRS"
+  storage_account_type = "StandardSSD_LRS"
   create_option        = "Empty"
   disk_size_gb         = var.data_disk_size
 }
@@ -69,4 +69,17 @@ resource "azurerm_virtual_machine_data_disk_attachment" "vm_data" {
   virtual_machine_id = azurerm_windows_virtual_machine.vm.id
   lun                = "1"
   caching            = "ReadOnly"
+}
+
+# Shutdown at 7:00pm daily
+resource "azurerm_dev_test_global_vm_shutdown_schedule" "shutdown_7pm" {
+  virtual_machine_id = azurerm_windows_virtual_machine.vm.id
+  location           = var.location
+  enabled            = true
+
+  daily_recurrence_time = "1900"
+  timezone              = "Central Standard Time"
+  notification_settings {
+    enabled = false
+  }
 }
