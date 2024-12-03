@@ -48,3 +48,40 @@ Finally, migrate the state into the newly created Terraform remote state azure s
 3. Copy the value from the previous step into the placeholder for the storage account name.
 4. Enter the resource group name from your `terraform.tfvars` file in the placeholder for the resource group name.
 5. Run `terraform init` and when prompted, allow the state to be copied to the bucket.
+
+---
+## GitHub Actions
+### Requirements
+1. In the settings configure the secrets and variables under the **Environments** section, you have to create a new
+environment and register the next values
+   2. Environment secrets
+        ```
+        - AZURE_CLIENT_SECRET
+        - RUNNER_ADMIN_PASSWORD
+        - RUNNER_ADMIN_USERNAME
+        - SQL_ADMIN_PASSWORD
+        - SQL_ADMIN_USERNAME
+        - WEB_ADMIN_PASSWORD
+        - WEB_ADMIN_USERNAME
+        ```
+   3. Environment variables
+        ```
+        - AZURE_CLIENT_ID
+        - AZURE_SUBSCRIPTION_ID
+        - AZURE_TENANT_ID
+        - RUNNER_VM_SIZE
+        - SQL_VM_IMAGE_OFFER
+        - SQL_VM_IMAGE_PUBLISHER
+        - SQL_VM_IMAGE_SKU
+        - SQL_VM_SIZE
+        - WEB_VM_IMAGE_OFFER
+        - WEB_VM_IMAGE_PUBLISHER
+        - WEB_VM_IMAGE_SKU
+        - WEB_VM_SIZE
+      ```
+### Terraform Deploy and Terraform Destroy
+The actions needs to be trigger manually, on every execution you need to provide
+1. The Azure region
+2. The resource prefix
+3. The environment label
+4. The environment to deploy to (This will be used to pull the secrets and variables from the right environment)
