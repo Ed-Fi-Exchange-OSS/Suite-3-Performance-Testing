@@ -11,13 +11,17 @@ base_subnet="default"
 
 #base_vnet="tools-di-perf-test"
 
-web_vm_size="Standard_D2s_v3"
-runner_vm_size="Standard_D2s_v3"
-web_vm_image_publisher="MicrosoftWindowsServer"
-web_vm_image_offer="WindowsServer"
+# Updated Nov 2024
+web_vm_size="Standard_B4ms"
+runner_vm_size="Standard_B4ms"
+
+# Updated Nov 2024
+web_vm_image_publisher="microsoftwindowsserver"
+web_vm_image_offer="windowsserver"
 web_vm_image_sku="2022-datacenter-azure-edition"
 
-sql_vm_size="Standard_DS11_v2"
+# Updated Nov 2024
+sql_vm_size="Standard_E4ds_v4"
 sql_vm_image_publisher="microsoftsqlserver"
 sql_vm_image_offer="sql2022-ws2022"
 sql_vm_image_sku="sqldev-gen2"
