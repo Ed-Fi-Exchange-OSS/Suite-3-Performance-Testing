@@ -1,0 +1,236 @@
+name: 'Terraform Destroy'
+
+on:
+  workflow_dispatch:
+    inputs:
+      location:
+        description: 'Azure Region'
+        required: true
+        default: 'westus'
+      prefix:
+        description: 'Resource Prefix'
+        required: true
+        default: 'jar'
+      label:
+        description: 'Environment Label'
+        required: true
+        default: 'ods-perf-test'
+      environment:
+        description: 'Environment to destroy'
+        required: true
+        type: environment
+        default: 'develop'
+
+permissions:
+  contents: read
+
+env:
+  ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+  ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+  ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+
+jobs:
+  terraform:
+    name: 'Terraform'
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+
+    defaults:
+      run:
+        working-directory: ./eng/terraform
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+
+    - name: Azure Login
+      run: |
+        echo "🔐 Authenticating with Azure..."
+        az login --service-principal \
+          --username "$ARM_CLIENT_ID" \
+          --password "$ARM_CLIENT_SECRET" \
+          --tenant "$ARM_TENANT_ID"
+        
+        echo "Setting subscription..."
+        az account set --subscription "$ARM_SUBSCRIPTION_ID"
+        
+        echo "✅ Azure authentication successful"
+      working-directory: ./eng/terraform
+
+    - name: Create backend.tf
+      run: |
+        # Calculate the same state file name as used in deploy
+        STATE_FILE="${{ inputs.prefix }}-${{ inputs.label }}.tfstate"
+        RESOURCE_GROUP="${{ inputs.prefix }}-${{ inputs.label }}"
+        
+        # Get the storage account name
+        STORAGE_ACCOUNT=$(az storage account list --resource-group ${RESOURCE_GROUP} --query "[0].name" -o tsv)
+        
+        # Create the backend configuration
+        cat > backend.tf << EOF
+        terraform {
+          backend "azurerm" {}
+        }
+        EOF
+        
+        echo "Created backend.tf for Azure storage"
+      working-directory: ./eng/terraform
+
+    - name: Validate State File
+      run: |
+        # Calculate the same state file name as used in deploy
+        STATE_FILE="${{ inputs.prefix }}-${{ inputs.label }}.tfstate"
+        RESOURCE_GROUP="${{ inputs.prefix }}-${{ inputs.label }}"
+        
+        echo "🔍 Validating state file details:"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "Resource Group: ${RESOURCE_GROUP}"
+        echo "Container: tfstate"
+        echo "State Key: ${STATE_FILE}"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        
+        # List available storage accounts in the resource group
+        echo "📦 Available storage accounts in resource group:"
+        STORAGE_ACCOUNTS=$(az storage account list --resource-group ${RESOURCE_GROUP} --query "[].name" -o tsv) || {
+          echo "❌ Failed to list storage accounts. Make sure the resource group exists."
+          exit 1
+        }
+        
+        # Find storage account with 'tfstate' in the name
+        STORAGE_ACCOUNT=$(echo "$STORAGE_ACCOUNTS" | grep 'tfstate' || echo "")
+        
+        if [ -z "$STORAGE_ACCOUNT" ]; then
+          echo "❌ No tfstate storage account found in resource group ${RESOURCE_GROUP}"
+          echo "Available storage accounts:"
+          echo "$STORAGE_ACCOUNTS"
+          exit 1
+        fi
+        
+        echo "Using storage account: ${STORAGE_ACCOUNT}"
+        
+        # Initialize Terraform with the correct backend config
+        terraform init -backend=true \
+          -backend-config="resource_group_name=${RESOURCE_GROUP}" \
+          -backend-config="storage_account_name=${STORAGE_ACCOUNT}" \
+          -backend-config="container_name=tfstate" \
+          -backend-config="key=${STATE_FILE}"
+        
+        # Try to show state
+        if terraform show > /dev/null 2>&1; then
+          echo "✅ State file accessed successfully!"
+          echo "📋 Current state contents:"
+          terraform show
+          
+          echo -e "\n📑 Resources in state:"
+          terraform state list || echo "No resources found in state"
+        else
+          echo "❌ Failed to access state file"
+          echo "Please verify your backend configuration and permissions"
+          exit 1
+        fi
+
+    - name: Create terraform.tfvars
+      run: |
+        cat > terraform.tfvars << EOF
+        location="${{ inputs.location }}"
+        prefix="${{ inputs.prefix }}"
+        label="${{ inputs.label }}"
+        web_vm_size="${{ vars.WEB_VM_SIZE }}"
+        runner_vm_size="${{ vars.RUNNER_VM_SIZE }}"
+        web_vm_image_publisher="${{ vars.WEB_VM_IMAGE_PUBLISHER }}"
+        web_vm_image_offer="${{ vars.WEB_VM_IMAGE_OFFER }}"
+        web_vm_image_sku="${{ vars.WEB_VM_IMAGE_SKU }}"
+        sql_vm_size="${{ vars.SQL_VM_SIZE }}"
+        sql_vm_image_publisher="${{ vars.SQL_VM_IMAGE_PUBLISHER }}"
+        sql_vm_image_offer="${{ vars.SQL_VM_IMAGE_OFFER }}"
+        sql_vm_image_sku="${{ vars.SQL_VM_IMAGE_SKU }}"
+        web_admin_username="${{ secrets.WEB_ADMIN_USERNAME }}"
+        web_admin_password="${{ secrets.WEB_ADMIN_PASSWORD }}"
+        runner_admin_username="${{ secrets.RUNNER_ADMIN_USERNAME }}"
+        runner_admin_password="${{ secrets.RUNNER_ADMIN_PASSWORD }}"
+        sql_admin_username="${{ secrets.SQL_ADMIN_USERNAME }}"
+        sql_admin_password="${{ secrets.SQL_ADMIN_PASSWORD }}"
+        EOF
+      working-directory: ./eng/terraform
+
+    - name: Terraform Destroy with Recovery
+      run: |
+        # Check if errored.tfstate exists from previous attempt
+        if [ -f "errored.tfstate" ]; then
+          echo "Found errored.tfstate from previous attempt"
+          cp errored.tfstate terraform.tfstate
+        fi
+        
+        # First try to remove the VM extension
+        echo "Attempting to remove VM extension..."
+        terraform state rm module.runner_config.azurerm_virtual_machine_extension.script_install || true
+        
+        # Switch to local state temporarily
+        echo "Switching to local state..."
+        cat > backend.tf << EOF
+        terraform {
+          backend "local" {}
+        }
+        EOF
+        
+        # Reinitialize with local backend
+        terraform init -migrate-state -force-copy
+        
+        # Now attempt the destroy
+        echo "Starting terraform destroy..."
+        terraform destroy -auto-approve -var-file=terraform.tfvars -parallelism=1 || {
+          # If destroy fails, try to continue with remaining resources
+          echo "Initial destroy failed. Attempting to continue..."
+          
+          # List remaining resources
+          echo "Remaining resources:"
+          terraform state list || true
+          
+          # Try to remove any storage account resources from state
+          echo "Removing storage account from state..."
+          terraform state rm azurerm_storage_account.tf_state || true
+          
+          # Try destroy again
+          echo "Attempting final destroy..."
+          terraform destroy -auto-approve -var-file=terraform.tfvars -parallelism=1
+        }
+      id: destroy
+      continue-on-error: true
+      working-directory: ./eng/terraform
+
+    - name: Cleanup Check
+      if: always()
+      run: |
+        echo "Checking for remaining resources in resource group..."
+        RESOURCE_GROUP="${{ inputs.prefix }}-${{ inputs.label }}"
+        
+        # List any remaining resources
+        echo "Remaining Azure resources:"
+        az resource list --resource-group "$RESOURCE_GROUP" --query "[].{name:name, type:type}" -o table || {
+          if [[ $? -eq 3 ]]; then
+            echo "Resource group not found - cleanup successful!"
+            exit 0
+          else
+            echo "Error checking resources"
+            exit 1
+          fi
+        }
+        
+        # If we get here and there are resources, try to delete the resource group
+        if az group exists --name "$RESOURCE_GROUP"; then
+          echo "Attempting to delete entire resource group..."
+          az group delete --name "$RESOURCE_GROUP" --yes --no-wait
+          echo "Resource group deletion initiated"
+        fi
+      working-directory: ./eng/terraform
+
+    - name: Terraform Destroy Status
+      if: steps.destroy.outcome == 'failure'
+      run: |
+        echo "Terraform destroy failed. Checking state..."
+        terraform show
+        exit 1
+      working-directory: ./eng/terraform

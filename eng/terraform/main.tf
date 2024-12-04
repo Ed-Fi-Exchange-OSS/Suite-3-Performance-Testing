@@ -146,3 +146,9 @@ resource "azurerm_storage_container" "tf_state" {
   name                 = "tfstate"
   storage_account_name = azurerm_storage_account.tf_state.name
 }
+
+output "azure_storage_tfstate" {
+  value       = azurerm_storage_account.tf_state.name
+  description = "The name of the storage account for Terraform state"
+  sensitive   = false
+}

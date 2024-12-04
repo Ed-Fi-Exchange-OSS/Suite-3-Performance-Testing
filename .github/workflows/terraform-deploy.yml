@@ -1,0 +1,149 @@
+name: 'Terraform Deploy'
+
+on:
+  workflow_dispatch:
+    inputs:
+      location:
+        description: 'Azure Region'
+        required: true
+        default: 'westus'
+      prefix:
+        description: 'Resource Prefix'
+        required: true
+        default: 'jar'
+      label:
+        description: 'Environment Label'
+        required: true
+        default: 'ods-perf-test'
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        type: environment
+        default: 'development'
+
+permissions:
+  contents: read
+
+env:
+  ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+  ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+  ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+
+jobs:
+  terraform:
+    name: 'Terraform'
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+
+    defaults:
+      run:
+        working-directory: ./eng/terraform  
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+
+    - name: Create terraform.tfvars
+      run: |
+        cat > terraform.tfvars << EOF
+        location="${{ github.event.inputs.location }}"
+        prefix="${{ github.event.inputs.prefix }}"
+        label="${{ github.event.inputs.label }}"
+        web_vm_size="${{ vars.WEB_VM_SIZE }}"
+        runner_vm_size="${{ vars.RUNNER_VM_SIZE }}"
+        web_vm_image_publisher="${{ vars.WEB_VM_IMAGE_PUBLISHER }}"
+        web_vm_image_offer="${{ vars.WEB_VM_IMAGE_OFFER }}"
+        web_vm_image_sku="${{ vars.WEB_VM_IMAGE_SKU }}"
+        sql_vm_size="${{ vars.SQL_VM_SIZE }}"
+        sql_vm_image_publisher="${{ vars.SQL_VM_IMAGE_PUBLISHER }}"
+        sql_vm_image_offer="${{ vars.SQL_VM_IMAGE_OFFER }}"
+        sql_vm_image_sku="${{ vars.SQL_VM_IMAGE_SKU }}"
+        web_admin_username="${{ secrets.WEB_ADMIN_USERNAME }}"
+        web_admin_password="${{ secrets.WEB_ADMIN_PASSWORD }}"
+        runner_admin_username="${{ secrets.RUNNER_ADMIN_USERNAME }}"
+        runner_admin_password="${{ secrets.RUNNER_ADMIN_PASSWORD }}"
+        sql_admin_username="${{ secrets.SQL_ADMIN_USERNAME }}"
+        sql_admin_password="${{ secrets.SQL_ADMIN_PASSWORD }}"
+        EOF
+
+    - name: Initial Terraform Init
+      run: terraform init
+
+    - name: Terraform Plan
+      run: terraform plan -out=tfplan
+      
+    - name: Terraform Apply
+      run: terraform apply -auto-approve tfplan
+
+    - name: Get Storage Account Name
+      id: storage
+      run: |
+        # Debug: Show terraform state content
+        echo "Terraform state content:"
+        cat terraform.tfstate
+        
+        # Get storage account name using jq for reliable JSON parsing
+        STORAGE_ACCOUNT=$(cat terraform.tfstate | jq -r '.outputs.azure_storage_tfstate.value')
+        
+        echo "Extracted storage account name: $STORAGE_ACCOUNT"
+        
+        # Validate the storage account name
+        if [ -z "$STORAGE_ACCOUNT" ]; then
+          echo "Error: Failed to extract storage account name"
+          exit 1
+        fi
+        
+        if [ ${#STORAGE_ACCOUNT} -gt 24 ]; then
+          echo "Error: Storage account name too long: ${#STORAGE_ACCOUNT} characters"
+          exit 1
+        fi
+        
+        if [[ ! $STORAGE_ACCOUNT =~ ^[a-z0-9]*$ ]]; then
+          echo "Error: Storage account name contains invalid characters"
+          exit 1
+        fi
+        
+        # Set the output
+        echo "storage_account=${STORAGE_ACCOUNT}" >> $GITHUB_OUTPUT
+        
+        # Debug: Show what we're setting
+        echo "Setting storage account to: ${STORAGE_ACCOUNT}"
+      shell: bash
+
+    - name: Create backend.tf
+      run: |
+        # Create a more descriptive state file name
+        STATE_FILE="${{ github.event.inputs.prefix }}-${{ github.event.inputs.label }}.tfstate"
+        
+        echo "Using state file name: ${STATE_FILE}"
+        
+        # Create the backend configuration
+        cat > backend.tf << EOF
+        terraform {
+          backend "azurerm" {
+            resource_group_name  = "${{ github.event.inputs.prefix }}-${{ github.event.inputs.label }}"
+            storage_account_name = "${{ steps.storage.outputs.storage_account }}"
+            container_name      = "tfstate"
+            key                = "${STATE_FILE}"
+          }
+        }
+        EOF
+        
+        # Verify the content
+        echo "Created backend.tf content:"
+        cat backend.tf
+
+    - name: Migrate State to Azure
+      run: |
+        echo "Backend configuration:"
+        cat backend.tf
+        
+        terraform init -migrate-state -force-copy || {
+          echo "Migration failed. Current directory contents:"
+          ls -la
+          exit 1
+        }
