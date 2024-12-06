@@ -77,13 +77,6 @@ class StaffFactory(APIFactory):
             [("State", {"identificationCode": o.staffUniqueId})],
         )
     )
-    races = factory.List(
-        [
-            dict(
-                raceDescriptor=build_descriptor("Race", "White"),
-            ),
-        ]
-    )
     languages = factory.List(
         [
             dict(

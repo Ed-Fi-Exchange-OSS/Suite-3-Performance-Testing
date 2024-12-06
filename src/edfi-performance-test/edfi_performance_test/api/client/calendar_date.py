@@ -6,7 +6,6 @@
 from typing import Dict
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 from edfi_performance_test.api.client.school import SchoolClient
-from edfi_performance_test.factories.utils import RandomSuffixAttribute
 
 
 class CalendarDateClient(EdFiAPIClient):
@@ -18,13 +17,12 @@ class CalendarDateClient(EdFiAPIClient):
 
     def create_with_dependencies(self, **kwargs):
         school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
-        custom_calendar_code = kwargs.pop(
-            "calendarCode", RandomSuffixAttribute("107SS111111")
-        )
         # Create a calendar
         calendar_reference = self.calendar_client.create_with_dependencies(
-            schoolReference__schoolId=school_id, calendarCode=custom_calendar_code
+            schoolReference__schoolId=school_id
         )
+        if(calendar_reference is None or calendar_reference["resource_id"] is None):
+            return
 
         # Create first calendar date
         return self.create_using_dependencies(

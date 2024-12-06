@@ -21,11 +21,13 @@ class GradeClient(EdFiAPIClient):
 
     def create_with_dependencies(self, **kwargs):
         school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
-        course_code = kwargs.pop("courseCode", "ELA-01")
 
         assoc_reference = self.section_assoc_client.create_with_dependencies(
-            schoolId=school_id, courseCode=course_code
+            schoolId=school_id,
         )
+        if(assoc_reference is None or assoc_reference["resource_id"] is None):
+            return
+
         grade_period = assoc_reference["dependency_ids"]["section_client"][
             "gradingPeriods"
         ][0]["gradingPeriodReference"]
@@ -38,6 +40,7 @@ class GradeClient(EdFiAPIClient):
             gradingPeriodReference__gradingPeriodDescriptor=grade_period[
                 "gradingPeriodDescriptor"
             ],
+            gradingPeriodReference__gradingPeriodName=grade_period["gradingPeriodName"],
             gradingPeriodReference__schoolYear=section_reference["schoolYear"],
             studentSectionAssociationReference__sectionIdentifier=section_reference[
                 "sectionIdentifier"

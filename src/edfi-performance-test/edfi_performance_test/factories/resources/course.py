@@ -12,7 +12,7 @@ from edfi_performance_test.factories.descriptors.utils import (
     build_descriptor,
     build_descriptor_dicts,
 )
-from edfi_performance_test.factories.utils import RandomSuffixAttribute, current_year
+from edfi_performance_test.factories.utils import UniqueIdAttribute, current_year
 
 
 class CourseFactory(APIFactory):
@@ -23,7 +23,7 @@ class CourseFactory(APIFactory):
     )
     academicSubjectDescriptor = build_descriptor("AcademicSubject", "Mathematics")
     courseTitle = "Algebra I"
-    courseCode = RandomSuffixAttribute("03100500")
+    courseCode = UniqueIdAttribute(num_chars=20)
     numberOfParts = 1
     identificationCodes = factory.LazyAttribute(
         lambda o: build_descriptor_dicts(

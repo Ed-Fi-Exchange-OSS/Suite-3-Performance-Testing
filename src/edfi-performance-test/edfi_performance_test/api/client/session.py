@@ -7,7 +7,6 @@ from typing import Dict
 from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 from edfi_performance_test.api.client.grading_period import GradingPeriodClient
 from edfi_performance_test.api.client.school import SchoolClient
-from edfi_performance_test.factories.descriptors.utils import build_descriptor
 
 
 class SessionClient(EdFiAPIClient):
@@ -23,17 +22,15 @@ class SessionClient(EdFiAPIClient):
             schoolReference__schoolId=school_id,
             schoolYearTypeReference__schoolYear=school_year,
         )
+        if(period_1_reference is None or period_1_reference["resource_id"] is None):
+            return
+
         period_2_reference = self.grading_period_client.create_with_dependencies(
             schoolReference__schoolId=school_id,
             schoolYearTypeReference__schoolYear=school_year,
-            beginDate="2014-10-06",
-            endDate="2014-12-15",
-            totalInstructionalDays=30,
-            gradingPeriodDescriptor=build_descriptor(
-                "GradingPeriod", "Second Six Weeks"
-            ),
         )
-
+        if(period_2_reference is None or period_2_reference["resource_id"] is None):
+            return
         # Create session referencing grading periods
         return self.create_using_dependencies(
             [
@@ -52,6 +49,30 @@ class SessionClient(EdFiAPIClient):
             ][
                 "periodSequence"
             ],
+            gradingPeriods__0__gradingPeriodReference__gradingPeriodDescriptor=period_1_reference[
+                "attributes"
+            ][
+                "gradingPeriodDescriptor"
+            ],
+            gradingPeriods__1__gradingPeriodReference__gradingPeriodDescriptor=period_2_reference[
+                "attributes"
+            ][
+                "gradingPeriodDescriptor"
+            ],
+            gradingPeriods__0__gradingPeriodReference__gradingPeriodName=period_1_reference[
+                "attributes"
+            ][
+                "gradingPeriodName"
+            ],
+            gradingPeriods__1__gradingPeriodReference__gradingPeriodName=period_2_reference[
+                "attributes"
+            ][
+                "gradingPeriodName"
+            ],
+            gradingPeriods__0__gradingPeriodReference__schoolId=school_id,
+            gradingPeriods__1__gradingPeriodReference__schoolId=school_id,
+            gradingPeriods__0__gradingPeriodReference__schoolYear=school_year,
+            gradingPeriods__1__gradingPeriodReference__schoolYear=school_year,
             **kwargs
         )
 

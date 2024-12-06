@@ -28,6 +28,9 @@ class CourseTranscriptClient(EdFiAPIClient):
             schoolId=school_id
         )
 
+        if(record_reference is None or record_reference["resource_id"] is None):
+            return
+
         # Create course transcript
         return self.create_using_dependencies(
             record_reference,
