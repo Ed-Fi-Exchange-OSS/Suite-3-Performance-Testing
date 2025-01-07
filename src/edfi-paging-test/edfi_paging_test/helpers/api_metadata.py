@@ -112,7 +112,7 @@ def get_resource_paths(api_base_url: str, verify_cert: bool = True) -> List[str]
     ] = get_resource_metadata_response(api_base_url, verify_cert)
     all_paths: List[str] = list(resource_metadata_response["paths"].keys())
     # filter out paths that are for get by id, deletes or keyChanges
-    return list(filter(lambda p: "{id}" not in p and "/deletes" not in p and "/keyChanges" not in p, all_paths))
+    return list(filter(lambda p: "{id}" not in p and "/deletes" not in p and "/keyChanges" not in p and "/partitions" not in p, all_paths))
 
 
 def normalize_resource_paths(resource_paths: List[str]) -> List[str]:
