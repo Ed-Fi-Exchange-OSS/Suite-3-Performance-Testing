@@ -115,10 +115,10 @@ def get_resource_paths(api_base_url: str, verify_cert: bool = True) -> List[str]
     return list(
         filter(
             lambda p: (
-            "{id}" not in p
-            and "/deletes" not in p
-            and "/keyChanges" not in p
-            and "/partitions" not in p
+                "{id}" not in p
+                and "/deletes" not in p
+                and "/keyChanges" not in p
+                and "/partitions" not in p
             )
             , all_paths
         )
