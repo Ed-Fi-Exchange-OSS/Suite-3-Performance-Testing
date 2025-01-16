@@ -86,18 +86,46 @@ function Install-DotNetHosting {
 
     Start-Transcript -Path $LogFile -Append
 
-    # Install IIS Web Server Role
-    Write-Host "Installing IIS Web Server Role..."
-    Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServerRole -NoRestart | Out-Null
+    # Install IIS Web Server Role withcommon features
+    Write-Host "Installing IIS Web Server Role and features..."
+    $features = @(
+        "IIS-WebServerRole",
+        "IIS-WebServer",
+        "IIS-CommonHttpFeatures",
+        "IIS-DefaultDocument",
+        "IIS-DirectoryBrowsing",
+        "IIS-HttpErrors",
+        "IIS-StaticContent",
+        "IIS-HttpRedirect",
+        "IIS-HealthAndDiagnostics",
+        "IIS-HttpLogging",
+        "IIS-LoggingLibraries",
+        "IIS-RequestMonitor",
+        "IIS-Security",
+        "IIS-RequestFiltering",
+        "IIS-HttpCompressionStatic",
+        "IIS-WebServerManagementTools",
+        "IIS-ManagementConsole",
+        "IIS-BasicAuthentication",
+        "IIS-WindowsAuthentication",
+        "IIS-ApplicationInit",
+        "IIS-NetFxExtensibility45",
+        "IIS-ASPNET45"
+    )
 
-    # Check if IIS was installed successfully
-    if ($?) {
-        Write-Host "IIS installed successfully."
-    } else {
-        Write-Error "Failed to install IIS."
-        Stop-Transcript
-        exit 1
+    foreach ($feature in $features) {
+        Write-Host "Installing feature: $feature"
+        Enable-WindowsOptionalFeature -Online -FeatureName $feature -All -NoRestart | Out-Null
+        if ($?) {
+            Write-Host "$feature installed successfully."
+        } else {
+            Write-Error "Failed to install $feature."
+            Stop-Transcript
+            exit 1
+        }
     }
+
+    Write-Host "IIS installation completed successfully."
 
     # Install .NET 8.0 Hosting Bundle via Chocolatey
     Write-Host "Installing .NET 8.0 Hosting Bundle..."
@@ -128,6 +156,12 @@ Invoke-RefreshPath
 Enable-LongFileNames
 Install-Choco
 Install-PowerShellTools
+
+# Remove all existing .NET Core and ASP.NET Core components before installing .NET 8.0
+Write-Host "Removing existing .NET components..."
+Get-ChildItem -Path "C:\Program Files\dotnet\shared\Microsoft.AspNetCore.App\" -Directory | Remove-Item -Recurse -Force
+Get-ChildItem -Path "C:\Program Files\dotnet\shared\Microsoft.NETCore.App\" -Directory | Remove-Item -Recurse -Force
+
 $applicationSetupLog = "$PSScriptRoot/application-setup.log"
 Install-DotNetHosting -LogFile $applicationSetupLog
 &choco install vcredist140 @common_args
