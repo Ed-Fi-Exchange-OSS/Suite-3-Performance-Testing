@@ -140,4 +140,58 @@ jobs:
                     --command-id RunPowerShellScript \
                     --name "${{ github.event.inputs.web_api_vm_name }}" \
                     --resource-group "${{ github.event.inputs.resource_group }}" \
-                    --scripts "$SCRIPT_CONTENT" 
+                    --scripts "$SCRIPT_CONTENT"
+
+            - name: Create SwaggerUI Installation Script
+              run: |
+                  SCRIPT_CONTENT='
+                  Set-Location "C:\Temp\EdFi.Suite3.Installer.SwaggerUI"
+
+                  Write-Host "Creating ps1 file..."
+                  @"
+                  Import-Module .\Install-EdFiOdsSwaggerUI.psm1
+                  `$parameters = @{
+                      PackageVersion = "7.2.1201"
+                      WebApiVersionUrl = "https://edfi-ods/WebApi"
+                      PrePopulatedKey = "${{ secrets.POPULATED_KEY }}"
+                      PrePopulatedSecret = "${{ secrets.POPULATED_SECRET }}"
+                  }
+                  Install-EdFiOdsSwaggerUI @parameters
+                  "@ | Out-File -FilePath "swaggerui_installation.ps1"
+
+                  Write-Host "File created successfully"
+                  Get-Content -Path "swaggerui_installation.ps1"
+                  '
+
+                  az vm run-command invoke \
+                    --command-id RunPowerShellScript \
+                    --name "${{ github.event.inputs.web_api_vm_name }}" \
+                    --resource-group "${{ github.event.inputs.resource_group }}" \
+                    --scripts "$SCRIPT_CONTENT"
+
+            - name: Create SandboxAdmin Installation Script
+              run: |
+                  SCRIPT_CONTENT='
+                  Set-Location "C:\Temp\EdFi.Suite3.Installer.SandboxAdmin"
+
+                  Write-Host "Creating ps1 file..."
+                  @"
+                  Import-Module .\Install-EdFiOdsSandboxAdmin.psm1
+                  `$parameters = @{
+                      PackageVersion = "7.2.1201"
+                      WebApiVersionUrl = "https://edfi-ods/WebApi"
+                      PrePopulatedKey = "${{ secrets.POPULATED_KEY }}"
+                      PrePopulatedSecret = "${{ secrets.POPULATED_SECRET }}"
+                  }
+                  Install-EdFiOdsSandboxAdmin @parameters
+                  "@ | Out-File -FilePath "sandboxadmin_installation.ps1"
+
+                  Write-Host "File created successfully"
+                  Get-Content -Path "sandboxadmin_installation.ps1"
+                  '
+
+                  az vm run-command invoke \
+                    --command-id RunPowerShellScript \
+                    --name "${{ github.event.inputs.web_api_vm_name }}" \
+                    --resource-group "${{ github.event.inputs.resource_group }}" \
+                    --scripts "$SCRIPT_CONTENT"
