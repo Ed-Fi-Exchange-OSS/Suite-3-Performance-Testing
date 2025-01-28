@@ -31,13 +31,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608  # v4.1.0
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
       - name: Install Poetry
         run: pipx install poetry
 
       - name: Install Python 3.9
-        uses: actions/setup-python@98f2ad02fd48d057ee3b4d4f66525b231c3e52b6 # v3.1.2
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3
         with:
           python-version: "3.9.x"
           cache: "poetry"
@@ -47,10 +47,10 @@ jobs:
         working-directory: ${{ env.SRC_DIR }}
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@1fae5bf71b0ecdc7d0a2ef0d0c28409d99693966  # v2.9.2
+        uses: github/codeql-action/init@48ab28a6f5dbc2a99bf1e0131198dd8f1df78169 # v3.28.0
         with:
           languages: "python"
           setup-python-dependencies: false
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@1fae5bf71b0ecdc7d0a2ef0d0c28409d99693966  # v2.9.2
+        uses: github/codeql-action/analyze@48ab28a6f5dbc2a99bf1e0131198dd8f1df78169  # v3.28.0
