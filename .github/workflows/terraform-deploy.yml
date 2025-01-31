@@ -15,11 +15,6 @@ on:
         description: 'Environment Label'
         required: true
         default: 'ods-perf-test'
-      environment:
-        description: 'Environment to deploy to'
-        required: true
-        type: environment
-        default: 'development'
 
 permissions:
   contents: read
@@ -34,7 +29,6 @@ jobs:
   terraform:
     name: 'Terraform'
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment }}
 
     defaults:
       run:
@@ -75,7 +69,7 @@ jobs:
 
     - name: Terraform Plan
       run: terraform plan -out=tfplan
-      
+
     - name: Terraform Apply
       run: terraform apply -auto-approve tfplan
 
@@ -85,31 +79,31 @@ jobs:
         # Debug: Show terraform state content
         echo "Terraform state content:"
         cat terraform.tfstate
-        
+
         # Get storage account name using jq for reliable JSON parsing
         STORAGE_ACCOUNT=$(cat terraform.tfstate | jq -r '.outputs.azure_storage_tfstate.value')
-        
+
         echo "Extracted storage account name: $STORAGE_ACCOUNT"
-        
+
         # Validate the storage account name
         if [ -z "$STORAGE_ACCOUNT" ]; then
           echo "Error: Failed to extract storage account name"
           exit 1
         fi
-        
+
         if [ ${#STORAGE_ACCOUNT} -gt 24 ]; then
           echo "Error: Storage account name too long: ${#STORAGE_ACCOUNT} characters"
           exit 1
         fi
-        
+
         if [[ ! $STORAGE_ACCOUNT =~ ^[a-z0-9]*$ ]]; then
           echo "Error: Storage account name contains invalid characters"
           exit 1
         fi
-        
+
         # Set the output
         echo "storage_account=${STORAGE_ACCOUNT}" >> $GITHUB_OUTPUT
-        
+
         # Debug: Show what we're setting
         echo "Setting storage account to: ${STORAGE_ACCOUNT}"
       shell: bash
@@ -118,9 +112,9 @@ jobs:
       run: |
         # Create a more descriptive state file name
         STATE_FILE="${{ github.event.inputs.prefix }}-${{ github.event.inputs.label }}.tfstate"
-        
+
         echo "Using state file name: ${STATE_FILE}"
-        
+
         # Create the backend configuration
         cat > backend.tf << EOF
         terraform {
@@ -132,7 +126,7 @@ jobs:
           }
         }
         EOF
-        
+
         # Verify the content
         echo "Created backend.tf content:"
         cat backend.tf
@@ -141,7 +135,7 @@ jobs:
       run: |
         echo "Backend configuration:"
         cat backend.tf
-        
+
         terraform init -migrate-state -force-copy || {
           echo "Migration failed. Current directory contents:"
           ls -la

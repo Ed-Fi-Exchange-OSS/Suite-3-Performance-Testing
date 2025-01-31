@@ -3,13 +3,6 @@ name: Download packages and create installation scripts
 on:
     workflow_dispatch:
         inputs:
-            target_environment:
-                description: "Select the environment"
-                required: true
-                type: choice
-                options:
-                    - develop
-                default: staging
             resource_group:
                 description: "The resource group of the VM"
                 required: true
@@ -43,7 +36,6 @@ env:
 jobs:
     run-command:
         runs-on: ubuntu-latest
-        environment: ${{ github.event.inputs.target_environment }}
         steps:
 
             - name: Checkout
