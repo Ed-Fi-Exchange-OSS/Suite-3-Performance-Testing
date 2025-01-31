@@ -63,6 +63,8 @@ environment and register the next values
         - SQL_ADMIN_USERNAME
         - WEB_ADMIN_PASSWORD
         - WEB_ADMIN_USERNAME
+        - POPULATED_KEY
+        - POPULATED_SECRET
         ```
    3. Environment variables
         ```
