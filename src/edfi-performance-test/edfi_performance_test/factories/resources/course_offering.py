@@ -25,5 +25,6 @@ class CourseOfferingFactory(APIFactory):
         dict(
             schoolId=SchoolClient.shared_elementary_school_id(),
             schoolYear=2014,
+            sessionName=None,  # Must be created
         )
     )

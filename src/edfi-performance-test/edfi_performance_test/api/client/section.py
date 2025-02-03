@@ -24,32 +24,38 @@ class SectionClient(EdFiAPIClient):
     def create_with_dependencies(self, **kwargs):
         school_id = kwargs.get("schoolId", SchoolClient.shared_elementary_school_id())
         school_year = kwargs.get("schoolYear", 2014)
-        custom_course_code = kwargs.pop("courseCode", "ELA-01")
 
         # Create a course offering and its dependencies
         course_offering_reference = (
             self.course_offering_client.create_with_dependencies(
                 schoolId=school_id,
                 schoolYear=school_year,
-                courseReference__courseCode=custom_course_code,
                 courseReference__educationOrganizationId=school_id,
                 schoolReference__schoolId=school_id,
             )
         )
+        if(course_offering_reference is None or course_offering_reference["resource_id"] is None):
+            return
         course_offering_attrs = course_offering_reference["attributes"]
 
         # Create a class period
         class_period_reference = self.class_period_client.create_with_dependencies(
             schoolReference__schoolId=school_id,
         )
+        if(class_period_reference is None or class_period_reference["resource_id"] is None):
+            return
 
         # Create a location
         location_reference = self.location_client.create_with_dependencies(
             schoolReference__schoolId=school_id,
         )
 
+        if(location_reference is None or location_reference["resource_id"] is None):
+            return
+
         # Create a section
         section_attrs = self.factory.build_dict(
+            classPeriods__0__classPeriodReference__schoolId=school_id,
             classPeriods__0__classPeriodReference__classPeriodName=class_period_reference[
                 "attributes"
             ][
@@ -119,6 +125,8 @@ class SectionAttendanceTakenEventClient(EdFiAPIClient):
         section_reference = self.section_client.create_with_dependencies(
             schoolId=school_id, schoolYear=calendarSchoolYear
         )
+        if(section_reference is None or section_reference["resource_id"] is None):
+            return
         section_attrs = section_reference["attributes"]
 
         return self.create_using_dependencies(

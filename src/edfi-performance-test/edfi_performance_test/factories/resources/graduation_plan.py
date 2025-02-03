@@ -14,7 +14,7 @@ class GraduationPlanFactory(APIFactory):
     totalRequiredCredits = 28
     graduationPlanTypeDescriptor = build_descriptor(
         "GraduationPlanType",
-        random.choice(["Recommended", "Distinguished", "Minimum", "Standard"]),
+        random.choice(["Recommended", "Distinguished", "Minimum", "Standard", "Career and Technical Education"]),
     )
     educationOrganizationReference = factory.Dict(
         dict(educationOrganizationId=None),
