@@ -7,7 +7,7 @@ import importlib
 import json
 import logging
 import re
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 
 import urllib3
@@ -118,6 +118,17 @@ class EdFiAPIClient(EdFiBasicAPIClient):
         self.log_response(response)
         return json.loads(response.text)
 
+    def _get_resource_id_from_location(self, headers: dict) -> Optional[str]:
+        header = ""
+        if "Location" in headers:
+            header = "Location"
+        elif "location" in headers:
+            header = "location"
+        else:
+            return None
+
+        return headers[header].split("/")[-1].strip()
+
     def create(self, unique_id_field=None, name=None, **factory_kwargs):
         # Pass in a `unique_id_field` name (e.g. 'schoolId') to have that
         # attribute returned alongside the resource_id.  Useful if you need
@@ -146,7 +157,8 @@ class EdFiAPIClient(EdFiBasicAPIClient):
                 return None, None
             return None
         self.log_response(response)
-        resource_id = response.headers["Location"].split("/")[-1].strip()
+
+        resource_id = self._get_resource_id_from_location(response.headers)
         if unique_id is not None:
             return resource_id, unique_id
         return resource_id
@@ -164,8 +176,14 @@ class EdFiAPIClient(EdFiBasicAPIClient):
         if self.is_not_expected_result(response, [200, 204]):
             return
         self.log_response(response)
-        new_id = response.headers["Location"].split("/")[-1].strip()
-        assert new_id == resource_id
+
+        new_id = self._get_resource_id_from_location(response.headers)
+
+        # The ODS/API returns a Location header on PUT requests, but this is not a required feature
+        # of an Ed-Fi API. Therefore only apply this test if the location header was found
+        if new_id is not None:
+            assert new_id == resource_id
+
         return resource_id
 
     def delete_item(self, resource_id):
@@ -246,7 +264,7 @@ class EdFiAPIClient(EdFiBasicAPIClient):
             "attributes": resource_attrs,
         }
 
-    def delete_with_dependencies(self, reference, **kwargs):
+    def delete_with_dependencies(self, reference):
         """
         Atomically delete an instance of this resource along with all
         dependencies.  The `reference` parameter will contain the necessary

@@ -10,7 +10,7 @@ from edfi_performance_test.tasks.pipeclean.ed_fi_pipeclean_test_base import (
 
 
 class ParentPipecleanTest(EdFiPipecleanTestBase):
-    update_attribute_name = "parentOtherNames"
+    update_attribute_name = "otherNames"
     update_attribute_value = [
         {
             "firstName": "Lexi",

@@ -8,6 +8,7 @@ from locust import task
 from edfi_performance_test.factories.descriptors.utils import build_descriptor_dicts
 from edfi_performance_test.factories.utils import random_chars
 from edfi_performance_test.tasks.volume.ed_fi_volume_test_base import EdFiVolumeTestBase
+from edfi_performance_test.helpers.config import get_config_value
 
 
 class SchoolVolumeTest(EdFiVolumeTestBase):
@@ -28,7 +29,7 @@ class SchoolVolumeTest(EdFiVolumeTestBase):
                 "InstitutionTelephoneNumberType",
                 [("Main", {"telephoneNumber": "(950) 325-9465"})],
             ),
-            educationOrganizationCodes=build_descriptor_dicts(
+            identificationCodes=build_descriptor_dicts(
                 "EducationOrganizationIdentificationSystem",
                 [("SEA", {"identificationCode": "255901444"})],
             ),
@@ -42,6 +43,10 @@ class SchoolVolumeTest(EdFiVolumeTestBase):
         update_attribute_value,
         **kwargs
     ):
+
+        if get_config_value("INCLUDE_ID_IN_BODY").lower() == "true":
+            resource_attrs["id"] = resource_id
+
         if update_attribute_name == "telephoneNumber":
             # Update first institutionTelephones record
             resource_attrs["institutionTelephones"][0][

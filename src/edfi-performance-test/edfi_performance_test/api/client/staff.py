@@ -35,10 +35,9 @@ class StaffClient(EdFiAPIClient):
         staff_id = self.create(**staff_attrs)
 
         # Associate staff with existing school to allow updates
-        assoc_id = self.assoc_client.create(
+        assoc_id = self.assoc_client.create(  # type: ignore
             staffReference__staffUniqueId=staff_unique_id,
             educationOrganizationReference__educationOrganizationId=school_id,
-            staffUniqueId=staff_unique_id,
         )
 
         return {
@@ -50,7 +49,7 @@ class StaffClient(EdFiAPIClient):
         }
 
     def delete_with_dependencies(self, reference, **kwargs):
-        self.assoc_client.delete_item(reference["dependency_ids"]["assoc_id"])
+        self.assoc_client.delete_item(reference["dependency_ids"]["assoc_id"])  # type: ignore
         self.delete_item(reference["resource_id"])
 
     @classmethod
@@ -65,16 +64,13 @@ class StaffEducationOrganizationAssignmentAssociationClient(EdFiAPIClient):
     endpoint = "staffEducationOrganizationAssignmentAssociations"
 
     def create_with_dependencies(self, **kwargs):
-        # Create new staff for association
-        staff_unique_id = kwargs.pop("staffUniqueId", StaffClient.shared_staff_id())
-
-        # Create association from staff to ed org
-        edorg_id = kwargs.pop(
-            "educationOrganizationId", SchoolClient.shared_elementary_school_id()
-        )
         assoc_overrides = dict(
-            staffReference__staffUniqueId=staff_unique_id,
-            educationOrganizationReference__educationOrganizationId=edorg_id,
+            staffReference__staffUniqueId=kwargs.pop(
+                "staffUniqueId", StaffClient.shared_staff_id()
+            ),
+            educationOrganizationReference__educationOrganizationId=kwargs.pop(
+                "educationOrganizationId", SchoolClient.shared_elementary_school_id()
+            ),
         )
         assoc_overrides.update(kwargs)
         return self.create_using_dependencies(**assoc_overrides)
@@ -93,12 +89,12 @@ class StaffCohortAssociationClient(EdFiAPIClient):
         school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
 
         # Create cohort
-        cohort_reference = self.cohort_client.create_with_dependencies(
+        cohort_reference = self.cohort_client.create_with_dependencies(  # type: ignore
             educationOrganizationReference__educationOrganizationId=school_id,
         )
 
         # Create staff
-        staff_reference = self.staff_client.create_with_dependencies(schoolId=school_id)
+        staff_reference = self.staff_client.create_with_dependencies(schoolId=school_id)  # type: ignore
 
         # Create association between new staff and new cohort
         return self.create_using_dependencies(
@@ -139,7 +135,7 @@ class StaffSchoolAssociationClient(EdFiAPIClient):
         school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
 
         # Create staff record
-        staff_reference = self.staff_client.create_with_dependencies(schoolId=school_id)
+        staff_reference = self.staff_client.create_with_dependencies(schoolId=school_id)  # type: ignore
 
         return self.create_using_dependencies(
             staff_reference,
@@ -164,12 +160,12 @@ class StaffSectionAssociationClient(EdFiAPIClient):
         course_code = kwargs.pop("courseCode", "ELA-01")
 
         # Create section and staff
-        section_reference = self.section_client.create_with_dependencies(
+        section_reference = self.section_client.create_with_dependencies(  # type: ignore
             schoolId=school_id,
             courseCode=course_code,
             sectionIdentifier=RandomSuffixAttribute(course_code + "2017RM555"),
         )
-        staff_reference = self.staff_client.create_with_dependencies(schoolId=school_id)
+        staff_reference = self.staff_client.create_with_dependencies(schoolId=school_id)  # type: ignore
 
         # Create association between staff and section
         sec_attrs = section_reference["attributes"]

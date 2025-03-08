@@ -16,7 +16,7 @@ class GraduationPlanClient(EdFiAPIClient):
     }
 
     def create_with_dependencies(self, **kwargs):
-        school_reference = self.school_client.create_with_dependencies()
+        school_reference = self.school_client.create_with_dependencies()  # type: ignore
 
         return self.create_using_dependencies(
             school_reference,

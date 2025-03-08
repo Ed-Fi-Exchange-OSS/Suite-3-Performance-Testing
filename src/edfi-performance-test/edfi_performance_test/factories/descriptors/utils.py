@@ -3,6 +3,7 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
+from typing import Any, Dict, List, Tuple, Union
 import factory
 
 
@@ -24,14 +25,13 @@ def _descriptor_type_to_dict_key(descriptor_type):
     return "{}{}".format(dt[0].lower(), dt[1:])
 
 
-def _descriptor_type_to_endpoint(descriptor_type):
-    return "{}s".format(_descriptor_type_to_dict_key(descriptor_type))
-
-
 def build_descriptor(descriptor_type, value):
-    _namespace = "uri://ed-fi.org/"
     descriptor_type = _normalize_descriptor_type(descriptor_type)
-    return "{}{}#{}".format(_namespace, descriptor_type, value)
+
+    # force first letter to be capitalized
+    descriptor_type = descriptor_type[:1].capitalize() + descriptor_type[1:]
+
+    return f"{'uri://ed-fi.org/'}{descriptor_type}#{value}"
 
 
 def _build_descriptor_dicts(descriptor_type, values):
@@ -48,7 +48,7 @@ def _build_descriptor_dicts(descriptor_type, values):
         yield defaults
 
 
-def build_descriptor_dicts(descriptor_type, values):
+def build_descriptor_dicts(descriptor_type: str, values: List[Union[str, Tuple[str, Dict[str, Union[str, Any]]]]]) -> List[Dict[str, str]]:
     """
     A common pattern in Ed-Fi resources is to have a list of dicts of
     descriptors, something like

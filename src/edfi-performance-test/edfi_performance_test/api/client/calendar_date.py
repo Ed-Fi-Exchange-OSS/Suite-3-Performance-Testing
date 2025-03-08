@@ -22,7 +22,7 @@ class CalendarDateClient(EdFiAPIClient):
             "calendarCode", RandomSuffixAttribute("107SS111111")
         )
         # Create a calendar
-        calendar_reference = self.calendar_client.create_with_dependencies(
+        calendar_reference = self.calendar_client.create_with_dependencies(  # type: ignore
             schoolReference__schoolId=school_id, calendarCode=custom_calendar_code
         )
 

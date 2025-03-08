@@ -24,7 +24,7 @@ class CourseTranscriptClient(EdFiAPIClient):
     def create_with_dependencies(self, **kwargs):
         school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
 
-        record_reference = self.record_client.create_with_dependencies(
+        record_reference = self.record_client.create_with_dependencies(  # type: ignore
             schoolId=school_id
         )
 

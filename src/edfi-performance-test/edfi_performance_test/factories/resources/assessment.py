@@ -86,7 +86,9 @@ class AssessmentFactory(APIFactory):
                     assessmentReportingMethodDescriptor=build_descriptor(
                         "AssessmentReportingMethod", "Scale score"
                     ),
-                    resultDatatypeType="Integer",
+                    resultDatatypeTypeDescriptor=build_descriptor(
+                        "ResultDatatypeType", "Integer"
+                    ),
                     maximumScore="25",
                     minimumScore="0",
                 )
@@ -117,8 +119,7 @@ class LearningObjectiveFactory(APIFactory):
                 dict(
                     academicSubjectDescriptor=build_descriptor(
                         "AcademicSubject", "Mathematics"
-                    ),
-                    namespace="uri://ed-fi.org/",
+                    )
                 )
             )
         ]
