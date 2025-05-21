@@ -41,7 +41,7 @@ jobs:
         working-directory: ./eng/terraform
     steps:
     - name: Checkout
-      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
@@ -53,10 +53,10 @@ jobs:
           --username "$ARM_CLIENT_ID" \
           --password "$ARM_CLIENT_SECRET" \
           --tenant "$ARM_TENANT_ID"
-        
+
         echo "Setting subscription..."
         az account set --subscription "$ARM_SUBSCRIPTION_ID"
-        
+
         echo "✅ Azure authentication successful"
       working-directory: ./eng/terraform
 
@@ -65,17 +65,17 @@ jobs:
         # Calculate the same state file name as used in deploy
         STATE_FILE="${{ inputs.prefix }}-${{ inputs.label }}.tfstate"
         RESOURCE_GROUP="${{ inputs.prefix }}-${{ inputs.label }}"
-        
+
         # Get the storage account name
         STORAGE_ACCOUNT=$(az storage account list --resource-group ${RESOURCE_GROUP} --query "[0].name" -o tsv)
-        
+
         # Create the backend configuration
         cat > backend.tf << EOF
         terraform {
           backend "azurerm" {}
         }
         EOF
-        
+
         echo "Created backend.tf for Azure storage"
       working-directory: ./eng/terraform
 
@@ -84,46 +84,46 @@ jobs:
         # Calculate the same state file name as used in deploy
         STATE_FILE="${{ inputs.prefix }}-${{ inputs.label }}.tfstate"
         RESOURCE_GROUP="${{ inputs.prefix }}-${{ inputs.label }}"
-        
+
         echo "🔍 Validating state file details:"
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo "Resource Group: ${RESOURCE_GROUP}"
         echo "Container: tfstate"
         echo "State Key: ${STATE_FILE}"
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        
+
         # List available storage accounts in the resource group
         echo "📦 Available storage accounts in resource group:"
         STORAGE_ACCOUNTS=$(az storage account list --resource-group ${RESOURCE_GROUP} --query "[].name" -o tsv) || {
           echo "❌ Failed to list storage accounts. Make sure the resource group exists."
           exit 1
         }
-        
+
         # Find storage account with 'tfstate' in the name
         STORAGE_ACCOUNT=$(echo "$STORAGE_ACCOUNTS" | grep 'tfstate' || echo "")
-        
+
         if [ -z "$STORAGE_ACCOUNT" ]; then
           echo "❌ No tfstate storage account found in resource group ${RESOURCE_GROUP}"
           echo "Available storage accounts:"
           echo "$STORAGE_ACCOUNTS"
           exit 1
         fi
-        
+
         echo "Using storage account: ${STORAGE_ACCOUNT}"
-        
+
         # Initialize Terraform with the correct backend config
         terraform init -backend=true \
           -backend-config="resource_group_name=${RESOURCE_GROUP}" \
           -backend-config="storage_account_name=${STORAGE_ACCOUNT}" \
           -backend-config="container_name=tfstate" \
           -backend-config="key=${STATE_FILE}"
-        
+
         # Try to show state
         if terraform show > /dev/null 2>&1; then
           echo "✅ State file accessed successfully!"
           echo "📋 Current state contents:"
           terraform show
-          
+
           echo -e "\n📑 Resources in state:"
           terraform state list || echo "No resources found in state"
         else
@@ -163,11 +163,11 @@ jobs:
           echo "Found errored.tfstate from previous attempt"
           cp errored.tfstate terraform.tfstate
         fi
-        
+
         # First try to remove the VM extension
         echo "Attempting to remove VM extension..."
         terraform state rm module.runner_config.azurerm_virtual_machine_extension.script_install || true
-        
+
         # Switch to local state temporarily
         echo "Switching to local state..."
         cat > backend.tf << EOF
@@ -175,24 +175,24 @@ jobs:
           backend "local" {}
         }
         EOF
-        
+
         # Reinitialize with local backend
         terraform init -migrate-state -force-copy
-        
+
         # Now attempt the destroy
         echo "Starting terraform destroy..."
         terraform destroy -auto-approve -var-file=terraform.tfvars -parallelism=1 || {
           # If destroy fails, try to continue with remaining resources
           echo "Initial destroy failed. Attempting to continue..."
-          
+
           # List remaining resources
           echo "Remaining resources:"
           terraform state list || true
-          
+
           # Try to remove any storage account resources from state
           echo "Removing storage account from state..."
           terraform state rm azurerm_storage_account.tf_state || true
-          
+
           # Try destroy again
           echo "Attempting final destroy..."
           terraform destroy -auto-approve -var-file=terraform.tfvars -parallelism=1
@@ -206,7 +206,7 @@ jobs:
       run: |
         echo "Checking for remaining resources in resource group..."
         RESOURCE_GROUP="${{ inputs.prefix }}-${{ inputs.label }}"
-        
+
         # List any remaining resources
         echo "Remaining Azure resources:"
         az resource list --resource-group "$RESOURCE_GROUP" --query "[].{name:name, type:type}" -o table || {
@@ -218,7 +218,7 @@ jobs:
             exit 1
           fi
         }
-        
+
         # If we get here and there are resources, try to delete the resource group
         if az group exists --name "$RESOURCE_GROUP"; then
           echo "Attempting to delete entire resource group..."
