@@ -22,7 +22,7 @@ permissions: read-all
 jobs:
   test-edfi-performance-test:
     name: Run unit, style, and type checks
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
         PACKAGE_NAME: edfi-performance-test
         SRC_DIR: src/edfi-performance-test

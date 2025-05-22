@@ -22,7 +22,7 @@ permissions: read-all
 jobs:
   test-edfi-paging-test:
     name: Run unit, style, and type checks
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
         PACKAGE_NAME: edfi-paging-test
         SRC_DIR: src/edfi-paging-test
