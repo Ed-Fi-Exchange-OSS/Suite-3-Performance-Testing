@@ -215,13 +215,13 @@ def describe_when_timing_a_callback():
     RESPONSE = {"a": "b"}
     SLEEP_TIME = 0.1
 
-    def callback() -> dict:
-        sleep(SLEEP_TIME)
-        return RESPONSE
-
     @pytest.fixture
     def time_response() -> Tuple[float, dict]:
-        return timeit(callback)
+        def _callback() -> dict:
+            sleep(SLEEP_TIME)
+            return RESPONSE
+
+        return timeit(_callback)
 
     def it_returns_measured_time(time_response: Tuple[float, dict]):
         assert time_response[0] > SLEEP_TIME
