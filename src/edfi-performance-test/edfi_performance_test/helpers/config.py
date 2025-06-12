@@ -46,6 +46,7 @@ def set_config_values(args: MainArguments):
     os.environ["PERF_API_OAUTH_PREFIX"] = args.oauth_endpoint
     os.environ["PERF_LOCAL_EDUCATION_ORGANIZATION_ID"] = str(args.localEducationOrganizationId)
     os.environ["PERF_DISABLE_COMPOSITES"] = str(args.disableComposites)
+    os.environ["INCLUDE_ID_IN_BODY"] = str(args.includeID)
 
 
 def _get_change_version_file_path():

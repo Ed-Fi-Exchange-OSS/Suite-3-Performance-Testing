@@ -8,11 +8,10 @@ import factory
 from edfi_performance_test.api.client.school import SchoolClient
 from edfi_performance_test.factories.resources.api_factory import APIFactory
 from edfi_performance_test.factories.descriptors.utils import build_descriptor
-from edfi_performance_test.factories.utils import UniquePrimaryKeyAttribute
 
 
 class GradingPeriodFactory(APIFactory):
-    periodSequence = UniquePrimaryKeyAttribute()
+    periodSequence = 1
     beginDate = "2014-08-23"
     endDate = "2014-10-04"
     totalInstructionalDays = 29

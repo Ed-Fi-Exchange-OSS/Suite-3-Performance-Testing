@@ -18,7 +18,7 @@ class AssessmentItemClient(EdFiAPIClient):
 
     def create_with_dependencies(self, **kwargs):
         # Create new assessment
-        assessment_reference = self.assessment_client.create_with_dependencies()
+        assessment_reference = self.assessment_client.create_with_dependencies()  # type: ignore
 
         # Create assessment item
         return self.create_using_dependencies(
@@ -45,7 +45,7 @@ class ObjectiveAssessmentClient(EdFiAPIClient):
 
     def create_with_dependencies(self, **kwargs):
         # Create new assessment
-        assessment_reference = self.assessment_client.create_with_dependencies()
+        assessment_reference = self.assessment_client.create_with_dependencies()  # type: ignore
 
         # Create objective assessment
         return self.create_using_dependencies(

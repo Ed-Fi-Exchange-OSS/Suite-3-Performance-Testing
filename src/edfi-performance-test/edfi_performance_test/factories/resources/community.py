@@ -28,7 +28,7 @@ class CommunityOrganizationFactory(APIFactory):
         ]
     )
     categories = ListOfDescriptors("EducationOrganizationCategory", ["School"])
-    educationOrganizationCodes = factory.LazyAttribute(
+    identificationCodes = factory.LazyAttribute(
         lambda o: build_descriptor_dicts(
             "EducationOrganizationIdentificationSystem",
             [("Other", {"identificationCode": o.communityOrganizationId})],
@@ -53,7 +53,7 @@ class CommunityProviderFactory(APIFactory):
         ]
     )
     categories = ListOfDescriptors("EducationOrganizationCategory", ["School"])
-    educationOrganizationCodes = factory.LazyAttribute(
+    identificationCodes = factory.LazyAttribute(
         lambda o: build_descriptor_dicts(
             "EducationOrganizationIdentificationSystem",
             [("Other", {"identificationCode": o.communityProviderId})],

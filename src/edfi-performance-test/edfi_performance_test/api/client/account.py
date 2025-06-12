@@ -19,9 +19,8 @@ class AccountClient(EdFiAPIClient):
     }
 
     def create_with_dependencies(self, **kwargs):
-        # TODO: this is the only reference to account_code_client anywhere in
-        # the code base, so the next line should fail if it is ever called.
-        account_code_reference = self.account_code_client.create_with_dependencies()
+        # The constructor for ed_fi_api_client dynamically creates the `xyz_client` property using `setattr`
+        account_code_reference = self.account_code_client.create_with_dependencies()  # type: ignore
         account_code_attrs = account_code_reference["attributes"]
 
         edorg_id = account_code_attrs["educationOrganizationReference"][
@@ -56,10 +55,10 @@ class _AccountDependentMixin(object):
     }
 
     def create_with_dependencies(self, **kwargs):
-        account_reference = self.account_client.create_with_dependencies()
+        account_reference = self.account_client.create_with_dependencies()  # type: ignore
         account_identifier = account_reference["attributes"]["accountIdentifier"]
 
-        return self.create_using_dependencies(
+        return self.create_using_dependencies(    # type: ignore
             account_reference,
             accountReference__accountIdentifier=account_identifier,
             **kwargs

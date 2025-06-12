@@ -65,6 +65,6 @@ class DisciplineIncidentFactory(APIFactory):
             )
         ]
     )
-    incidentLocationDescriptor = build_descriptor("IncidentLocation", "School Bus")
+    incidentLocationDescriptor = build_descriptor("IncidentLocation", "School bus")
     reporterDescriptionDescriptor = build_descriptor("ReporterDescription", "Staff")
     reporterName = "Villa, Mike"

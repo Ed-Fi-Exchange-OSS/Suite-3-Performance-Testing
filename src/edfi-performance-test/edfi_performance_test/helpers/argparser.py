@@ -172,6 +172,14 @@ def parse_main_arguments() -> MainArguments:
         env_var="PERF_DISABLE_COMPOSITES",
         default=False
     )
+    parser.add(  # type: ignore
+        "-id",
+        "--includeID",
+        help="Include ID in body of PUT requests",
+        type=str,
+        env_var="INCLUDE_ID_IN_BODY",
+        default=False
+    )
     args_parsed = parser.parse_args()
 
     arguments = MainArguments(
@@ -192,7 +200,8 @@ def parse_main_arguments() -> MainArguments:
         args_parsed.oauthEndpoint,
         args_parsed.localEducationOrganizationId,
         args_parsed.logLevel,
-        args_parsed.disableComposites
+        args_parsed.disableComposites,
+        args_parsed.includeID
     )
 
     return arguments

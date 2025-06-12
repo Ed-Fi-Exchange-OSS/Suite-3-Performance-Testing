@@ -23,7 +23,7 @@ class PostSecondaryEventClient(EdFiAPIClient):
         studentUniqueId = kwargs.pop("studentUniqueId", StudentClient.shared_student_id())
 
         # Create new student for association
-        institution_reference = self.institution_client.create_with_dependencies()
+        institution_reference = self.institution_client.create_with_dependencies()  # type: ignore
 
         return self.create_using_dependencies(
             institution_reference,
