@@ -21,6 +21,8 @@ class CommunityProviderClient(EdFiAPIClient):
 
     def create_with_dependencies(self, **kwargs):
         org_reference = self.org_client.create_with_dependencies()
+        if(org_reference is None or org_reference["resource_id"] is None):
+            return
 
         return self.create_using_dependencies(
             org_reference,
@@ -42,6 +44,8 @@ class CommunityProviderLicenseClient(EdFiAPIClient):
 
     def create_with_dependencies(self, **kwargs):
         provider_reference = self.provider_client.create_with_dependencies()
+        if(provider_reference is None or provider_reference["resource_id"] is None):
+            return
 
         return self.create_using_dependencies(
             provider_reference,

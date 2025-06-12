@@ -20,6 +20,8 @@ class ReportCardClient(EdFiAPIClient):
         # Prepopulated student
         studentUniqueId = kwargs.pop("studentUniqueId", StudentClient.shared_student_id())
         period_reference = self.grading_period_client.create_with_dependencies()
+        if(period_reference is None or period_reference["resource_id"] is None):
+            return
 
         return self.create_using_dependencies(
             period_reference,

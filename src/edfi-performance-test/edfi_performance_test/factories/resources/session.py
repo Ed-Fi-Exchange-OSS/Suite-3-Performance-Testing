@@ -8,7 +8,7 @@ import factory
 from edfi_performance_test.api.client.school import SchoolClient
 from edfi_performance_test.factories.resources.api_factory import APIFactory
 from edfi_performance_test.factories.descriptors.utils import build_descriptor
-from edfi_performance_test.factories.utils import RandomSuffixAttribute
+from edfi_performance_test.factories.utils import UniqueIdAttribute
 
 
 class SessionFactory(APIFactory):
@@ -16,7 +16,7 @@ class SessionFactory(APIFactory):
         dict(schoolId=SchoolClient.shared_elementary_school_id())
     )  # Prepopulated school
     schoolYearTypeReference = factory.Dict(dict(schoolYear=2014))
-    sessionName = RandomSuffixAttribute("2016-2017 Fall Semester")
+    sessionName = UniqueIdAttribute()
     gradingPeriods = factory.List(
         [
             factory.Dict(

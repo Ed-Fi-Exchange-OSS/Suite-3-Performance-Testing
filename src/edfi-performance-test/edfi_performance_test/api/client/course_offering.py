@@ -16,9 +16,13 @@ class CourseOfferingClient(EdFiAPIClient):
     def create_with_dependencies(self, **kwargs):
         school_id = kwargs.pop("schoolId", SchoolClient.shared_elementary_school_id())
         school_year = kwargs.get("schoolYear", 2014)
+        course_code = kwargs.pop("courseCode", "ELA-01")
         session_reference = self.session_client.create_with_dependencies(
             schoolId=school_id, schoolYear=school_year
         )
+
+        if(session_reference is None or session_reference["resource_id"] is None):
+            return
 
         return self.create_using_dependencies(
             session_reference,
@@ -27,5 +31,7 @@ class CourseOfferingClient(EdFiAPIClient):
             sessionReference__sessionName=session_reference["attributes"][
                 "sessionName"
             ],
+            courseReference_courseCode=course_code,
+            courseReference_educationOrganizationId=school_id,
             **kwargs
         )

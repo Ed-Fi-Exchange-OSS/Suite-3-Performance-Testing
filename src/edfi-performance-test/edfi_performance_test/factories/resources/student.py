@@ -183,7 +183,7 @@ class StudentProgramAssociationFactory(APIFactory):
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),  # Prepopulated ed organization
         )
     )
-    beginDate = formatted_date(8, 23)
+    beginDate = RandomDateAttribute()
 
 
 class StudentSchoolAssociationFactory(APIFactory):
@@ -221,7 +221,7 @@ class StudentTitleIPartAProgramAssociationFactory(APIFactory):
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),  # Prepopulated ed organization
         )
     )
-    beginDate = formatted_date(8, 23)
+    beginDate = RandomDateAttribute()
     titleIPartAParticipantDescriptor = build_descriptor(
         "TitleIPartAParticipant", "Public Targeted Assistance Program"
     )
@@ -243,7 +243,7 @@ class StudentSpecialEducationProgramAssociationFactory(APIFactory):
             educationOrganizationId=LocalEducationAgencyClient.shared_education_organization_id(),  # Prepopulated ed organization
         )
     )
-    beginDate = formatted_date(8, 23)
+    beginDate = RandomDateAttribute()
     specialEducationSettingDescriptor = build_descriptor(
         "SpecialEducationSetting", "Inside regular class 80% or more of the day"
     )
@@ -285,7 +285,7 @@ class StudentSchoolAttendanceEventFactory(APIFactory):
     attendanceEventCategoryDescriptor = build_descriptor(
         "AttendanceEventCategory", "Tardy"
     )
-    eventDate = formatted_date(9, 16)
+    eventDate = RandomDateAttribute()
 
 
 class StudentSectionAttendanceEventFactory(APIFactory):

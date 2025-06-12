@@ -63,6 +63,8 @@ class StudentClient(EdFiAPIClient):
         student_attrs = self.factory.build_dict(**kwargs)
         student_unique_id = student_attrs["studentUniqueId"]
         student_id = self.create(**student_attrs)
+        if(student_id is None):
+            return
 
         # Associate student with existing school to allow updates
         assoc_id = self.assoc_client.create(
@@ -124,6 +126,8 @@ class StudentEducationOrganizationAssociationClient(EdFiAPIClient):
         student_reference = self.student_client.create_with_dependencies(
             schoolId=school_id
         )
+        if(student_reference is None or student_reference["resource_id"] is None):
+            return
 
         # Create ed org - student association
         return self.create_using_dependencies(
@@ -303,6 +307,9 @@ class StudentSectionAssociationClient(EdFiAPIClient):
             courseCode=course_code,
             sectionIdentifier=RandomSuffixAttribute(course_code + "2017RM555"),
         )
+        if(section_reference is None or section_reference["resource_id"] is None):
+            return
+
         student_reference = self.student_client.create_with_dependencies(
             schoolId=school_id
         )
@@ -395,6 +402,8 @@ class StudentSectionAttendanceEventClient(EdFiAPIClient):
             courseCode=course_code,
             sectionIdentifier=RandomSuffixAttribute(course_code + "2017RM555"),
         )
+        if(section_reference is None or section_reference["resource_id"] is None):
+            return
 
         # Create student section attendance event
         section_attrs = section_reference["attributes"]
