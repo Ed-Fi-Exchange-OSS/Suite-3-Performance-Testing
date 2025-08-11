@@ -6,8 +6,8 @@
 from typing import List
 from dataclasses import dataclass, field
 
-from edfi_paging_test.helpers.output_format import OutputFormat
-from edfi_paging_test.helpers.log_level import LogLevel
+from edfi_query_test.helpers.output_format import OutputFormat
+from edfi_query_test.helpers.log_level import LogLevel
 
 
 @dataclass
