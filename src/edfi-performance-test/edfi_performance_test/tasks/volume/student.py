@@ -33,7 +33,7 @@ class StudentSchoolAssociationVolumeTest(EdFiVolumeTestBase):
         school_id = SchoolClient.shared_high_school_id()
         graduation_plan_reference = None
         graduationSchoolYear = StudentSchoolAssociationVolumeTest.get_graduation_plan_school_year(self, school_id)
-        if(graduationSchoolYear is not None):
+        if graduationSchoolYear is not None:
             graduation_plan_reference = {
                 "educationOrganizationId": school_id,
                 "graduationPlanTypeDescriptor": build_descriptor("GraduationPlanType", "Recommended"),
