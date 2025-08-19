@@ -84,11 +84,11 @@ class RandomDateAttribute(declarations.BaseDeclaration):
 
 class RandomSchoolYearAttribute(declarations.BaseDeclaration):
     """
-    Returns a random date between 1991 & 2050.
+    Returns a random date between 1991 & 2026.
     """
 
     def evaluate(self, instance, step, extra):
-        return random.randint(1991, 2050)
+        return random.randint(1991, 2026)
 
 
 class RandomSuffixAttribute(LazyAttribute):

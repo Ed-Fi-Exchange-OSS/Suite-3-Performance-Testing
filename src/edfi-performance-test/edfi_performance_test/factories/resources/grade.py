@@ -22,6 +22,7 @@ class GradeFactory(APIFactory):
                 "GradingPeriod", "First Six Weeks"
             ),
             periodSequence=1,
+            gradingPeriodName=None,
             schoolYear=current_year(),
         )
     )

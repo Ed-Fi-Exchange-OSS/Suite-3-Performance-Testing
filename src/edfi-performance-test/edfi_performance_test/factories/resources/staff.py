@@ -73,7 +73,7 @@ class StaffFactory(APIFactory):
     )
     identificationCodes = factory.LazyAttribute(
         lambda o: build_descriptor_dicts(
-            "staffIdentificationSystem",
+            "StaffIdentificationSystem",
             [("State", {"identificationCode": o.staffUniqueId})],
         )
     )

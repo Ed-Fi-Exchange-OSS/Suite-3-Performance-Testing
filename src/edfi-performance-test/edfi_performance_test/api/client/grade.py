@@ -35,10 +35,11 @@ class GradeClient(EdFiAPIClient):
             assoc_reference,
             gradingPeriodReference__schoolId=school_id,
             gradingPeriodReference__periodSequence=grade_period["periodSequence"],
+            gradingPeriodReference__gradingPeriodName=grade_period["gradingPeriodName"],
+            gradingPeriodReference__schoolYear=section_reference["schoolYear"],
             gradingPeriodReference__gradingPeriodDescriptor=grade_period[
                 "gradingPeriodDescriptor"
             ],
-            gradingPeriodReference__schoolYear=section_reference["schoolYear"],
             studentSectionAssociationReference__sectionIdentifier=section_reference[
                 "sectionIdentifier"
             ],

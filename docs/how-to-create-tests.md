@@ -54,7 +54,7 @@ Perform the following steps to create a factory (let's call our example resource
        numberOfParts = 1
        identificationCodes = factory.LazyAttribute(
             lambda o: build_descriptor_dicts(
-                "courseIdentificationSystem",
+                "CourseIdentificationSystem",
                 [("State course code", {"identificationCode": o.courseCode})],
             )
         )
@@ -243,8 +243,8 @@ Perform the following steps to create a simple volume test:
               "levelCharacteristics",
               [
                 {
-                    "courseLevelCharacteristicDescriptor": build_descriptor(
-                        "courseLevelCharacteristic", "Basic"
+                    "CourseLevelCharacteristicDescriptor": build_descriptor(
+                        "CourseLevelCharacteristic", "Basic"
                     )
                 }
               ],
@@ -284,8 +284,8 @@ Perform the following steps to create a simple volume test:
               "levelCharacteristics",
               [
                 {
-                    "courseLevelCharacteristicDescriptor": build_descriptor(
-                        "courseLevelCharacteristic", "Basic"
+                    "CourseLevelCharacteristicDescriptor": build_descriptor(
+                        "CourseLevelCharacteristic", "Basic"
                     )
                 }
               ],

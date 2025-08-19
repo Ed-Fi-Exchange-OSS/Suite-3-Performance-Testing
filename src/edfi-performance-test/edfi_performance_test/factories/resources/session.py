@@ -27,6 +27,9 @@ class SessionFactory(APIFactory):
                                 "GradingPeriod", "First Six Weeks"
                             ),
                             periodSequence=None,  # Must be entered by client
+                            gradingPeriodName=None,  # Must be entered by client
+                            schoolId=SchoolClient.shared_elementary_school_id(),
+                            schoolYear=2014,
                         )
                     ),
                 ),
@@ -39,6 +42,9 @@ class SessionFactory(APIFactory):
                                 "GradingPeriod", "Second Six Weeks"
                             ),
                             periodSequence=None,  # Must be entered by client
+                            gradingPeriodName=None,  # Must be entered by client
+                            schoolId=SchoolClient.shared_elementary_school_id(),
+                            schoolYear=2014,
                         )
                     ),
                 ),

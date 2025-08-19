@@ -153,4 +153,4 @@ class StudentSchoolFoodServiceProgramAssociationPipecleanTest(EdFiPipecleanTestB
 
 class StudentAssessmentPipecleanTest(EdFiPipecleanTestBase):
     update_attribute_name = "serialNumber"
-    update_attribute_value = 2
+    update_attribute_value = "2"

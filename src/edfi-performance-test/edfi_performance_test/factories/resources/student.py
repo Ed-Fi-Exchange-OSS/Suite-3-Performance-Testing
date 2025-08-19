@@ -148,7 +148,7 @@ class StudentEducationOrganizationAssociationFactory(APIFactory):
         [
             dict(
                 indicatorName="At Risk",
-                indicator=True,
+                indicator="True",
             ),
         ]
     )
@@ -330,6 +330,7 @@ class StudentCompetencyObjectiveFactory(APIFactory):
             schoolId=SchoolClient.shared_elementary_school_id(),  # Prepopulated school
             schoolYear=2014,  # Prepopulated schoolYear
             periodSequence=None,  # Must be entered by the user
+            gradingPeriodName=None,  # Must be entered by the user
             gradingPeriodDescriptor=build_descriptor(
                 "GradingPeriod", "First Six Weeks"
             ),
@@ -483,6 +484,7 @@ class StudentLearningObjectiveFactory(APIFactory):
                 "GradingPeriod", "First Six Weeks"
             ),
             periodSequence=None,  # Must be entered by user
+            gradingPeriodName=None,  # Must be entered by user
             schoolId=SchoolClient.shared_elementary_school_id(),
             schoolYear=2014,
         )

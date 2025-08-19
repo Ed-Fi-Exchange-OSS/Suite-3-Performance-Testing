@@ -23,7 +23,7 @@ class SectionFactory(APIFactory):
             factory.Dict(
                 dict(
                     classPeriodReference=factory.Dict(
-                        dict(classPeriodName=None)  # Must be entered by client
+                        dict(classPeriodName=None, schoolId=SchoolClient.shared_elementary_school_id()),  # Must be entered by client
                     ),
                 ),
             ),

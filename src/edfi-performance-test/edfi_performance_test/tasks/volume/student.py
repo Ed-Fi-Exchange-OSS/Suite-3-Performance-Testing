@@ -31,15 +31,15 @@ class StudentSchoolAssociationVolumeTest(EdFiVolumeTestBase):
     @task
     def run_association_scenarios(self):
         school_id = SchoolClient.shared_high_school_id()
-        graduation_plan_reference = {  # Prepopulated graduation plan
-            "educationOrganizationId": school_id,
-            "graduationPlanTypeDescriptor": build_descriptor(
-                "GraduationPlanType", "Recommended"
-            ),
-            "graduationSchoolYear": StudentSchoolAssociationVolumeTest.get_graduation_plan_school_year(
-                self, school_id
-            ),
-        }
+        graduation_plan_reference = None
+        graduationSchoolYear = StudentSchoolAssociationVolumeTest.get_graduation_plan_school_year(self, school_id)
+        if(graduationSchoolYear is not None):
+            graduation_plan_reference = {
+                "educationOrganizationId": school_id,
+                "graduationPlanTypeDescriptor": build_descriptor("GraduationPlanType", "Recommended"),
+                "graduationSchoolYear": graduationSchoolYear,
+            }
+
         self.run_scenario(
             "entryDate",
             RandomDateAttribute(),
@@ -51,6 +51,8 @@ class StudentSchoolAssociationVolumeTest(EdFiVolumeTestBase):
         self.run_scenario(
             "graduationPlanReference",
             graduation_plan_reference,
+            primarySchool=True,
+            enrollmentTypeDescriptor=build_descriptor("EnrollmentType", "Current"),
             schoolReference__schoolId=school_id,
             entryGradeLevelDescriptor=build_descriptor("GradeLevel", "Ninth Grade"),
             classOfSchoolYearTypeReference__schoolYear=2020,

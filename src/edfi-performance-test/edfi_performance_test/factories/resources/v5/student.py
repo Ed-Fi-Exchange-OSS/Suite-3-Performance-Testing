@@ -57,4 +57,4 @@ class StudentSpecialEducationProgramEligibilityAssociationFactory(APIFactory):
         dict(studentUniqueId=111111)
     )
     evaluationCompleteIndicator = False
-    ideaPartDescriptor = build_descriptor("IdeaPart", "IDEA Part B")
+    ideaPartDescriptor = build_descriptor("IDEAPart", "IDEA Part B")
