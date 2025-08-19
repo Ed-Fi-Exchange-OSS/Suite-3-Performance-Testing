@@ -142,6 +142,9 @@ class EdFiAPIClient(EdFiBasicAPIClient):
             response.failure("Status code {} is a failure".format(response.status_code))
             return
         if self.is_not_expected_result(response, [200, 201]):
+            logger.error(
+                f"{response.request.method} {response.request.url} - REQUEST BODY: {payload}"
+            )
             if unique_id is not None:
                 return None, None
             return None
@@ -153,6 +156,8 @@ class EdFiAPIClient(EdFiBasicAPIClient):
 
     def update(self, resource_id, **update_kwargs):
         # Be sure to pass in a fully defined object; ODS doesn't allow partial updates.
+        # Include resource_id in the payload; DMS currently requires it.
+        update_kwargs['id'] = resource_id
         payload = self.factory.build_json(**update_kwargs)
         response = self._get_response(
             "put",

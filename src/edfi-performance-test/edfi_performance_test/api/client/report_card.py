@@ -26,5 +26,14 @@ class ReportCardClient(EdFiAPIClient):
             gradingPeriodReference__periodSequence=period_reference["attributes"][
                 "periodSequence"
             ],
+            gradingPeriodReference__gradingPeriodName=period_reference["attributes"][
+                "gradingPeriodName"
+            ],
+            gradingPeriodReference__schoolId=period_reference["attributes"][
+                "schoolReference"][
+                "schoolId"],
+            gradingPeriodReference__schoolYear=period_reference["attributes"][
+                "schoolYearTypeReference"][
+                "schoolYear"],
             studentReference__studentUniqueId=studentUniqueId,
         )

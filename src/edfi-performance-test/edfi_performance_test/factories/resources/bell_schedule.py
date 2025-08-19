@@ -19,7 +19,7 @@ class BellScheduleFactory(APIFactory):
         [
             factory.Dict(
                 dict(
-                    classPeriodReference=factory.Dict(dict(classPeriodName=None)),
+                    classPeriodReference=factory.Dict(dict(classPeriodName=None, schoolId=SchoolClient.shared_elementary_school_id())),
                 )
             ),
         ]

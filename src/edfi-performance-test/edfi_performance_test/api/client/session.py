@@ -52,6 +52,30 @@ class SessionClient(EdFiAPIClient):
             ][
                 "periodSequence"
             ],
+            gradingPeriods__0__gradingPeriodReference__gradingPeriodDescriptor=period_1_reference[
+                "attributes"
+            ][
+                "gradingPeriodDescriptor"
+            ],
+            gradingPeriods__1__gradingPeriodReference__gradingPeriodDescriptor=period_2_reference[
+                "attributes"
+            ][
+                "gradingPeriodDescriptor"
+            ],
+            gradingPeriods__0__gradingPeriodReference__gradingPeriodName=period_1_reference[
+                "attributes"
+            ][
+                "gradingPeriodName"
+            ],
+            gradingPeriods__1__gradingPeriodReference__gradingPeriodName=period_2_reference[
+                "attributes"
+            ][
+                "gradingPeriodName"
+            ],
+            gradingPeriods__0__gradingPeriodReference__schoolId=school_id,
+            gradingPeriods__1__gradingPeriodReference__schoolId=school_id,
+            gradingPeriods__0__gradingPeriodReference__schoolYear=school_year,
+            gradingPeriods__1__gradingPeriodReference__schoolYear=school_year,
             **kwargs
         )
 

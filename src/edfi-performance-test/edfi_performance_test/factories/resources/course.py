@@ -27,7 +27,7 @@ class CourseFactory(APIFactory):
     numberOfParts = 1
     identificationCodes = factory.LazyAttribute(
         lambda o: build_descriptor_dicts(
-            "courseIdentificationSystem",
+            "CourseIdentificationSystem",
             [("State course code", {"identificationCode": o.courseCode})],
         )
     )
@@ -36,7 +36,7 @@ class CourseFactory(APIFactory):
             factory.Dict(
                 dict(
                     courseLevelCharacteristicDescriptor=build_descriptor(
-                        "courseLevelCharacteristic", "Core Subject"
+                        "CourseLevelCharacteristic", "Core Subject"
                     )
                 )
             ),

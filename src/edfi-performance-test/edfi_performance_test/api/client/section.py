@@ -55,6 +55,7 @@ class SectionClient(EdFiAPIClient):
             ][
                 "classPeriodName"
             ],
+            classPeriods__0__classPeriodReference__schoolId=school_id,
             courseOfferingReference__localCourseCode=course_offering_attrs[
                 "localCourseCode"
             ],

@@ -20,7 +20,7 @@ class CourseVolumeTest(EdFiVolumeTestBase):
             [
                 {
                     "courseLevelCharacteristicDescriptor": build_descriptor(
-                        "courseLevelCharacteristic", "Basic"
+                        "CourseLevelCharacteristic", "Basic"
                     )
                 }
             ],

@@ -23,6 +23,7 @@ class ReportCardFactory(APIFactory):
     gradingPeriodReference = factory.Dict(
         dict(
             periodSequence=None,  # Must be created
+            gradingPeriodName=None,  # Must be created
             schoolId=SchoolClient.shared_elementary_school_id(),
             schoolYear=2014,
             gradingPeriodDescriptor=build_descriptor(

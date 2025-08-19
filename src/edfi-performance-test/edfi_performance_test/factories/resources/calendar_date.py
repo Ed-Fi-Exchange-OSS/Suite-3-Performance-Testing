@@ -16,7 +16,7 @@ from edfi_performance_test.factories.descriptors.utils import build_descriptor_d
 class CalendarDateFactory(APIFactory):
     calendarReference = factory.Dict(
         dict(
-            calendarCode="107SS111111",
+            calendarCode=None,  # Must be entered by client
             schoolId=SchoolClient.shared_elementary_school_id(),
             schoolYear=2014,
         )
