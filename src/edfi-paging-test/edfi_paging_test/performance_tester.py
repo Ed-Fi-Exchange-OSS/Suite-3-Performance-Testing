@@ -86,7 +86,7 @@ async def run(args: MainArguments) -> None:
         request_client: RequestClient = RequestClient(args)
 
         executor: ThreadPoolExecutor = ThreadPoolExecutor(
-            max_workers=args.connectionLimit
+            max_workers=1  # args.connectionLimit TODO AXEL revert
         )
         loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()
 
