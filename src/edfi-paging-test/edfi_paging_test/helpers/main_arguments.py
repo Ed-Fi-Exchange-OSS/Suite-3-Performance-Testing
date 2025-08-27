@@ -4,7 +4,7 @@
 # See the LICENSE and NOTICES files in the project root for more information.
 
 from typing import List
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from edfi_paging_test.helpers.output_format import OutputFormat
 from edfi_paging_test.helpers.log_level import LogLevel
