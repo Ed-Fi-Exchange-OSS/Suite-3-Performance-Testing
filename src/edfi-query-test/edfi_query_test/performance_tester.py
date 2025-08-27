@@ -75,8 +75,21 @@ def invalid_resources(
 ) -> List[str]:
     return [r for r in resources_to_check if r not in openapi_resources]
 
-# TODO AXEL document
 def find_resource_with_all_query_params(resources: List[Dict[str, Any]], query_params: Tuple[QueryParam, ...], count: int) -> List[Dict[str, Any]]:
+    """
+    Finds resources that contain all specified query parameters.
+    
+    Searches through a list of resources to find ones that have non-null values
+    for all the specified query parameters, up to the requested count.
+    
+    Args:
+        resources: List of resource dictionaries to search through
+        query_params: Tuple of QueryParam objects representing required parameters
+        count: Maximum number of matching resources to return
+        
+    Returns:
+        List of resource dictionaries that contain all specified query parameters
+    """
     result: List[Dict[str, Any]] = []
     for resource in resources:
         resource_has_all_query_params = True
@@ -99,7 +112,12 @@ def capitalize_first(text):
 
 
 def flatten_resource(resource: Dict[str, Any]) -> Dict[str, Any]:
-    # TODO AXEL Doesn't improve matching for DMS because its OpenApi metada is missing nested queryable fields
+    """
+    Flattens nested resource dictionaries for easier query parameter matching.
+    
+    Note: This may not improve matching for all API implementations if their
+    OpenAPI metadata is missing nested queryable fields.
+    """
     flattened = {}
 
     for key, value in resource.items():
@@ -116,7 +134,19 @@ def flatten_resource(resource: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def get_query_params_combinations(query_params: List[QueryParam]):
-    # TODO AXEL make configurable
+    """
+    Generates combinations of query parameters for testing.
+    
+    Creates all possible combinations of query parameters from size 1 to 6.
+    The maximum combination size (6) could be made configurable in future versions.
+    
+    Args:
+        query_params: List of QueryParam objects to generate combinations from
+        
+    Returns:
+        List of tuples containing different combinations of query parameters
+    """
+    # Maximum combination size is currently hardcoded to 6
     return list(chain(*[combinations(query_params, i + 1) for i in range(6)]))
 
 
@@ -171,7 +201,7 @@ async def run(args: MainArguments) -> None:
             query_params_combinations = get_query_params_combinations(
                 query_params)
 
-            # TODO AXEL document
+            # Create a dictionary to group resources by query parameter for efficient lookup
             resources_by_query_param: dict[str, list[Dict[str, Any]]] = {
                 query_param.name: [] for query_param in query_params}
             for resources_with_all_query_params in resources:
@@ -182,14 +212,14 @@ async def run(args: MainArguments) -> None:
 
             for query_params in query_params_combinations:
 
-                # TODO AXEL document
+                # Find the query parameter with the fewest matching resources to optimize performance
                 min_resources = list(resources_by_query_param.items())[0][1]
                 for query_param in query_params:
                     if len(resources_by_query_param[query_param.name]) < len(min_resources):
                         min_resources = resources_by_query_param[query_param.name]
 
                 random.shuffle(min_resources)
-                # TODO AXEL make configurable
+                # Limit to 10 resources per combination (configurable in future versions)
                 resources_with_all_query_params = find_resource_with_all_query_params(
                     min_resources, query_params, 10)
 

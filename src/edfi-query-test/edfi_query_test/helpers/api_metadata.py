@@ -95,7 +95,18 @@ def get_resource_metadata_response(api_base_url: str, verify_cert: bool = True) 
 
 def get_query_params_by_resource(api_base_url: str, verify_cert: bool = True) -> Dict[str, List[QueryParam]]:
     """
-    # TODO AXEL document
+    Retrieves query parameters available for each Ed-Fi API resource.
+    
+    Analyzes the Ed-Fi API's OpenAPI metadata to determine which query parameters
+    are available for each resource endpoint, filtering out non-queryable paths.
+    
+    Args:
+        api_base_url (str): Base URL of the Ed-Fi API
+        verify_cert (bool): Whether to verify SSL certificates
+        
+    Returns:
+        Dict[str, List[QueryParam]]: Dictionary mapping resource names to their
+                                    available query parameters
     """
 
     resource_metadata_response: Dict[str, Dict[str, Any]
@@ -115,7 +126,11 @@ def get_query_params_by_resource(api_base_url: str, verify_cert: bool = True) ->
 
 
 def get_query_params(operations) -> List[QueryParam]:
-    return [QueryParam(name=param['name']) for param in operations['get']['parameters'] if 'in' in param and param['in'] == 'query' and param['name'] != 'id']
+    pagination_params = {'limit', 'offset', 'totalCount'}
+    return [QueryParam(name=param['name']) for param in operations['get']['parameters'] 
+            if 'in' in param and param['in'] == 'query' 
+            and param['name'] != 'id'
+            and param['name'] not in pagination_params]
 
 
 def normalize_resource_path(resource_path: str) -> str:
@@ -130,10 +145,8 @@ def normalize_resource_path(resource_path: str) -> str:
 
     Returns
     -------
-    List[str]
-        A list of normalized resource relative paths.
-        For example: ["studentschoolassociations", "tpdm/candidates"]
-
-        # TODO AXEL document
+    str
+        A normalized resource relative path.
+        For example: "studentschoolassociations", "tpdm/candidates"
     """
     return resource_path.removeprefix("/").removeprefix("ed-fi/")

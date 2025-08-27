@@ -1,4 +1,3 @@
-TODO AXEL
 # Query Volume Test
 
 Provides data out performance metrics for the ODS / AP aimed at analysis of

@@ -281,7 +281,17 @@ class RequestClient:
 
     def query(self, resource_name: str, query_params: Dict[str, str]) -> List[Dict[str, Any]]:
         """
-        TODO AXEL document
+        Executes a query against a specific Ed-Fi API resource with parameters.
+        
+        Constructs and executes an API request with the provided query parameters,
+        limiting results to 1 record for performance testing purposes.
+        
+        Args:
+            resource_name (str): Name of the Ed-Fi resource to query
+            query_params (Dict[str, str]): Dictionary of query parameters and values
+            
+        Returns:
+            List[Dict[str, Any]]: List containing the query results (limited to 1 record)
         """
 
         query_string = '&'.join([f"{key}={quote(str(value))}" for key, value in query_params.items()])

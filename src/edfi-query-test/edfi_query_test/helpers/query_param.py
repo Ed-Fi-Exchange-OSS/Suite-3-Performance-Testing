@@ -5,7 +5,18 @@
 
 from dataclasses import dataclass
 
-@dataclass
+
+@dataclass(frozen=True)
 class QueryParam:
-    # TODO AXEL document
-    name:str
+    """
+    Represents a query parameter that can be used in Ed-Fi API requests.
+
+    This class encapsulates the information needed to construct query parameters
+    for testing different API endpoint combinations and their performance
+    characteristics.
+
+    Attributes:
+        name (str): The name of the query parameter (e.g., 'studentUniqueId',
+                   'schoolId', 'gradingPeriodDescriptor').
+    """
+    name: str
