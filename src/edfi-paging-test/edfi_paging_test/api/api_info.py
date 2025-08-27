@@ -20,7 +20,7 @@ class APIInfo:
 
     @property
     def oauth_url(self) -> str:
-        return "http://localhost:8045/realms/edfi/protocol/openid-connect/token" # TODO AXEL revert
+        return self.urls["oauth"]
 
     @property
     def api_metadata_url(self) -> str:
