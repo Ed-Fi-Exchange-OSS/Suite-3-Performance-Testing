@@ -16,7 +16,7 @@ pandas = "^1.4.1"
 errorhandler = "^2.0.1"
 numpy = "1.24.3"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 flake8 = "^4.0.1"
 pytest = "^7.0.1"
 mypy = "^0.931"
@@ -29,10 +29,6 @@ types-requests = "^2.27.12"
 data-science-types = "^0.2.23"
 pyfakefs = "^4.5.5"
 pook = "^1.0.2"
-
-
-
-[tool.poetry.group.dev.dependencies]
 black = "^24.4.2"
 
 [build-system]

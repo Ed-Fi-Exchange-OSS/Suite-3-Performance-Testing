@@ -26,4 +26,4 @@ class MainArguments:
     contentType: OutputFormat
     resourceList: List[str]
     pageSize: int = 100
-    log_level: LogLevel = field(default_factory=lambda: LogLevel.INFO) # TODO AXEL revert
+    log_level: LogLevel = LogLevel.INFO
