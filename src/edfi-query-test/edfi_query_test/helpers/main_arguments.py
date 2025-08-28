@@ -27,3 +27,5 @@ class MainArguments:
     resourceList: List[str]
     pageSize: int = 100
     log_level: LogLevel = LogLevel.INFO
+    resourceCount: int = 10
+    combinationsLimit: int = 50

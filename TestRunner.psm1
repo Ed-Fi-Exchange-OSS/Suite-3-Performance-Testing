@@ -499,52 +499,129 @@ function Invoke-TestRunner {
 
         if($testSuite -eq 'pagevolume') {
             $outputDir = Resolve-Path $testKitOutputPath
-            Push-Location ./src/edfi-paging-test
-
-            try {
-                Write-DebugLog "Executing: poetry install" -LogLevel $logLevel
-                &poetry install
-
-                $command = "poetry run python edfi_paging_test --baseUrl $url --key  $key --secret $secret --output $outputDir"
-                if ($connectionLimit) {
-                    $command += " --connectionLimit  $connectionLimit"
-                }
-                if ($contentType) {
-                    $command += " --contentType  $contentType"
-                }
-                if ($resourceList) {
-                    $command += " --resourceList $resourceList"
-                }
-                if ($pageSize) {
-                    $command += " --pageSize $pageSize"
-                }
-                if ($logLevel) {
-                    $command += " --logLevel $logLevel"
-                }
-                if ($description) {
-                    $command += " --description '$description'"
-                }
-                if ($insecure) {
-                    $command += " --ignoreCertificateErrors"
-                }
-
-                Write-DebugLog "Executing: $command" -LogLevel $logLevel
-                Invoke-Expression -Command $command
+            
+            # Get test mode configuration
+            $testMode = Get-ConfigValue -Config $Config -Key "PERF_QUERY_TEST_MODE" -Optional
+            if ($null -eq $testMode) {
+                $testMode = "both"
             }
-            catch {
-                Write-ErrorLog $_.Exception.Message
-                $formatstring = "{0} : {1}`n{2}`n" +
-                    "    + CategoryInfo          : {3}`n" +
-                    "    + FullyQualifiedErrorId : {4}`n"
-                $fields = $_.InvocationInfo.MyCommand.Name,
-                        $_.ErrorDetails.Message,
-                        $_.InvocationInfo.PositionMessage,
-                        $_.CategoryInfo.ToString(),
-                        $_.FullyQualifiedErrorId
-                Write-ErrorLog ($formatstring -f $fields)
+            
+            # Get query-specific configuration parameters
+            $queryResourceCount = Get-ConfigValue -Config $Config -Key "PERF_QUERY_RESOURCE_COUNT" -Optional
+            $queryCombinationsLimit = Get-ConfigValue -Config $Config -Key "PERF_QUERY_COMBINATIONS_LIMIT" -Optional
+            
+            Write-InfoLog "Running page volume tests in mode: $testMode"
+            
+            # Execute paging tests (if mode is 'paging' or 'both')
+            if ($testMode -eq "paging" -or $testMode -eq "both") {
+                Write-InfoLog "Executing paging tests..."
+                Push-Location ./src/edfi-paging-test
+
+                try {
+                    Write-DebugLog "Executing: poetry install" -LogLevel $logLevel
+                    &poetry install
+
+                    $command = "poetry run python edfi_paging_test --baseUrl $url --key  $key --secret $secret --output $outputDir"
+                    if ($connectionLimit) {
+                        $command += " --connectionLimit  $connectionLimit"
+                    }
+                    if ($contentType) {
+                        $command += " --contentType  $contentType"
+                    }
+                    if ($resourceList) {
+                        $command += " --resourceList $resourceList"
+                    }
+                    if ($pageSize) {
+                        $command += " --pageSize $pageSize"
+                    }
+                    if ($logLevel) {
+                        $command += " --logLevel $logLevel"
+                    }
+                    if ($description) {
+                        $command += " --description '$description - Paging Tests'"
+                    }
+                    if ($insecure) {
+                        $command += " --ignoreCertificateErrors"
+                    }
+
+                    Write-DebugLog "Executing: $command" -LogLevel $logLevel
+                    Invoke-Expression -Command $command
+                }
+                catch {
+                    Write-ErrorLog "Error executing paging tests: $($_.Exception.Message)"
+                    $formatstring = "{0} : {1}`n{2}`n" +
+                        "    + CategoryInfo          : {3}`n" +
+                        "    + FullyQualifiedErrorId : {4}`n"
+                    $fields = $_.InvocationInfo.MyCommand.Name,
+                            $_.ErrorDetails.Message,
+                            $_.InvocationInfo.PositionMessage,
+                            $_.CategoryInfo.ToString(),
+                            $_.FullyQualifiedErrorId
+                    Write-ErrorLog ($formatstring -f $fields)
+                }
+                finally {
+                    Pop-Location
+                }
             }
-            finally {
-                Pop-Location
+            
+            # Execute query tests (if mode is 'query' or 'both')
+            if ($testMode -eq "query" -or $testMode -eq "both") {
+                Write-InfoLog "Executing query tests..."
+                Push-Location ./src/edfi-query-test
+
+                try {
+                    Write-DebugLog "Executing: poetry install" -LogLevel $logLevel
+                    &poetry install
+
+                    $command = "poetry run python edfi_query_test --baseUrl $url --key  $key --secret $secret --output $outputDir"
+                    if ($connectionLimit) {
+                        $command += " --connectionLimit  $connectionLimit"
+                    }
+                    if ($contentType) {
+                        $command += " --contentType  $contentType"
+                    }
+                    if ($resourceList) {
+                        $command += " --resourceList $resourceList"
+                    }
+                    if ($pageSize) {
+                        $command += " --pageSize $pageSize"
+                    }
+                    if ($logLevel) {
+                        $command += " --logLevel $logLevel"
+                    }
+                    if ($description) {
+                        $command += " --description '$description - Query Tests'"
+                    } else {
+                        $command += " --description 'Query Performance Tests'"
+                    }
+                    if ($insecure) {
+                        $command += " --ignoreCertificateErrors"
+                    }
+                    if ($queryResourceCount) {
+                        $command += " --resourceCount $queryResourceCount"
+                    }
+                    if ($queryCombinationsLimit) {
+                        $command += " --combinationsLimit $queryCombinationsLimit"
+                    }
+
+                    Write-DebugLog "Executing: $command" -LogLevel $logLevel
+                    Invoke-Expression -Command $command
+                }
+                catch {
+                    Write-ErrorLog "Error executing query tests: $($_.Exception.Message)"
+                    $formatstring = "{0} : {1}`n{2}`n" +
+                        "    + CategoryInfo          : {3}`n" +
+                        "    + FullyQualifiedErrorId : {4}`n"
+                    $fields = $_.InvocationInfo.MyCommand.Name,
+                            $_.ErrorDetails.Message,
+                            $_.InvocationInfo.PositionMessage,
+                            $_.CategoryInfo.ToString(),
+                            $_.FullyQualifiedErrorId
+                    Write-ErrorLog ($formatstring -f $fields)
+                }
+                finally {
+                    Pop-Location
+                }
             }
         }
         else{
@@ -829,7 +906,16 @@ function Initialize-TestRunner {
 }
 
 function Invoke-PageVolumeTests {
+    param(
+        [ValidateSet("paging", "query", "both")]
+        [string]
+        $TestMode = "both"
+    )
+    
     $config = Initialize-TestRunner
+    
+    # Add test mode to configuration
+    Set-ConfigValue -Config $config -Key "PERF_QUERY_TEST_MODE" -Value $TestMode
 
     Invoke-TestRunner `
         -TestSuite pagevolume `

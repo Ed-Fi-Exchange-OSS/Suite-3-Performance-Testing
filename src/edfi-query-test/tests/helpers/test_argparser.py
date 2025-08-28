@@ -63,6 +63,8 @@ def describe_parse_main_arguments():
             assert result.ignoreCertificateErrors is False
             assert result.contentType == OutputFormat.CSV
             assert result.log_level == LogLevel.INFO
+            assert result.resourceCount == 10
+            assert result.combinationsLimit == 50
 
     def describe_given_optional_arguments():
         def it_overrides_page_size():
@@ -146,3 +148,23 @@ def describe_parse_main_arguments():
             
             # Assert
             assert result.description == description
+            
+        def it_sets_resource_count():
+            # Arrange
+            sys.argv = ["query_test"] + _required_args() + ["--resourceCount", "20"]
+            
+            # Act
+            result = parse_main_arguments()
+            
+            # Assert
+            assert result.resourceCount == 20
+            
+        def it_sets_combinations_limit():
+            # Arrange
+            sys.argv = ["query_test"] + _required_args() + ["--combinationsLimit", "100"]
+            
+            # Act
+            result = parse_main_arguments()
+            
+            # Assert
+            assert result.combinationsLimit == 100

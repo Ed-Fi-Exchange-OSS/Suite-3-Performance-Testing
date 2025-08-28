@@ -113,6 +113,20 @@ def parse_main_arguments() -> MainArguments:
         default="Query Volume Test Run",
         env_var="PERF_DESCRIPTION",
     )
+    parser.add(  # type: ignore
+        "--resourceCount",
+        help="Maximum number of resources to test for query performance",
+        type=int,
+        default=10,
+        env_var="PERF_QUERY_RESOURCE_COUNT",
+    )
+    parser.add(  # type: ignore
+        "--combinationsLimit",
+        help="Maximum number of query parameter combinations to test per resource",
+        type=int,
+        default=50,
+        env_var="PERF_QUERY_COMBINATIONS_LIMIT",
+    )
 
     args_parsed = parser.parse_args()
 
@@ -128,6 +142,8 @@ def parse_main_arguments() -> MainArguments:
         args_parsed.resourceList or [],
         args_parsed.pageSize,
         args_parsed.logLevel,
+        args_parsed.resourceCount,
+        args_parsed.combinationsLimit,
     )
 
     return arguments

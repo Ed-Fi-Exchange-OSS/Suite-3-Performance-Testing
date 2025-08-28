@@ -7,13 +7,17 @@ param(
     [string]
     [Parameter(Mandatory=$True)]
     [ValidateSet("paging", "pipeclean", "volume", "changequeries", "stress", "soak")]
-    $Type
+    $Type,
+    
+    [ValidateSet("paging", "query", "both")]
+    [string]
+    $TestMode = "both"
 )
 
 Import-Module .\TestRunner.psm1 -Force
 
 switch ($Type) {
-    "paging" { Invoke-PageVolumeTests }
+    "paging" { Invoke-PageVolumeTests -TestMode $TestMode }
     "pipeclean" { Invoke-PipecleanTests }
     "volume" { Invoke-VolumeTests }
     "stress" { Invoke-StressTests }
