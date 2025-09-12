@@ -19,8 +19,10 @@ from requests_oauthlib import OAuth2Session  # type: ignore
 from edfi_paging_test.api.paginated_result import PaginatedResult
 from edfi_paging_test.api.api_info import APIInfo
 from edfi_paging_test.helpers.argparser import MainArguments
-from edfi_paging_test.reporter.request_logger import log_request
+from edfi_paging_test.reporter.paging_request_logger import PaggingRequestLogger
+from edfi_paging_test.reporter.filtered_read_request_logger import FilteredReadRequestLogger
 from edfi_paging_test.helpers.api_metadata import get_base_api_response
+from urllib.parse import quote
 
 EDFI_DATA_MODEL_NAME = "ed-fi"
 
@@ -110,7 +112,7 @@ class RequestClient:
         self.oauth.fetch_token(
             self._get_api_info().oauth_url, auth=self.auth,
             verify=self.verify_cert
-            )
+        )
 
     def _urljoin(self, base_url: str, relative_url: str) -> str:
         """
@@ -214,7 +216,7 @@ class RequestClient:
         )
         return 0
 
-    def get_page(self, resource: str, page: int = 1) -> PaginatedResult:
+    def get_page(self, resource: str, pagingRequestLogger: PaggingRequestLogger, page: int = 1) -> PaginatedResult:
         """Send an HTTP GET request for the next page.
 
         Returns
@@ -230,9 +232,10 @@ class RequestClient:
         logger.debug(f"GET {next_url}")
         elapsed, response = timeit(lambda: self._get(next_url))
 
-        items = response.json() if len(response.text) > 0 else []
+        items = response.json() if len(
+            response.text) > 0 and response.status_code == HTTPStatus.OK else []
 
-        log_request(
+        pagingRequestLogger.log_request(
             resource,
             next_url,
             page,
@@ -250,7 +253,7 @@ class RequestClient:
             status_code=response.status_code,
         )
 
-    def get_all(self, resource: str) -> List[Dict[str, Any]]:
+    def get_all(self, resource: str, pagingRequestLogger: PaggingRequestLogger) -> List[Dict[str, Any]]:
         """
         Send an HTTP GET request for all pages of a resource.
 
@@ -267,18 +270,48 @@ class RequestClient:
 
         logger.info(f"Retrieving all {resource} records...")
 
-        pagination_result = self.get_page(resource, 1)
+        pagination_result = self.get_page(resource, pagingRequestLogger, 1)
         page_items = pagination_result.current_page_items
         # Assign to empty list if result is not a list, e.g. an error response from the API
         items: List[Any] = page_items if (isinstance(page_items, list)) else []
 
         while True:
             pagination_result = self.get_page(
-                resource, pagination_result.current_page + 1
+                resource, pagingRequestLogger, pagination_result.current_page + 1
             )
             items.extend(pagination_result.current_page_items)
 
             if pagination_result.size < self.page_size:
                 break
+
+        return items
+
+    def filtered_get(self, resource_name: str, filters: Dict[str, str], limit: int, filteredReadRequestLogger: FilteredReadRequestLogger) -> List[Dict[str, Any]]:
+        """
+        Sends an HTTP GET request to the given resource applying the provider filters.
+
+        Args:
+            resource_name: Name of the resource to query
+            filters: Dictionary of filter name and value
+            limit: Number of entries to retrieve
+
+        Returns:
+            List containing the matching resource entries
+        """
+
+        query_string = '&'.join([f"{key}={quote(str(value))}" for key, value in filters.items()])
+        url = f"{self._build_url_for_resource(resource_name)}?limit={limit}&{query_string}"
+
+        elapsed, response = timeit(lambda: self._get(url))
+
+        items = response.json() if len(response.text) > 0 and response.status_code == HTTPStatus.OK else []
+
+        filteredReadRequestLogger.log_request(
+            resource_name,
+            url,
+            len(filters),
+            elapsed,
+            response.status_code,
+        )
 
         return items

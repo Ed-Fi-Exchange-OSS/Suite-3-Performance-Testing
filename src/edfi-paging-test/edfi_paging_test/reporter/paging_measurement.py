@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class Measurement:
+class PagingMeasurement:
     resource: str
     URL: str
     page_number: int

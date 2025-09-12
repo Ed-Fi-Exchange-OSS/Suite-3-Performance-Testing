@@ -8,6 +8,7 @@ from configargparse import ArgParser  # type: ignore
 from edfi_paging_test.helpers.output_format import OutputFormat
 from edfi_paging_test.helpers.log_level import LogLevel
 from edfi_paging_test.helpers.main_arguments import MainArguments
+from edfi_paging_test.helpers.test_type import TestType
 
 
 def parse_main_arguments() -> MainArguments:
@@ -113,6 +114,23 @@ def parse_main_arguments() -> MainArguments:
         default="Paging Volume Test Run",
         env_var="PERF_DESCRIPTION",
     )
+    parser.add(  # type: ignore
+        "-e",
+        "--testType",
+        help="Type of test to run: DEEP_PAGING, FILTERED_READ",
+        type=TestType,
+        choices=list(TestType),
+        default=TestType.DEEP_PAGING,
+        env_var="PERF_PAGING_TEST_TYPE",
+    )
+    parser.add(  # type: ignore
+        "-f",
+        "--combinationSizeLimit",
+        help="The maximumum size of the filter combinations to test per resource. For use with the 'FILTERED_READ' testType only",
+        type=int,
+        default=6,
+        env_var="PERF_FILTER_COMBINATION_SIZE_LIMIT",
+    )
 
     args_parsed = parser.parse_args()
 
@@ -128,6 +146,8 @@ def parse_main_arguments() -> MainArguments:
         args_parsed.resourceList or [],
         args_parsed.pageSize,
         args_parsed.logLevel,
+        args_parsed.testType,
+        args_parsed.combinationSizeLimit,
     )
 
     return arguments

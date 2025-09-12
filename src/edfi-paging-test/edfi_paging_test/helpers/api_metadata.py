@@ -35,7 +35,7 @@ def get_base_api_response(api_base_url: str, verify_cert: bool = True) -> Dict[s
         return requests.get(
             api_base_url,
             verify=verify_cert
-            ).json()
+        ).json()
     except requests.exceptions.RequestException as e:
         raise RuntimeError(f"Error: {e}.") from e
 
@@ -61,7 +61,7 @@ def get_openapi_metadata_response(api_base_url: str, verify_cert: bool = True) -
     return requests.get(
         base_api_response["urls"]["openApiMetadata"],
         verify=verify_cert
-        ).json()
+    ).json()
 
 
 @cache
@@ -88,44 +88,48 @@ def get_resource_metadata_response(api_base_url: str, verify_cert: bool = True) 
     return requests.get(
         resource_metadata["endpointUri"],
         verify=verify_cert
-        ).json()
+    ).json()
 
 
-def get_resource_paths(api_base_url: str, verify_cert: bool = True) -> List[str]:
+def get_filters_by_resource_name(api_base_url: str, verify_cert: bool = True) -> Dict[str, List[str]]:
     """
-    Gets the resources for the API as relative paths, including the
-    project/extension prefix.
+    Analyzes the OpenAPI metadata to determine which filters are available
+    for each resource endpoint.
 
-    Parameters
-    ----------
-    api_base_url : str
-        The base URL of the API.
+    Args:
+        api_base_url (str): Base URL of the Ed-Fi API
+        verify_cert (bool): Whether to verify SSL certificates
 
-    Returns
-    -------
-    List[str]
-        A list of resource relative paths, including the extension prefix if
-        relevant. For example: ["schools", "tpdm/candidates"]
+    Returns:
+        Dict[str, List[str]]: Dictionary mapping resource names to their
+                                    available filters
     """
-    resource_metadata_response: Dict[
-        str, Dict[str, str]
-    ] = get_resource_metadata_response(api_base_url, verify_cert)
-    all_paths: List[str] = list(resource_metadata_response["paths"].keys())
+
+    resource_metadata_response: Dict[str, Dict[str, Any]
+                                     ] = get_resource_metadata_response(api_base_url, verify_cert)
+
     # filter out paths that are for get by id, deletes, keyChanges or partitions
-    return list(
-        filter(
-            lambda p: (
-                "{id}" not in p
-                and "/deletes" not in p
-                and "/keyChanges" not in p
-                and "/partitions" not in p
-            )
-            , all_paths
-        )
-    )
+    operations_by_resource = [(normalize_resource_path(path), operations) for path, operations in resource_metadata_response["paths"].items()
+                              if "{id}" not in path
+                              and "/deletes" not in path
+                              and "/keyChanges" not in path
+                              and "/partitions" not in path]
+
+    filters_by_resource = {resource: get_filters(
+        operations) for resource, operations in operations_by_resource}
+
+    return filters_by_resource
 
 
-def normalize_resource_paths(resource_paths: List[str]) -> List[str]:
+def get_filters(operations) -> List[str]:
+    pagination_params = {'limit', 'offset', 'totalCount'}
+    return [param['name'] for param in operations['get']['parameters']
+            if 'in' in param and param['in'] == 'query'
+            and param['name'] != 'id'
+            and param['name'] not in pagination_params]
+
+
+def normalize_resource_path(resource_path: str) -> str:
     """
     Takes a list of resource relative paths and normalizes to lowercase
     and with the "ed-fi" namespace prefix removed.
@@ -137,13 +141,8 @@ def normalize_resource_paths(resource_paths: List[str]) -> List[str]:
 
     Returns
     -------
-    List[str]
-        A list of normalized resource relative paths.
-        For example: ["studentschoolassociations", "tpdm/candidates"]
+    str
+        A normalized resource relative path.
+        For example: "studentschoolassociations", "tpdm/candidates"
     """
-    return list(
-        map(
-            lambda r: r.removeprefix("/").removeprefix("ed-fi/"),
-            resource_paths,
-        )
-    )
+    return resource_path.removeprefix("/").removeprefix("ed-fi/")
