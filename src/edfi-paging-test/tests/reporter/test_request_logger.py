@@ -3,11 +3,11 @@ from typing import List
 from pandas import DataFrame
 import pytest
 
-from edfi_paging_test.reporter.measurement import Measurement
-from edfi_paging_test.reporter.request_logger import get_DataFrame, log_request
+from edfi_paging_test.reporter.paging_measurement import PagingMeasurement
+from edfi_paging_test.reporter.paging_request_logger import PaggingRequestLogger
 
 
-MEASUREMENT_1 = Measurement(
+MEASUREMENT_1 = PagingMeasurement(
     "academicWeeks",
     "https://localhost/WebApi/data/v3/",
     1,
@@ -16,7 +16,7 @@ MEASUREMENT_1 = Measurement(
     40.0,
     200,
 )
-MEASUREMENT_2 = Measurement(
+MEASUREMENT_2 = PagingMeasurement(
     "assignments",
     "https://localhost/WebApi/data/v3/",
     3,
@@ -30,13 +30,11 @@ MEASUREMENT_2 = Measurement(
 def describe_when_logging_a_request() -> None:
     def describe_given_there_is_already_an_item() -> None:
         @pytest.fixture()
-        def logs(mocker) -> List[Measurement]:
-            request_log = [MEASUREMENT_1]
-            mocker.patch(
-                "edfi_paging_test.reporter.request_logger._request_log", request_log
-            )
+        def logs(mocker) -> List[PagingMeasurement]:
+            pagingRequestLogger = PaggingRequestLogger()
+            pagingRequestLogger.request_log = [MEASUREMENT_1]
 
-            log_request(
+            pagingRequestLogger.log_request(
                 MEASUREMENT_2.resource,
                 MEASUREMENT_2.URL,
                 MEASUREMENT_2.page_number,
@@ -46,36 +44,32 @@ def describe_when_logging_a_request() -> None:
                 MEASUREMENT_2.http_status_code
             )
 
-            return request_log
+            return pagingRequestLogger.request_log
 
-        def it_appends_new_log_to_end_of_list(logs: List[Measurement]) -> None:
+        def it_appends_new_log_to_end_of_list(logs: List[PagingMeasurement]) -> None:
             assert logs[-1] == MEASUREMENT_2
 
         def it_leaves_the_original_entry_at_beginning_of_list(
-            logs: List[Measurement],
+            logs: List[PagingMeasurement],
         ) -> None:
             assert logs[0] == MEASUREMENT_1
 
 
 def describe_when_converting_to_a_DataFrame() -> None:
-    def describe_given_given_an_empty_list() -> None:
+    def describe_given_given_an_empty_request_log() -> None:
         def it_raises_a_RuntimeError(mocker) -> None:
-            mocker.patch("edfi_paging_test.reporter.request_logger._request_log", [])
-
             with pytest.raises(RuntimeError):
-                get_DataFrame()
+                PaggingRequestLogger().get_DataFrame()
 
     def describe_given_two_items() -> None:
         @pytest.fixture()
         def df(mocker) -> DataFrame:
             # Arrange
-            request_log = [MEASUREMENT_1, MEASUREMENT_2]
-            mocker.patch(
-                "edfi_paging_test.reporter.request_logger._request_log", request_log
-            )
+            paggingRequestLogger = PaggingRequestLogger()
+            paggingRequestLogger.request_log = [MEASUREMENT_1, MEASUREMENT_2]
 
             # Act
-            return get_DataFrame()
+            return paggingRequestLogger.get_DataFrame()
 
         def it_has_two_rows(df: DataFrame) -> None:
             assert df.shape[0] == 2

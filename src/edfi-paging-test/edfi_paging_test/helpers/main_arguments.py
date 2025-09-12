@@ -8,6 +8,7 @@ from dataclasses import dataclass
 
 from edfi_paging_test.helpers.output_format import OutputFormat
 from edfi_paging_test.helpers.log_level import LogLevel
+from edfi_paging_test.helpers.test_type import TestType
 
 
 @dataclass
@@ -27,3 +28,5 @@ class MainArguments:
     resourceList: List[str]
     pageSize: int = 100
     log_level: LogLevel = LogLevel.INFO
+    test_type: TestType = TestType.DEEP_PAGING
+    combination_size_limit: int = 6

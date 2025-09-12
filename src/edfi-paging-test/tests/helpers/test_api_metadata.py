@@ -4,13 +4,13 @@
 # # See the LICENSE and NOTICES files in the project root for more information.
 
 
-from typing import List
+from typing import Dict, List
 import pytest
 from pathlib import Path
 import pook
 from edfi_paging_test.helpers.api_metadata import (
-    get_resource_paths,
-    normalize_resource_paths,
+    get_filters_by_resource_name,
+    normalize_resource_path,
 )
 
 MOCK_BASE_URL: str = "https://example.com/v5.3/api"
@@ -28,7 +28,7 @@ fake_resource_metadata_json: str = Path(
 
 def describe_when_requesting_resource_paths():
     @pytest.fixture
-    def resource_paths() -> List[str]:
+    def resource_paths() -> Dict[str, List[str]]:
         # arrange
         pook.activate()
         pook.get(
@@ -48,38 +48,68 @@ def describe_when_requesting_resource_paths():
         )
 
         # act
-        return get_resource_paths(MOCK_BASE_URL, True)
+        return get_filters_by_resource_name(MOCK_BASE_URL, True)
 
     def it_should_have_correct_length(resource_paths):
         assert len(resource_paths) == 129
 
     def it_should_have_a_correct_sampling_of_resources(resource_paths):
-        assert resource_paths[0] == "/ed-fi/academicWeeks"
-        assert resource_paths[12] == "/tpdm/candidates"
-        assert resource_paths[50] == "/ed-fi/learningStandards"
-        assert (
-            resource_paths[128] == "/ed-fi/surveySectionResponseStaffTargetAssociations"
-        )
+        assert resource_paths['academicWeeks'] == ['weekIdentifier',
+                                                   'schoolId', 'beginDate', 'endDate', 'totalInstructionalDays']
+        assert resource_paths['tpdm/candidates'] == [
+            'candidateIdentifier',
+            'personId',
+            'sourceSystemDescriptor',
+            'birthCountryDescriptor',
+            'englishLanguageExamDescriptor',
+            'genderDescriptor',
+            'limitedEnglishProficiencyDescriptor',
+            'sexDescriptor',
+            'birthSexDescriptor',
+            'birthStateAbbreviationDescriptor',
+            'birthCity',
+            'birthDate',
+            'birthInternationalProvince',
+            'dateEnteredUS',
+            'displacementStatus',
+            'economicDisadvantaged',
+            'firstGenerationStudent',
+            'firstName',
+            'generationCodeSuffix',
+            'hispanicLatinoEthnicity',
+            'lastSurname',
+            'maidenName',
+            'middleName',
+            'multipleBirthStatus',
+            'personalTitlePrefix',
+        ]
+        assert resource_paths['learningStandards'] == [
+            'learningStandardId',
+            'parentLearningStandardId',
+            'learningStandardCategoryDescriptor',
+            'learningStandardScopeDescriptor',
+            'courseTitle',
+            'description',
+            'learningStandardItemCode',
+            'namespace',
+            'successCriteria',
+            'uri',
+        ]
+        assert resource_paths['surveySectionResponseStaffTargetAssociations'] == [
+            'staffUniqueId',
+            'namespace',
+            'surveyIdentifier',
+            'surveyResponseIdentifier',
+            'surveySectionTitle',
+        ]
 
 
 def describe_when_normalizing_paths():
-    @pytest.fixture
-    def resource_paths() -> List[str]:
-        # arrange
-        paths = [
-            "/ed-fi/student",
-            "/ed-fi/studentSchoolAssociation",
-            "/tpdm/candidates",
-        ]
+    def it_should_remove_edfi_prefix():
+        assert normalize_resource_path("/ed-fi/student") == "student"
 
-        # act
-        return normalize_resource_paths(paths)
+    def it_should_remove_edfi_prefix_and_preserve_case():
+        assert normalize_resource_path("/ed-fi/studentSchoolAssociation") == "studentSchoolAssociation"
 
-    def it_should_remove_edfi_prefix(resource_paths):
-        assert resource_paths[0] == "student"
-
-    def it_should_remove_edfi_prefix_and_preserve_case(resource_paths):
-        assert resource_paths[1] == "studentSchoolAssociation"
-
-    def it_should_remove_leading_slash(resource_paths):
-        assert resource_paths[2] == "tpdm/candidates"
+    def it_should_remove_leading_slash():
+        assert normalize_resource_path("/tpdm/candidates") == "tpdm/candidates"

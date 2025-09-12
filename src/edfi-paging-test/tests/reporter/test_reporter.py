@@ -15,6 +15,8 @@ from edfi_paging_test.reporter.reporter import (
     create_statistics_json,
     create_summary_json,
 )
+from edfi_paging_test.reporter.paging_request_logger import PaggingRequestLogger
+from edfi_paging_test.helpers.test_type import TestType
 
 
 def describe_when_creating_detail_csv() -> None:
@@ -80,7 +82,7 @@ def describe_when_creating_statistics_csv() -> None:
 
     def describe_given_a_valid_DataFrame() -> None:
         @pytest.fixture(autouse=True)
-        def act():
+        def act(mocker):
             df = DataFrame(
                 [
                     {
@@ -143,7 +145,10 @@ def describe_when_creating_statistics_csv() -> None:
                 ]
             )
 
-            create_statistics_csv(df, OUTPUT_DIRECTORY, RUN_NAME)
+            pagingRequestLogger = PaggingRequestLogger()
+            mocker.patch.object(pagingRequestLogger, 'get_DataFrame', return_value=df)
+
+            create_statistics_csv(pagingRequestLogger.get_statistics(), OUTPUT_DIRECTORY, RUN_NAME)
 
         def it_creates_the_file(fs) -> None:
             assert fs.exists(EXPECTED_FILE)
@@ -278,7 +283,7 @@ def describe_when_creating_statistics_json() -> None:
 
     def describe_given_a_valid_DataFrame() -> None:
         @pytest.fixture(autouse=True)
-        def act():
+        def act(mocker):
             df = DataFrame(
                 [
                     {
@@ -341,7 +346,10 @@ def describe_when_creating_statistics_json() -> None:
                 ]
             )
 
-            create_statistics_json(df, OUTPUT_DIRECTORY, RUN_NAME)
+            pagingRequestLogger = PaggingRequestLogger()
+            mocker.patch.object(pagingRequestLogger, 'get_DataFrame', return_value=df)
+
+            create_statistics_json(pagingRequestLogger.get_statistics(), OUTPUT_DIRECTORY, RUN_NAME)
 
         def it_creates_the_file(fs) -> None:
             assert fs.exists(EXPECTED_FILE)
@@ -441,7 +449,9 @@ def describe_when_creating_summary_json() -> None:
             "RunConfigration.Contenttype":"CSV",
             "RunConfigration.Resourcelist":["a","b"],
             "RunConfigration.Pagesize":100,
-            "RunConfigration.LogLevel":"DEBUG"
+            "RunConfigration.LogLevel":"DEBUG",
+            "RunConfigration.TestType":"DEEP_PAGING",
+            "RunConfigration.CombinationSizeLimit":1
             }]"""
 
         @pytest.fixture(autouse=True)
@@ -462,6 +472,8 @@ def describe_when_creating_summary_json() -> None:
                     ["a", "b"],
                     100,
                     LogLevel.DEBUG,
+                    TestType.DEEP_PAGING,
+                    1
                 )
             )
             df = summary.get_DataFrame()

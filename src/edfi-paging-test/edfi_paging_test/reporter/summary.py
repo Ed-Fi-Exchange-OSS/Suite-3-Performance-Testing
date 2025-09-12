@@ -22,6 +22,7 @@ class Summary:
             self.run_configration.resourceList = (self.run_configration.resourceList or ["all"])
             self.run_configration.contentType = self.run_configration.contentType.value  # type: ignore
             self.run_configration.log_level = self.run_configration.log_level.value  # type: ignore
+            self.run_configration.test_type = self.run_configration.test_type.value  # type: ignore
 
     def get_DataFrame(self) -> DataFrame:
         """

@@ -14,6 +14,7 @@ from http import HTTPStatus
 from edfi_paging_test.api.request_client import RequestClient, timeit
 from edfi_paging_test.helpers.argparser import MainArguments
 from edfi_paging_test.helpers.output_format import OutputFormat
+from edfi_paging_test.reporter.paging_request_logger import PaggingRequestLogger
 
 
 FAKE_KEY = "TEST_KEY"
@@ -176,7 +177,7 @@ def describe_testing_RequestClient_class():
                     status_code=HTTPStatus.OK,
                     text="[]",
                 )
-                result = default_request_client.get_all(FAKE_ENDPOINT)
+                result = default_request_client.get_all(FAKE_ENDPOINT, PaggingRequestLogger())
 
                 assert len(result) == TOTAL_COUNT
 
