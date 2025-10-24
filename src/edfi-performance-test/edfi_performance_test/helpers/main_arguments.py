@@ -3,7 +3,7 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List
 
 from edfi_performance_test.helpers.log_level import LogLevel
@@ -32,7 +32,7 @@ class MainArguments:
     api_prefix: str
     oauth_endpoint: str
     localEducationOrganizationId: int
-    log_level: LogLevel = LogLevel.INFO
+    log_level: LogLevel = field(default_factory=lambda: LogLevel.INFO)
     disableComposites: bool = False
 
     def __str__(self) -> str:
