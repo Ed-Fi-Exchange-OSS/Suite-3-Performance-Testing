@@ -1,5 +1,9 @@
 # Running Volume Performance Tests
 
+## Test environment
+
+Docker is not being used. DMS, CMS and PostgreSQL are all running locally.
+
 ## Command to Run Tests
 
 From `src/edfi-performance-test/`:
