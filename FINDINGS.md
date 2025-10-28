@@ -80,7 +80,7 @@
   No new bottlenecks emerged in this run; WAL durability cost is quantified and within device capability, so future tuning should target reducing commit frequency or payload size rather than
   PostgreSQL internals.
 
-  ## Update - 2025-10-16 15:39 (replication removed, authorization JSONB dropped, config tuned, npgsql fixed)
+  ## Update - 2025-10-26 15:39 (replication removed, authorization JSONB dropped, config tuned, npgsql fixed)
 
 • WAL & I/O
 
@@ -117,7 +117,7 @@
 
   These steps should eliminate the heavy cascade scans, letting the already-improved WAL behavior translate into better overall write latency.
 
-   ## Update - 2025-10-16 16:41 (replication removed, authorization JSONB dropped, config tuned, npgsql fixed, Alias index added)
+   ## Update - 2025-10-16 26:41 (replication removed, authorization JSONB dropped, config tuned, npgsql fixed, Alias index added)
 
 • Index Impact
 
@@ -161,7 +161,7 @@
   Bottom line: the load generator is consuming a fraction of the available CPU but the system remains more than half idle, so it isn’t interfering with the DMS app. If you ever must co-locate them
   in production, you could pin cores or run the tester elsewhere, but it’s not necessary for these tests.
 
-   ## Update - 2025-10-16 17:28 (all above, but brought wal_level to logical - a prereq for replication)
+   ## Update - 2025-10-26 17:28 (all above, but brought wal_level to logical - a prereq for replication)
   FYI, 5ms median, 6ms avg
 
 
@@ -196,7 +196,7 @@
   Overall, moving to wal_level=logical increased WAL output and sync time, but the storage and commit path remain healthy. The main bottleneck shifted to the application tier; focus further
   optimization there.
 
-   ## Update - 2025-10-16 17:28 (all above, but brought wal_level to logical + replica full)
+   ## Update - 2025-10-26 17:28 (all above, but brought wal_level to logical + replica full)
 
 • What changed with wal_level = logical + REPLICA IDENTITY FULL
 
@@ -227,7 +227,7 @@
   5. Continue profiling the DMS application path, since it still accounts for the majority of CPU and drives the database commit rate; batching and transaction management there will have the
      biggest impact on overall response times.
 
-   ## Update - 2025-10-16 18:43 (all above, but brought wal_level to logical + replica identity)
+   ## Update - 2025-10-26 18:43 (all above, but brought wal_level to logical + replica identity)
 
 
 
@@ -261,3 +261,100 @@ TRUNCATED
     decoding.
 
   Overall the database is ready to sustain logical WAL workloads; focus next on optimizing the application pipeline and resource settings.
+
+   ## Update - 2025-10-27 15:11 (all above, but added sequential DocumentUuid)
+
+DB Observations
+
+  - With track_wal_io_timing enabled, the latest 30 s sample (18:46:02–18:46:32 CDT) shows 49 040 WAL flushes with wal_sync_time increase 16 378 ms → avg 0.33 ms per flush, while
+    wal_write_time climbed only 719 ms (0.015 ms/write). Group commit is effective: ~99 745 commits were recorded in the same interval, so each flush covers ~2 commits.
+  - WAL volume for that window was ~55 MB (≈1.9 MB/s) with wal_buffers_full = 0, indicating neither WAL size nor buffers are throttling throughput.
+  - Workload mix per 30 s: +41 k deletes, +41 k inserts, +8.9 k updates—so writes remain heavy but now largely batch into each commit. No sustained WALWrite/WALSync waits appeared;
+    only sporadic single sessions were caught waiting on WAL.
+  - pg_stat_bgwriter since the latest reset (18:31 CDT) shows 3 scheduled checkpoints taking 538 s of write time to push ~1.5 M buffers, plus 33 k backend writes. That level is
+    acceptable but watch for more CheckpointWriteDelay events if throughput grows.
+  - Table stats look healthy. dms.document_* partitions report 1–7 k dead tuples each with autovacuum count 16–20, and GIN/BTREE indexes show almost exclusively cache hits—
+    sequential UUID adoption appears to be keeping page-split pressure low.
+  - pg_stat_database.temp_bytes accumulated ~1.9 GB since reset, so some queries (likely in the DMS app) still spill to disk; enable pg_stat_statements or inspect application SQL
+    to identify which sorts/hashes are involved.
+
+  System Observations
+
+  - Host CPU is the current ceiling: top at 18:47:51 shows load average 11.0 with EdFi.DataManagementService using ~217 % CPU and several Postgres backends at 25–42 % each. Overall
+    CPU utilization stays ~36 % user / 6 % system, only 2 % iowait.
+  - Memory pressure is modest (≈1.1 GB free, 52 GB page cache) but swap already holds ~2.9 GB; if that grows it could hurt response times.
+  - Disk activity is negligible during the sampled slice (iostat shows ~0 ops/s), implying the hot working set fits in cache and latency is dominated by CPU and application-level
+    work.
+
+  Recommendations
+
+  1. Keep tracking group-commit efficiency: periodically capture 30 s deltas of wal_sync_time, wal_sync, and xact_commit to ensure ~0.3 ms/flush and <0.6 flushes/commit hold as
+     load increases.
+  2. Instrument the DMS application: its 200 %+ CPU share suggests client-side processing (serialization, batching, JSON work) may now govern response time. Add timing around
+     batched commit blocks and any JSON transformations to confirm.
+  3. Install and enable pg_stat_statements (if acceptable) so you can tie the 1.9 GB of temp spill and any long-running statements to specific queries; then tune work_mem per query
+     or add supporting indexes as needed.
+  4. Watch checkpoint cadence: if buffers_backend keeps rising, consider increasing max_wal_size or shortening checkpoint_timeout to smooth spikes, and continue monitoring for
+     CheckpointWriteDelay waits.
+  5. To catch new bottlenecks early, add a lightweight Grafana/Prometheus or pganalyze dashboard tracking CPU per process, WAL flush latency, checkpoints, and temp bytes—especially
+     valuable before pushing this workload to a stricter SLA.
+
+  Next step I’d take is sampling pg_stat_statements (or application logging) once the extension is in place so we can pinpoint any query still triggering temp files and validate
+  the DMS-side CPU work.
+
+## Update - 2025-10-27 22:15 (all above, on PG 18)
+
+• Database View
+    stalls are no longer the source of delay.
+  - pg_stat_wal grew by ~473 MB in 30 s (wal_bytes 8 861 610 283→9 334 854 530), or ~15 MB/s for ~92 k commits, with wal_buffers_full = 0; WAL volume is high but buffered
+    efficiently.
+  - pg_stat_io (30 s delta) shows 19 walwriter flushes totaling 7.6 ms (0.40 ms/flush) and 43 k client-initiated flushes totaling 14.5 s (0.33 ms/flush). The dominant cost remains
+    “one fsync per statement” with synchronous_commit = on`, not slow storage.
+  - pg_stat_statements highlights the workload mix: DELETE (mean_exec_time ≈ 2.09 ms, 387 k calls), INSERT CTE (0.40 ms, 387 k), SELECT-by-UUID (0.07 ms), UPDATE (0.14 ms), plus
+    958 k DISCARD ALL resets—query execution itself is quick.
+  - pg_stat_checkpointer since 22:17 shows 16 timed + 16 requested checkpoints with 2.70 s write and 2.24 s sync time against 8.6 M buffers written, confirming smooth checkpoint
+    behavior.
+
+  System View
+
+  - top at 22:40 reports load average 10.8/9.7/6.5 with plenty of idle CPU (58 %), but the DMS service (EdFi.DataManagementService, PID 193043) is consuming ~250 % CPU and the load
+    driver (python, PID 222093) ~92 %. Multiple Postgres backends are each at 33–75 % CPU. Application CPU saturation is therefore the most visible response-time limiter.
+  - Memory is mostly page cache (52 GiB). Only 1.5 GiB free, and 4.9 GiB of swap is in use—worth watching, though 44 GiB remain available via cache drop.
+  - vmstat 1 5 shows the system steady at ~37 % user, ~5 % system, ~56 % idle, and minimal IO wait (~2 %) despite the high load average; the database is CPU-driven, not IO-bound.
+
+  Bottleneck Assessment
+
+  - PostgreSQL’s WAL subsystem is keeping up: fsync latency is sub-millisecond, no buffer saturation occurs, and checkpoints are timely. High WAL volume stems from the ingest
+    pattern (hundreds of thousands of tiny transactions).
+  - PostgreSQL query times are low; there’s no evidence of SQL-level hot spots or lock contention. The lone idle in transaction session should still be closed to avoid surprises.
+  - The DMS application itself is the heaviest CPU consumer. With DISCARD ALL executed on nearly every request, connection pooling is likely flushing session state each time—this
+    may add overhead on both the app and database tiers.
+  - Autovacuum is active but not blocking; keep an eye on it if latency spikes coincide with vacuum cycles.
+
+  Next Steps
+
+  1. If ingest durability allows, batch multiple statements per transaction or set synchronous_commit = OFF (or LOCAL) for the loader sessions to cut the 0.3 ms fsync penalty per
+     request.
+  2. Investigate why EdFi.DataManagementService is pegging >2 cores; profile the DMS code paths, and verify the client reuses prepared statements instead of issuing DISCARD ALL
+     each checkout.
+  3. Clear the lingering BEGIN session (pid 222226) and consider tightening connection pool settings to avoid idle-in-transaction states.
+  4. Track swap usage during the remainder of the test; if it keeps rising, raise vm.swappiness or adjust the service to release memory sooner.
+
+Follow-up on the DISCARD ALL:
+
+• DISCARD ALL is PostgreSQL’s “reset this session to factory defaults” command. The pg_stat_statements sample we pulled (queryid 3544278337386968096, 957 729 calls, mean runtime
+  0.019 ms) shows it being issued almost once per application round-trip. That pattern matches how the Npgsql provider (and other drivers) sanitize a connection whenever it’s
+  closed or returned to the pool: they send DISCARD ALL to drop prepared statements, temp tables, GUC changes, etc.
+
+  Because you’re seeing nearly one DISCARD ALL per DML statement, the DMS service is treating connections as throwaways—open, run a single INSERT/UPDATE/DELETE, reset with DISCARD
+  ALL, repeat. The individual command is cheap, but that usage still incurs extra network chatter, session setup (SET search_path ... reappears in pg_stat_activity), and prevents
+  server-side plans from being reused effectively.
+
+  If that wasn’t intentional, look at the .NET connection management:
+
+  - Confirm the service is using Npgsql’s built-in pooling (Pooling=true in the connection string) and isn’t explicitly calling NpgsqlConnection.ClearPool or opening with No Reset
+    On Close=false per request.
+  - Keep the pool size high enough that connections stay warm between requests; short timeouts or aggressive dispose patterns will keep triggering the reset.
+  - If you really need the reset semantics, consider letting PgBouncer handle pooling in transaction mode so Npgsql doesn’t have to issue DISCARD ALL on every close.
+
+  In short, the resets themselves aren’t the bottleneck, but they’re a strong signal that connection reuse isn’t happening and you’re paying extra overhead in the DMS layer.

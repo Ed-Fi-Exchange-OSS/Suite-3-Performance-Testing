@@ -40,6 +40,9 @@ The test will log many ERROR messages about "There no local education agencies".
 - Thousands of requests will still execute successfully
 - Check output files to verify test is working
 
+### Authorization Errors
+If you get invalid client credentials or other authentication errors, read the /home/brad/work/dms-root/Data-Management-Service/dataload-creds.json file and update the key and secret in the /home/brad/work/dms-root/Suite-3-Performance-Testing/.env file with the key and secret from dataload-creds.json
+
 ### Test Duration
 Tests run in background for specified time (5-30+ minutes). The process will exit automatically when complete.
 
