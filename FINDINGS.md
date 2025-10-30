@@ -358,3 +358,171 @@ Follow-up on the DISCARD ALL:
   - If you really need the reset semantics, consider letting PgBouncer handle pooling in transaction mode so Npgsql doesn’t have to issue DISCARD ALL on every close.
 
   In short, the resets themselves aren’t the bottleneck, but they’re a strong signal that connection reuse isn’t happening and you’re paying extra overhead in the DMS layer.
+
+## Update - 2025-10-27 22:15 (all above, SELECT FOR UPDATE locks back on)
+
+• Postgres 18 Snapshot
+
+  - pg_stat_wal climbed from 10.8 GB to 12.0 GB in 30 s (≈1.18 GB delta ≈39 MB/s) with 15.1 M WAL records; WAL buffers aren’t filling (wal_buffers_full = 0).
+  - pg_stat_io shows the walwriter handled 1 535 writes in 75 ms total write time and 572 ms total fsync time (≈0.37 ms each), so flush latency is low; pg_stat_checkpointer logged
+    3 completed checkpoints since reset, writing 1.22 M buffers with 809 s cumulative write time.
+  - pg_stat_statements highlights DML as the dominant time sink: the DELETE FROM dms.Document… statement has 434 k calls with 887 s total time (≈2.0 ms mean), while the INSERT …
+    CTE contributes 153 s. The “SELECT … FOR NO KEY UPDATE” join executes 669 k times (0.03 ms mean) and now reports 11.5 MB of WAL, confirming row-locking SELECTs add some WAL
+    traffic.
+  - Expensive one‑off probes remain: SELECT count(*) FROM dms."document" averages 1.24 s (2 calls), SELECT count(*) FROM dms."alias" ~168 ms (3 calls) — they sweep entire
+    partitions.
+  - Document partitions still carry modest churn (n_dead_tup 5–8 k each, autovacuum_count 6–7); buffer stats show ~200 k heap blocks read and 3.6 M hits per hot partition since the
+    last reset.
+
+  Locking Check
+
+  - Repeated sampling (pg_stat_activity, pg_blocking_pids) found no sessions waiting on Lock; pg_locks has no ungranted entries. SELECT … FOR NO KEY UPDATE calls are finishing
+    quickly.
+  - Two connections are regularly left idle in transaction after those SELECT FOR UPDATE queries, so row locks persist until the client finishes; this isn’t blocking yet but raises
+    risk under heavier concurrency.
+  - No tuple-lock rows are visible at the sample times; if you need continuous visibility, consider monitoring pg_locks filtered on locktype = 'tuple' at higher frequency.
+
+  System Bottlenecks
+
+  - OS load is CPU-bound: top shows the DMS ASP.NET process at ~290 % CPU, the Python load driver at ~82 %, and several postgres backends/autovacuum between 36 – 73 %. Load average
+    is 11.4 even though disk waits sit near 0.1 ms.
+  - Autovacuum workers can spike to 5.5 GB RSS and >70 % CPU (with maintenance_work_mem = 2 GB), competing with foreground work during large sweeps.
+  - The host is carrying 3.3 GB of swap in use, though no active paging is occurring; disk on /dev/nvme0n1p3 is sustaining ~3.5 k writes/s at ~0.11 ms wait, so I/O isn’t the gating
+    factor.
+
+  Recommendations
+
+  1. Profile the DMS application while the test runs (e.g., dotnet-trace, dotnet-counters) — it’s the top CPU consumer and will drive response-time variance more than the database
+     right now.
+  2. Ensure client code commits/rolls back immediately after SELECT … FOR UPDATE/NO KEY UPDATE; add instrumentation to capture the offending callers and consider tagging
+     connections via application_name for easier tracking.
+  3. Keep watching WAL growth with the new PG 18 counters: schedule periodic pg_stat_wal snapshots and correlate with throughput; if commit latency climbs, reevaluate batching or
+     synchronous_commit for this workload.
+  4. Tame autovacuum impact by lowering autovacuum_vacuum_scale_factor (to trigger smaller, faster runs) or reducing maintenance_work_mem from 2 GB so vacuum shares CPU/memory more
+     gracefully during load tests.
+  5. Eliminate or cache the full-table count(*) probes and investigate why the pool issues 1.07 M DISCARD ALL calls (seen in pg_stat_statements); both add avoidable work during
+     stress runs.
+
+Follow up on transient open transactions
+
+• Idle-In-Transaction Sessions
+
+  - Captured at 16:11:22–16:11:25 CDT, two backends (e.g., pid 363837 and pid 363840 from 127.0.0.1 with empty application_name) entered state = idle in transaction immediately
+    after SELECT … FOR NO KEY UPDATE and the WITH Documents … INSERT … RETURNING CTE. Their xact_age and state_age were ≈7–10 ms, and wait_event_type = ClientRead, indicating the
+    server is waiting for the client to finish the transaction.
+  - While in that brief state they hold table-level locks across the entire partition set: RowShareLock on dms.document, every dms.document_00…document_15 child table, their
+    PK/unique indexes, and the dms.alias table/indexes, plus RowExclusiveLock on dms.alias and the usual transactionid / virtualxid locks. (Example mapping from pg_locks:
+    OID 16688→dms.document, 16706→dms.document_00, … , 17044→dms.alias, 17027→document_00_documentpartitionkey_documentuuid_idx, 18421→ix_document_resourcename_createdat.) If these
+    sessions linger they can block other writers touching any partition.
+  - Repeated 1 Hz sampling for 60 s after that burst saw no further idle in transaction rows, so the pattern appears as very short-lived gaps rather than sustained transactions;
+    nevertheless they recur frequently enough to notice in pg_stat_activity.
+
+  Next Diagnostics
+
+  - Run this view during load to catch offenders with full metadata:
+
+    WITH idle AS (
+      SELECT pid, now()-xact_start AS xact_age, now()-state_change AS state_age,
+             application_name, client_addr, left(query,200) AS query
+      FROM pg_stat_activity
+      WHERE datname = 'edfi_datamanagementservice' AND state = 'idle in transaction'
+    )
+    SELECT idle.*, l.locktype, l.mode, c.relname
+    FROM idle
+    JOIN pg_locks l USING (pid)
+    LEFT JOIN pg_class c ON l.relation = c.oid
+    ORDER BY pid, locktype, relname;
+  - Enable connection tagging in the app (SET application_name) so you can tie these sessions back to specific code paths, and consider setting idle_in_transaction_session_timeout
+    (e.g., 2–5 s) as a safeguard.
+  - If you need longer history, log these events via log_min_duration_statement plus log_lock_waits = on to flag when a SELECT … FOR UPDATE/NO KEY UPDATE finishes but the
+    transaction lingers.
+
+  In short, those “idle in transaction” copies are the loader connections waiting on the client after grabbing row locks; they only last a few milliseconds now but hold locks
+  across every document partition. Tighten the client commit/rollback handling and add identification to keep an eye on them in future runs.
+
+  ## Update - 2025-10-29-15-57 (all above, reference loaded)
+
+DB Findings
+
+  - pg_stat_wal (reset 15:45:15 CDT) shows 34 077 584 WAL records, 6 460 399 FPIs, and 24.86 GB written—≈16.96 MB/s over the past ~30 minutes—and zero wal_buffers_full, so the WAL
+    path is keeping up. pg_stat_io reports client backends flushing 5 159 422 WAL fsyncs at 0.335 ms each and the walwriter 27 823 fsyncs at 1.76 ms, confirming the datastore is not
+    WAL‑bound right now.
+  - Wait sampling (pg_stat_activity) is dominated by ClientRead; only one backend at a time is seen on IO|WalSync / LWLock|WALWrite, and DML statements complete quickly
+    (pg_stat_statements: DELETE dms.Document… mean 1.73 ms for 1.43 M calls, INSERT 0.33 ms for 1.53 M calls, UPDATE 0.11 ms for 0.67 M calls). Heavy WAL producers are the document
+    INSERT CTE (4.31 GB WAL) and document UPDATE (1.06 GB) but their runtimes stay sub‑millisecond.
+  - The new dms.reference_* partitions already hold ~1.25 M rows each (~170 MB per partition) with no accumulated dead tuples yet. Autovacuum is continuously active on hot document
+    partitions (pg_stat_progress_vacuum currently shows workers on dms.document_15 and _08), which is keeping dead tuples around 5 K per partition.
+  - Memory settings are aggressive: maintenance_work_mem=2097152 (2 GB) and work_mem=65536 (64 MB). Autovacuum workers (e.g., PID 631460) are consuming up to 7.7 GB RSS, and many
+    client backends sit at ~2.5 GB each, a direct consequence of these settings plus 22 concurrent sessions.
+
+  System Findings
+
+  - free -h shows only 1.5 GB free and 7.2 GB of the 8 GB swap in use; vmstat 1 5 (latest sample above) records ongoing swap in/out (first row si 55, so 129). The swap pressure, not
+    the WAL subsystem, is the biggest current risk to response time.
+  - pidstat -r/-u highlights the memory footprint (multiple postgres backends 2–7 GB RSS) and CPU profile: total CPU sits around 33 % user / 6 % system / 60 % idle, while the DMS
+    process EdFi.DataManage alone burns ~474 % CPU (≈5 cores) and the Python load generator another ~90 %. Most postgres backends are utilizing ~30 % CPU with plenty of headroom,
+    suggesting the application layer may now dominate perceived latency.
+  - Disk remains responsive—iostat was calm during the sample—but pg_stat_io shows 105 GB of WAL and 109 GB of heap writes since the reset (~61 MB/s on average). NVMe is coping, yet
+    sustained churn amplifies autovac and checkpoint work.
+
+  Assessment
+
+  - Database write performance is healthy: WAL flush times are low and wait events show no write blocking.
+  - The main bottleneck is memory pressure from oversized maintenance_work_mem and work_mem interacting with many concurrent autovacs and client sessions; the 7 GB swap usage and
+    measurable swap activity will eventually erode response time and could explain any spikes observed during the run.
+  - End-to-end response time is likely constrained on the DMS side: most backends wait on the client, while the application process consumes several CPU cores doing non-database work
+    (e.g., JSON handling).
+
+  Recommendations
+
+  1. Trim memory settings immediately:
+      - Reduce maintenance_work_mem to something safer (e.g., 256–512 MB). That alone will drop autovacuum RSS from multi‑gigabyte levels and curb swap churn.
+      - Lower work_mem globally (e.g., 16–32 MB) and override per session only when needed. With 22 concurrent sessions, each 64 MB allocation adds up quickly.
+      - After adjusting, restart PostgreSQL and confirm with free -h/vmstat that swap usage falls below ~1 GB.
+  2. Keep leveraging PG 18 monitoring:
+      - Continue watching pg_stat_io with object='wal' to track fsync latency; today’s averages are excellent benchmarks.
+      - Track the FPI ratio (wal_fpi/wal_records, currently ~19 %) and run standard VACUUMs on the busiest partitions if it rises, to avoid repeated first-page image logging.
+  3. Manage autovac concurrency carefully: with a lower maintenance_work_mem, autovacuum_worker_slots=16 is manageable, but if memory remains tight consider capping it closer to 6‑8 to
+     prevent many simultaneous 2 GB workers.
+  4. Investigate the DMS application:
+      - Profile the EdFi.DataManage process to see whether JSON serialization, downstream services, or network calls are adding latency while the database waits idle.
+      - Confirm the ingest still batches operations sensibly; reducing the 1.8 K commits/sec rate would shrink the 17 MB/s WAL stream and reduce autovac load.
+  5. Use pg_stat_statements snapshots per test to compare query runtimes and WAL production; exclude tooling queries like the SELECT d.* ORDER BY d.id DESC (287k temp blocks) during
+     load tests to keep temp I/O noise down.
+
+  Once the memory changes are in place, rerun the load test with the same metrics (pg_stat_wal/io/statements plus OS snapshots) to verify that swap pressure disappears and that the DB
+  remains wait-free; if response issues persist, focus tuning on the DMS application layer.
+
+  ## Update - 2025-10-29-15-57 (all above, reference inserts)
+
+
+  • Observations
+
+  - WAL volume is now extreme: pg_stat_wal grew by 1.08 GB in 30 s (≈36 MB/s), and pg_stat_io shows client backends have issued 6.9 M WAL fsyncs since the reset with ~0.34 ms
+    apiece, so latency is dominated by sheer commit count rather than slow storage.
+  - The new reference workload is the top SQL cost centre: pg_stat_statements reports SELECT d.* … INNER JOIN dms.Reference … averaging 101 ms over 2 415 calls, while
+    each reference partition holds ~1.25 M live rows plus ~37 K dead rows (pg_stat_all_tables), implying the join scans every partition because the list partition key
+    (parentdocumentpartitionkey) does not match the filter (referentialpartitionkey, aliasid).
+  - Reference insertion via SELECT dms.InsertReferences(...) now accounts for 1 131 s of total execution time (2.33 ms per call) and drives the spike in WAL/HOT churn together with
+    425 K document deletes.
+  - Autovacuum is active but falling behind the reference partitions: each has only three autovac runs since the last reset and tens of thousands of dead tuples;
+    pg_stat_progress_vacuum shows long vacuums running on document partitions during the test window.
+  - System pressure is significant: EdFi.DataManage is the top consumer at 166 % CPU, swap usage sits at 7.7 GiB/8 GiB with non-zero swap-in/out in vmstat, and overall load
+    averages 12–10–8 despite idle disk, so the DMS application and swapping are likely adding response-time jitter beyond PostgreSQL.
+
+  Recommendations
+
+  - Revisit the dms.reference partitioning strategy: either partition by (referentialpartitionkey) (or hash) to enable partition pruning for the alias lookups, or create a covering
+    global index (e.g. CREATE INDEX ON dms.reference(referentialpartitionkey, aliasid, parentdocumentpartitionkey, parentdocumentid)) to avoid 16 partition probes per call.
+    Validate with EXPLAIN once applied.
+  - Tune the reference maintenance path: lower autovacuum_vacuum_scale_factor for the reference partitions (and possibly alias partitions) and consider batching deletes so autovac
+    catches up before dead tuples accumulate; monitor with pg_stat_progress_vacuum.
+  - Manage WAL pressure by reducing commit frequency (batch the reference insert/delete transactions or use synchronous_commit = LOCAL/OFF for the ingest workers) and keep an eye
+    on pg_stat_io’s WAL fsync counters to ensure average flush time stays sub-ms.
+  - Address system-level swapping: either provision more RAM, cut the DMS application’s working set/concurrency, or add swapless caches—swap thrash is already measurable and will
+    hurt both PostgreSQL and application response time.
+  - Keep using the new monitoring: reset pg_stat_wal, pg_stat_io, and pg_stat_statements between runs (SELECT pg_stat_reset_shared('wal'); SELECT pg_stat_statements_reset();) so
+    each test yields clean deltas, and baseline the 101 ms join again after schema/index changes.
+
+  Natural next step: apply the schema/index or autovacuum adjustments in staging, rerun the load, and compare pg_stat_statements mean times plus WAL deltas to confirm the
+  bottleneck is relieved.
