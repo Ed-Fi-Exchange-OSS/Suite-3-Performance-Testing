@@ -526,3 +526,67 @@ DB Findings
 
   Natural next step: apply the schema/index or autovacuum adjustments in staging, rerun the load, and compare pg_stat_statements mean times plus WAL deltas to confirm the
   bottleneck is relieved.
+
+
+  ## Update - 2025-10-30-13-24 (all above, reference fix #3)
+
+Enabled pg_stat_statements after pausing ~10 minutes, then sampled the system to isolate current hotspots.
+
+  Database Observations
+
+  - pg_stat_statements shows SELECT dms.InsertReferences($… ) dominating runtime (379 s total, 2.5 ms mean) and generating ~1.97 KB WAL per call; the accompanying DELETE/INSERT on
+    dms.Document add another 238 s. Together they account for ~45 % of the recorded execution time and 0.65 GB of WAL (wal_bytes column).
+  - pg_stat_io highlights WAL syncing pressure: client backends have performed 277 k WAL writes with 94.9 s cumulative fsync time (≈0.34 ms per flush) since 13:05. pg_stat_activity captured
+    commits waiting on WalSync, confirming synchronous flush latency as the main bottleneck.
+  - pg_stat_wal reports 6.46 M WAL records / 990 MB generated in the last ~11 minutes. Checkpointer statistics (pg_stat_checkpointer) show frequent checkpoints (178 timed, 18 requested)
+    with 7.5 s total write time over the current interval.
+  - Autovacuum is keeping up: each dms.reference_* partition shows 4–5 autovacuums since the last reset with dead tuples ≲5 % of live rows (pg_stat_all_tables). Hit ratio remains high
+    (pg_stat_database: 1.57 B hits vs. 1.33 M reads).
+
+  App & Load Test
+
+  - The EdFi.DataManagementService process is using ~225 % CPU (≈2.3 cores) while individual PostgreSQL backends consume 40–70 % each (top). No runaway memory usage detected (postgres
+    backends at ~3 GB RSS apiece).
+  - Load generator /home/brad/.../edfi-performance-test sits at ~79 % CPU, 60 MB RSS, and only 15 KB/s writes (pidstat), so it is unlikely to throttle itself.
+  - Latest results (Suite-3-Performance-Testing/DmsTestResults/2025-10-30-13-01-with-reference-fix-3/volume_stats.csv) show ~1.21 k req/s with median latency 7 ms, 99.9 % at 35 ms, max
+    334 ms—no broad response-time degradation. However, volume_failures.csv records 244 POST failures (HTTP 400) for /data/ed-fi/studentSchoolAssociations; these are functional errors, not
+    transport issues, but they do skew success metrics.
+
+  Recommendations
+
+  1. Prioritize reducing churn inside dms.InsertReferences (e.g., switch from delete+bulk insert to differential updates or INSERT … ON CONFLICT) to cut WAL volume and commit sync pressure.
+  2. Evaluate WAL configuration once the functional change is in flight: larger wal_buffers, slower checkpoint cadence, or (if replication allows) synchronous_commit = off/local can further
+     trim WalSync waits.
+  3. Investigate the repeated 400 responses in the load test to ensure they are expected; otherwise they may mask performance regressions.
+  4. Keep tracking pg_stat_io and pg_stat_statements after adjustments to confirm WAL fsync time drops and high-frequency queries stay within latency targets.
+
+  Let me know if you’d like deeper analysis of the InsertReferences procedure or assistance applying any of these tunings.
+
+  ## Update - 2025-10-30-23-41 (all above, insert references using NEW-MERGE)
+
+  Findings
+
+  - InsertReferences dominates database time (1.89×10⁶ ms ≈ 79% of all tracked SQL); 758 k calls average 2.5 ms (max 71 ms) and generate 4.9 GB of WAL plus 146 M shared-buffer hits, so the
+    workload is CPU/WAL bound rather than waiting on I/O.
+  - Every call recreates session-local state because the pool issues DISCARD TEMP 956 k times (163 s cumulative) immediately after the function runs, defeating ON COMMIT PRESERVE ROWS and
+    forcing CREATE TEMP TABLE…TRUNCATE catalogue activity on each invocation.
+  - High-churn tables show notable dead tuples: each dms.reference_* partition holds ~95 MB with 6–28 k dead rows and only 3–5 autovac runs since the last reset; autovacuum is active but
+    struggling to keep bloat low under the current delete/insert pattern.
+  - System headroom looks healthy: CPU averages 36% user with 2–3% iowait, NVMe writes sit around 65 MB/s with ~0.1 ms latency, postgres backends top out near 47% CPU, the DMS ASP.NET
+    process at ~2.5 cores (253%), and the Python load driver uses ~0.8 core—no evidence the generator itself is the bottleneck.
+
+  Recommendations
+
+  - Refactor InsertReferences staging so pooled sessions stop dropping the temp table—either switch to an unlogged per-backend staging table keyed by pg_backend_pid or adjust Npgsql pooling
+    (No Reset On Close=true and explicit cleanup) so DISCARD TEMP is avoided.
+  - Enable track_functions = pl (with pg_stat_statements.track = all) during a future run to capture in-function SQL timings and confirm whether the DELETE … NOT EXISTS stage is consuming
+    the unexpected buffer volume.
+  - Tighten autovacuum settings on hot partitions (e.g. ALTER TABLE dms.reference SET (autovacuum_vacuum_scale_factor=0.01, autovacuum_analyze_scale_factor=0.005,
+    autovacuum_vacuum_threshold=500) and consider partition-level scheduling) to keep dead tuples from inflating buffer churn.
+  - Review the application write pattern that performs DELETE FROM dms.Document + reinsert per upsert; if feasible, switch to UPDATE with partial JSONB patches so cascading deletes stop
+    amplifying WAL and vacuum pressure.
+
+  Next Steps
+
+  - Capture EXPLAIN (ANALYZE, BUFFERS) for representative InsertReferences executions in a staging environment after staging-table adjustments to validate plan stability.
+  - Re-run the volume test once pooling/autovacuum changes land and compare pg_stat_statements shares plus WAL throughput to confirm the bottleneck has shifted.
