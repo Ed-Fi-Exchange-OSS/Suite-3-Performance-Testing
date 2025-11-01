@@ -590,3 +590,322 @@ Enabled pg_stat_statements after pausing ~10 minutes, then sampled the system 
 
   - Capture EXPLAIN (ANALYZE, BUFFERS) for representative InsertReferences executions in a staging environment after staging-table adjustments to validate plan stability.
   - Re-run the volume test once pooling/autovacuum changes land and compare pg_stat_statements shares plus WAL throughput to confirm the bottleneck has shifted.
+
+
+  From DMS side - Before any changes:
+• Captured EXPLAIN (ANALYZE, BUFFERS) for three representative dms.InsertReferences calls before any changes
+
+  - Valid request with a duplicate referential ID (shows dedup path):
+
+    BEGIN;
+    EXPLAIN (ANALYZE, BUFFERS) SELECT dms.InsertReferences(
+        11::bigint,
+        0::smallint,
+        ARRAY['98e731c5-ee3d-f557-78f8-6018f4ab09e0'::uuid,
+              '98e731c5-ee3d-f557-78f8-6018f4ab09e0'::uuid],
+        ARRAY[0::smallint, 0::smallint]
+    );
+    ROLLBACK;
+    Output (actual 27.93 ms, shared hit=3054/read=78/dirtied=38; local hit=3/dirtied=1/written=1; shared read I/O 8.91
+    ms).
+    ms).
+
+  - Valid request with three different referential IDs:
+
+    BEGIN;
+    EXPLAIN (ANALYZE, BUFFERS) SELECT dms.InsertReferences(
+        12::bigint,
+        0::smallint,
+        ARRAY['98e731c5-ee3d-f557-78f8-6018f4ab09e0'::uuid,
+              'ef1bb27b-7890-0bd4-4c64-63e4a58f13c0'::uuid,
+              'c7e50a05-5281-84fa-51c7-bec5544726d0'::uuid],
+        ARRAY[0::smallint, 0::smallint, 0::smallint]
+    );
+    ROLLBACK;
+
+    Output (actual 45.93 ms, shared hit=3162/read=10/dirtied=8; local hit=5/dirtied=1/written=1; shared read I/O 34.58
+    ms).
+
+  - Request containing an invalid referential ID (produces FALSE return and no upsert work):
+
+    BEGIN;
+    EXPLAIN (ANALYZE, BUFFERS) SELECT dms.InsertReferences(
+        11::bigint,
+        0::smallint,
+        ARRAY['00000000-0000-0000-0000-000000000000'::uuid],
+        ARRAY[0::smallint]
+    );
+    ROLLBACK;
+
+    Output (actual 12.66 ms, shared hit=2719/read=6/dirtied=12; local hit=3/dirtied=1/written=1; shared read I/O 0.90 ms).
+
+  Every run returns only the top-level function node in the plan tree (expected for EXPLAIN around a function call), but
+  the timings and buffer usage capture the end-to-end cost of each representative execution.
+
+Further auto-explain stuff
+
+• Observations
+
+  - Duplicate-ID call: staging performs a Window/Sort dedupe before inserting into the temp table (0.38 ms, /var/log/postgresql/postgresql-2025-10-31_095909.log:41); the overall function
+    still touches ~3 k shared buffers and pulls 313 pages from disk (36 ms total, ...:488).
+  - The same call’s WITH upsert is dominated by the anti-join delete: it scans 10 reference rows, deleting all of them and generating 13 WAL records (4.5 KB) plus 30 FPIs
+    (lines ...:361, ...:383, ...:399). Only one row is inserted, yet the delete churn outweighs the insert (...:367).
+  - Each invocation issues SELECT … FOR KEY SHARE against dms.document and dms.alias, which shows up as extra latency and full-page images even though these are read locks
+    (...:176, ...:244, ...:998).
+  - Invalid-ID call: staging keeps the row (alias NULL) but the insert step filters it out, then the delete still removes all 10 existing references (WAL records=10) before the function
+    returns false (...:527, ...:710, ...:825).
+  - Three-ID call: staging loads three rows (...:864); the upsert inserts three references (24 WAL records) and still deletes four prior rows through the anti-join (...:1441, ...:1447),
+    yielding a 7 ms total run (...:1567).
+
+  Issues
+
+  - Returning false after an invalid reference still purges every reference for the parent; that is both a correctness risk and a large source of WAL/IO churn.
+  - The anti-join delete fires on every call and scans the entire parent’s reference set even when only one alias changes, matching the heavy WAL totals seen during the load test.
+  - Repeated key-share probes add FPIs and latency; they may be duplicating protection already provided by ON CONFLICT.
+  - Every call rebuilds the staging temp table, incurring sorts and local writes that the connection pool immediately discards.
+
+  Recommendations
+
+  1. Move the invalid-alias check ahead of the upsert/delete so the function can immediately RETURN FALSE without touching dms.reference.
+  2. If business rules allow, rely on INSERT … ON CONFLICT for concurrency and drop the explicit FOR KEY SHARE probes, or at least batch them to avoid per-row FPIs.
+  3. Revisit the “delete all missing references” pattern—batched diffs (e.g., DELETE … USING temp_reference_stage) or incremental updates can avoid scanning/deleting the whole set every
+     time.
+  4. Keep pursuing the earlier temp-table change (persistent per-backend staging) so the expensive CREATE/TRUNCATE + branchy runtime partition pruning isn’t repeated on each pooled
+     connection.
+
+Next iteration:
+
+InsertReferences
+
+  - The CTE delete still performs an Append of 16 TID scans, so even a single parent document invalidation forces planner to probe every partition, costing ~2.5 ms of read I/O and rewriting
+  two buffers (…_095909.log:2965). Rewriting this step to target the known partition (e.g. dynamic DELETE FROM ONLY dms.reference_%(partition)s) would avoid the cross-partition sweep.
+  - Duplicate referential IDs hit the conflict filter correctly (Tuples Inserted: 0, Conflicting Tuples: 1 at /var/log/postgresql/postgresql-2025-10-31_095909.log:1897), but the full call
+  still consumes 22.6 ms and touches 5.2 k shared buffers while writing 23 FPIs (…_095909.log:2081). The extra cost stems largely from the partition-spanning delete above and the key-share
+  probes.
+  - Invalid IDs short-circuit quickly: the new EXISTS check flags the staged null alias (…_095909.log:2266) and the function returns in 2.8 ms with only 129 shared hits (…_095909.log:2283).
+  - Each call issues SELECT … FOR KEY SHARE against both dms.document and dms.alias, and these touches now generate small WAL writes (~0.3–0.45 ms each, 1–2 FPIs) when hint bits update the
+  buffer (…_095909.log:2492, …_095909.log:2562). If the lock is only guarding concurrent writers from stepping on rows already held by the transaction, consider replacing it with SELECT …
+  FOR SHARE SKIP LOCKED or reusing the lock taken during the alias lookup to cut the extra round trips.
+
+  GetInvalidReferencesAndClear
+
+  - The helper fails to create and to run because it references temp_reference_stage, which only exists inside InsertReferences; the CREATE attempt logs relation "temp_reference_stage" does
+  not exist, and execution raises an ambiguous-column error (/var/log/postgresql/postgresql-2025-10-31_095909.log:1562, …_095909.log:1620). Wrap the lookup/cleanup in PL/pgSQL inside the
+  original function (using the existing temp table), or persist the invalid references in a real unlogged table so the helper can operate.
+
+  Recommendations
+
+  - Narrow the DELETE step to the specific child partition—either dispatch to ONLY dms.reference_<partition> via dynamic SQL or add a generated partition key column in the staging table so
+  the planner can prune during a simple DELETE … WHERE parentdocumentpartitionkey = … AND NOT EXISTS….
+  - Optionally cache the alias/document locks pulled at the start of the upsert so you only touch each row once per call; it will shave the remaining 0.8–1 ms of WAL-heavy FOR KEY SHARE
+  probes on hot parents.
+  - Rework GetInvalidReferencesAndClear to operate in the same session context (or on an unlogged staging table) before wiring the loader to consume its output.
+
+
+
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+• To stop the delete from fanning out across every partition, aim it straight at the one partition that matches the parent’s partition key. Because the function already knows
+  p_parentDocumentPartitionKey, you can build a single-partition DELETE with dynamic SQL:
+
+  DECLARE
+      reference_partition text := format('dms.reference_%1$02s', p_parentDocumentPartitionKey);
+  BEGIN
+      ...
+      EXECUTE format(
+          $sql$
+          DELETE FROM %s AS r
+          WHERE r.parentdocumentid = $1
+            AND NOT EXISTS (
+                  SELECT 1
+                  FROM temp_reference_stage AS s
+                  WHERE s.aliasid = r.aliasid
+                    AND s.referentialpartitionkey = r.referentialpartitionkey
+            )
+          $sql$, reference_partition
+      )
+      USING p_parentDocumentId;
+
+      -- optional: remove staged rows here
+  END;
+
+  Key points:
+
+  - format() builds the exact partition table name (reference_00, reference_01, …) that holds the parent’s rows, so PostgreSQL never instantiates the Append/TID scans across all 16
+  partitions.
+  - Keep the NOT EXISTS predicate; it now executes entirely inside the targeted partition, comparing only the staged aliases that belong to this request.
+
+
+More refinement, this of the get invalid and delete:
+
+  GetInvalidReferencesAndClear
+
+  - The helper fails to create and to run because it references temp_reference_stage, which only exists inside InsertReferences; the CREATE attempt logs relation "temp_reference_stage" does
+    not exist, and execution raises an ambiguous-column error (/var/log/postgresql/postgresql-2025-10-31_095909.log:1562, …_095909.log:1620). Wrap the lookup/cleanup in PL/pgSQL inside the
+    original function (using the existing temp table), or persist the invalid references in a real unlogged table so the helper can operate.
+
+
+------
+
+After some improvements:
+
+• InsertReferences Behavior (22:23 CDT tests)
+
+  - Duplicate ID path (INSERT with 2 identical GUIDs) now runs in 9.68 ms with 2 831 shared-buffer hits, 0 reads, and ~5.7 KB WAL total (/var/log/postgresql/postgresql-2025-10-
+    31_095909.log, around lines 4 880‑4 910). The INSERT … ON CONFLICT immediately hits the existing row (Tuples Inserted: 0, Conflicting Tuples: 1, 186 buffer hits) and the dynamic DELETE
+    FROM dms.reference_00 clears 4 stale entries in 0.41 ms. Despite the dedupe, the parent partition scan still drags in ~2.8 k buffers—worth investigating further because it dominates the
+    call time.
+  - Three-ID path (3 distinct GUIDs) fell to 7.50 ms with 634 shared-buffer hits, a single shared read (28 µs), and 39 KB WAL (lines≈5 740-5 770). The staging insert is cheap (0.26 ms),
+    the upsert writes 3 rows (23 WAL records, 9 FPIs), and the cleanup delete only touches 14 buffers. This is a big improvement over the earlier 45.9 ms / 3.1 k-hit plan you captured pre-
+    change.
+  - Invalid ID path (all GUIDs missing in Alias) now bails out in 3.26 ms with 142 hits, 4 reads (0.61 ms), and 7 KB WAL (lines≈5 000-5 120). The WITH staged insert writes the temp row, the
+    EXISTS test spots aliasid IS NULL, and the function returns FALSE without touching dms.Reference. The temp row is left in temp_reference_stage, as expected for later inspection.
+
+  GetInvalidReferencesAndClear
+
+  - Calling SELECT * FROM dms.GetInvalidReferencesAndClear(11,0) from a new backend at 22:20 raised temp_reference_stage is not initialized for this session (lines≈4 520-4 535). Because
+    the temp table is created per session inside InsertReferences, any follow-up query that lands on a different pooled connection will fail. With Npgsql pooling that failure is the common
+    case, so the new diagnostic function is effectively unusable.
+
+  Takeaways & Next Steps
+
+  - The refactor shaved 15–38 ms off the “normal” paths and cut buffer churn by ~80 % there, but the duplicate path still burns ~2.8 k buffer hits. Expose that by adding RAISE NOTICE
+    counters (only in staging) or instrumenting the branch to see which SQL is responsible, then consider collapsing the anti-join into an index-driven delete on just the conflicting alias
+    rows.
+  - Rework invalid-reference reporting so it survives connection pooling: either return the invalid UUIDs directly from InsertReferences (e.g., OUT parameter or RETURNS TABLE), or stage
+    them in an unlogged per-backend table keyed by pg_backend_pid and fetch them within the same connection before releasing it.
+  - Keep an eye on the FK check query SELECT 1 … FOR KEY SHARE (≈0.27 ms, 6 hits). If that came from an explicit addition, evaluate whether you can rely on the existing FK to avoid extra
+    locking.
+  - Once the invalid-reference path is fixed, rerun the load test and compare pg_stat_statements totals—especially for the duplicate workload—to verify buffer pressure stays low.
+
+===
+  Same scenario, but second ask:
+
+
+• Log Review
+
+  - Duplicate-ID call at /var/log/postgresql/postgresql-2025-10-31_095909.log:4880 ran in 9.67 ms with 2 830 shared-buffer hits; most time comes from the INSERT … ON CONFLICT DO UPDATE
+    (0.41 ms) plus the FK enforcement scans (SELECT 1 … FOR KEY SHARE, 0.27 ms each) and the partition-local delete (0.41 ms). The stage load itself is cheap (<0.15 ms).
+  - Three-unique-ID call at …log:5753 completed in 7.50 ms inserting three rows; the same FK checks appear but now the INSERT spends 2.53 ms doing real writes while the delete is 0.41 ms.
+  - Invalid-ID probe at …log:5089 returned FALSE in 3.26 ms, leaving the bad UUID staged for inspection; only 142 shared hits were needed because we never touched the reference tables.
+  - dms.GetInvalidReferencesAndClear is currently unusable across pooled sessions: /var/log/postgresql/postgresql-2025-10-31_095909.log:4533 shows it raising temp_reference_stage is not
+    initialized for this session when the follow-up query lands on a different connection.
+
+  Recommendations
+
+  - Avoid the no-op update path on duplicates: instead of relying solely on INSERT … ON CONFLICT DO UPDATE, split the work into (a) INSERT … ON CONFLICT DO NOTHING for new aliases and (b)
+    UPDATE dms.reference SET … FROM temp_reference_stage WHERE … AND row differs. Duplicate payloads that match existing rows will then bypass the FK FOR KEY SHARE probes entirely, dropping
+    the duplicate scenario to the same ~7 ms as the happy path.
+  - If you prefer to stay declarative, a MERGE INTO dms.reference (PostgreSQL 15+) with separate WHEN MATCHED AND … THEN UPDATE / WHEN NOT MATCHED THEN INSERT clauses achieves the same
+    effect while still targeting a single partition (use MERGE INTO dms.reference_<pp> via EXECUTE).
+  - Retire dms.GetInvalidReferencesAndClear and surface the invalid UUIDs directly from dms.InsertReferences: change the signature to return both success boolean and invalid_ids uuid[],
+    populate invalid_ids := ARRAY(SELECT … WHERE aliasid IS NULL), and clear the stage in the same function. Callers get the IDs in the same round-trip, and the 99 % happy path still just
+    sees a fast TRUE/empty array.
+      1. If changing the signature is impossible, stash invalid IDs into an unlogged helper table keyed by pg_backend_pid() inside InsertReferences and have GetInvalidReferencesAndClear
+         query/clear that table; this keeps the data available across pooled sessions without depending on temp-table state.
+  - Auto-explain overhead is visible in the totals; once you finish tuning, raise auto_explain.log_min_duration back toward production levels to avoid the extra latency you’re currently
+    measuring.
+
+  Next Steps
+
+  1. Prototype the split INSERT/UPDATE (or MERGE) and rerun the duplicate test to confirm the FK probes disappear.
+  2. Update the API contract so InsertReferences surfaces invalid IDs directly; remove the failing helper once callers are migrated.
+
+  ## Update - 2025-11-01-00-37 (After lots of tuning)
+
+
+ Key Findings
+
+  - After the required 10‑minute soak, pg_stat_statements showed SELECT success, invalid_ids FROM dms.InsertReferences($1,$2,$3,$4) climbing from 731 820 to 785 237 calls in 60 s (~53 k calls/
+    min). Each call averages 2.58 ms, touches ~248 shared buffers (~2 MB) and emits ~7.3 KB of WAL, totaling ~4.1 GB WAL and keeping CPU and buffer churn high.
+  - Active backends repeatedly block on WAL durability: pg_stat_activity reported WalSync/WALWrite wait events, while pg_stat_io logged 5 800 650 client WAL writes with 126 s write time and
+    1 935 s fsync time since the last reset—consistent with synchronous_commit=on forcing per-transaction flushes even though iostat showed the NVMe device only ~46 % busy with ~0.1 ms write
+    latency.
+  - The upsert pipeline around InsertReferences adds further churn: DELETE FROM dms.Document … executed 1.09 M times (0.75 ms avg, 328 MB WAL) and connection resets issued DISCARD TEMP 2.68 M
+    times (385 s total), so every pool checkout recreates/drops temp state and amplifies buffer activity.
+  - The DMS service (EdFi.DataManagementService, pid 171969) consumes ~250 % CPU with negligible I/O, indicating the bottleneck sits in the database layer; autovacuum briefly hit 100 % CPU but
+    no blocking locks were observed.
+  - The Python load generator (pid 175522) uses ~80 % of a single core and ~22 KB/s write throughput (pidstat), so it is not throttling the test.
+
+  Supporting Data
+
+  - pg_stat_statements: SELECT success, invalid_ids … — 785 237 calls, 2.58 ms mean, 4.09 GB WAL, 143 M buffer hits (edfi_datamanagementservice).
+  - Aggregated view (custom query): scalar vs. returning call variants both average ~248 shared hits and ~7.27 KB WAL per call.
+  - pg_stat_activity: 2 sessions on WALWrite, 1 on WalSync, confirming commit stalls.
+  - pg_stat_io: client backend | wal | normal — writes = 5 800 650, write_time = 126 422 ms, fsync_time = 1 935 327 ms.
+  - iostat -x 1 3: nvme1n1 ~45 MB/s read, ~48 MB/s write, 0.10 ms w_await, 46 % util.
+  - pidstat -u/-d: Python load (pid 175522) ~80 % CPU, negligible I/O; DMS service ~250 % CPU, negligible I/O.
+
+  Next Steps
+
+  1. If the load test can trade durability for throughput, run with SET LOCAL synchronous_commit = 'local' (or off) to eliminate per-transaction WalSync waits; alternatively batch commits
+     within the load tool. Re-test to confirm latency gains.
+  2. Review InsertReferences’ delete/refresh logic: consider keeping a session-persistent staging structure (avoid DISCARD TEMP churn), or redesign the “remove missing references” step to rely
+     on indexed keys only, cutting the ~248 buffer touches per call.
+  3. Profile connection-pool usage in the DMS service; reducing the frequency of full pool resets (DISCARD TEMP, RESET ALL) will lower CPU/WAL overhead and improve InsertReferences latency.
+
+
+**** Suggestions after followup:
+
+• InsertReferences is the dominant write path in this workload, so tuning it pays off quickly. Here’s what the monitoring shows, followed by concrete changes to the function definition
+  (dms.insertreferences, see \sf+ dms.insertreferences lines 26‑134).
+
+  What the metrics say
+
+  - pg_stat_statements → 1.02 M scalar calls at 2.50 ms mean plus 0.79 M “SELECT success…” callers at 2.58 ms, each touching ~248 shared buffers (~2 MB) and writing ~7.3 KB of WAL; that’s ~4 GB WAL
+    for InsertReferences alone during the sample window.
+  - Wait profile → backends frequently sit on WALWrite/WalSync waits, so every extra write you avoid immediately helps commit latency.
+  - The upsert + prune block (lines 69‑123) runs on every call, even when the reference set is unchanged, so we still emit WAL/dirty buffers even when nothing needs to change.
+
+  Targeted tuning suggestions
+
+  - Skip the heavy upsert when nothing changed (dms.insertreferences:69-123): before the INSERT … ON CONFLICT, join the staged rows against the existing partitioned table and exit early when the
+    set of aliases/targets already matches. A lightweight probe (e.g., SELECT bool_and(...) or EXCEPT on (aliasid, referentialpartitionkey, referenceddocumentid, referenceddocumentpartitionkey)) can
+    return quickly because the unique index on (parentdocumentpartitionkey,parentdocumentid,aliasid) is selective. When the set is unchanged, avoid both the INSERT … ON CONFLICT DO UPDATE and the
+    dynamic DELETE, eliminating ≈7 KB of WAL and ~248 buffer touches per call.
+  - Rewrite the staging dedupe to avoid the window sort (dms.insertreferences:26-57):
+      - Replace the ROW_NUMBER() OVER (PARTITION BY a.id ORDER BY ids.referentialId) with DISTINCT ON (a.id) or a lateral SELECT that grabs the first alias row; that removes the window sort, reducing
+        CPU and shared buffer churn inside InsertReferences.
+      - Ensure Npgsql always binds inputs so that unnest sees deduplicated pairs (the load test currently passes duplicates, forcing the extra work).
+  - Use partition-qualified delete instead of dynamic SQL (dms.insertreferences:108-123):
+      - On PostgreSQL 15+, rewrite to DELETE FROM dms.reference PARTITION FOR (p_parentdocumentpartitionkey) r USING temp_reference_stage s … with a simple USING join. This eliminates EXECUTE
+        format(...), allows the planner to reuse a cached plan, and limits the scan to the relevant partition index without building dynamic SQL strings every call.
+  - Drop the redundant temp-table cleanup deletes (dms.insertreferences:20-22 and 126-129):
+      - A temp table created with ON COMMIT DELETE ROWS can hold per-transaction state for error reporting without manual DELETEs (temp-table DML is already WAL-free). Switching from ON COMMIT
+        PRESERVE ROWS and using a RETURN QUERY before commit preserves usability while removing two extra scans per call.
+  - Short-circuit invalid-ID handling (dms.insertreferences:59-65):
+      - Promote the invalid_ids lookup into the staging CTE with a CASE expression so that we only scan the temp table once. That keeps the per-call work to a single pass and makes the early-exit
+        (first bullet) even cheaper.
+  - Optional: batch WAL writes when safe:
+      - If the application can tolerate it, wrap InsertReferences calls in a caller-level SET LOCAL synchronous_commit = 'local' or batch the operations in explicit transactions. Given the measured
+        ~2 s fsync time on client backends, reducing commit frequency has an outsized effect.
+
+  Follow-up monitoring
+
+  After implementing the above, keep an eye on pg_stat_statements for the two InsertReferences entries: mean execution time should drop, the per-call WAL volume should fall sharply, and the shared-
+  blk-hit metric should approach double digits. Also confirm in pg_stat_activity that WalSync waits disappear under the same load profile.
+
+  Let me know when you’re ready to validate the revised function and we can script the changes.
+
+*** Clarification:  Explain "Ensure Npgsql always binds inputs so that unnest sees deduplicated pairs (the load test currently passes duplicates, forcing the extra work)"
+InsertReferences takes two parallel arrays—uuid[] p_referentialIds and smallint[] p_referentialPartitionKeys—and expands them with unnest:
+
+  FROM unnest(p_referentialIds, p_referentialPartitionKeys)
+       AS ids(referentialId, referentialPartitionKey)
+  LEFT JOIN dms.Alias a
+    ON a.ReferentialId = ids.referentialId
+   AND a.ReferentialPartitionKey = ids.referentialPartitionKey
+
+  If the caller sends the same (referentialId, referentialPartitionKey) pair more than once, unnest produces duplicates. The function has to add a ROW_NUMBER() OVER (PARTITION BY a.Id …) filter just
+  to keep the first copy (lines 38–57 in \sf+ dms.insertreferences). That window function forces a per-call sort and adds CPU and buffer churn. pg_stat_statements shows the sort is happening because
+  the staging CTE keeps the duplicates out manually instead of receiving a deduplicated set.
+
+  “Npgsql binding” refers to how the C# service loads those arrays into the parameter list:
+
+  cmd.Parameters.AddWithValue("p_referentialids", NpgsqlDbType.Array | NpgsqlDbType.Uuid, ids);
+  cmd.Parameters.AddWithValue("p_referentialpartitionkeys", NpgsqlDbType.Array | NpgsqlDbType.Smallint, partitionKeys);
+
+  If ids or partitionKeys still contain repeats (e.g., the load generator builds the array from a sequence without Distinct()), the driver dutifully sends those duplicates to PostgreSQL and the
+  function must dedupe them. Ensuring the client code performs a Distinct/DistinctBy before assigning those parameter arrays means the unnest already receives a unique set. Once inputs are guaranteed
+  unique, we can simplify the staging logic (no window function) and cut work per call.
+
