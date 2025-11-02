@@ -931,7 +931,7 @@ Additional info on skipping upsert if no changes:
 
 
 
-## Update - 2025-11-01-23-04 (permanent unlogged staging table, dedup in C#, pure insert hint)
+## Update - 2025-11-01-23-04 (permanent unlogged staging table, dedup in C#, pure insert hint) Best perf with References so far - 6.5ms
 
 • Database Findings
 
@@ -967,10 +967,113 @@ Additional info on skipping upsert if no changes:
 
   Let me know if you’d like help applying any of these changes or digging deeper into DMS-side timings.
 
+ ### I then asked about fast-path percentages
+
+ • Fast-path calls are the minority. Using pg_stat_statements totals captured during the run:
+
+  - dms.InsertReferences executed 1 377 552 times.
+  - Every new document upsert issues a companion INSERT INTO dms.Document … (query id -8359663333965759041), and we logged 961 806 of those during the same interval.
+
+  Because a brand-new document can’t qualify for the fast-path (it has no existing reference state), at least those 961 806 InsertReferences invocations had to take the full write path.
+  That already accounts for ≈70 % of all calls (961 806 / 1 377 552 ≈ 0.698). The remaining ≈30 % of calls are the only ones that could even have short‑circuited.
+
+  Two observations push the actual percentage lower than that ceiling:
+
+  - We also saw 417 504 document updates (query id 8463487787006168343) and 960 311 document deletes (-5488951830561609739). Any update that changed the reference set, or any delete that
+    required cleanup, would have forced the heavy branch too.
+  - The function’s own WAL footprint averaged ~1.78 KB per call, which aligns with the cost of running the upsert/delete path most of the time; a true fast-path call would be near zero WAL.
+
+  Putting it together: roughly 25–30 % of the InsertReferences executions were able to short‑circuit, with the rest performing actual reference writes. To get exact accounting, we’d need to
+  flip pg_stat_statements.track to all (so the nested INSERT/DELETE inside the function are counted) or add lightweight instrumentation in the function itself.
+
+### I then asked about further pure insert optimizations
+
+• A few more levers remain for the “brand-new document + pure insert” case beyond the current p_isPureInsert delete skip:
+
+  - Skip the equality probe entirely when p_isPureInsert is true. For a fresh parent there cannot be existing rows, so the probe only burns CPU on ux_reference_parent_alias. Short-circuit
+    the branch before the fast-path NOT EXISTS checks.
+  - Bypass the staging table for this branch. You still need the alias lookups and invalid-ID aggregation, but you can keep it in a single CTE:
+      1. WITH staged AS (SELECT … FROM unnest … LEFT JOIN dms.Alias …) – identical to today but not persisted.
+      2. SELECT array_agg(...) INTO invalid_ids FROM staged WHERE aliasid IS NULL;
+      3. If invalid_ids is empty, run a plain INSERT INTO dms.Reference … SELECT … FROM staged WHERE aliasid IS NOT NULL;
+
+    Because you never touch dms.ReferenceStage, there’s no DELETE/INSERT on the unlogged table and no follow-up cleanup per call.
+  - Use a conflict-free insert when p_isPureInsert. In that branch swap the INSERT … ON CONFLICT DO UPDATE for either a straight INSERT (fastest) or INSERT … ON CONFLICT DO NOTHING. Since a
+    new parent shouldn’t have any references yet, that avoids the per-row conflict check and the EXCLUDED comparison entirely.
+  - Optionally add light deduping inside the CTE (e.g., SELECT DISTINCT ON (referentialid, referentialpartitionkey) …) to protect against accidental duplicates without relying on ON
+    CONFLICT.
+
+  Together these changes remove staging I/O, equality probe lookups, and conflict handling from the pure insert hot path, leaving only the alias join plus a single insert. If you want
+  concrete code, I can sketch the CTE-based branch.
 
 
+### I then asked about WAL write breakdown
+
+• WAL Breakdown (current pg_stat_statements snapshot)
+
+  - INSERT … INTO dms.Document … (queryid -8359663333965759041): 3 292 141 836 bytes over 961 806 calls → ≈3.38 KB per call.
+  - SELECT success, invalid_ids FROM dms.InsertReferences … (queryid -7737659587446346593): 2 462 604 404 bytes over 1 377 552 calls → ≈1.78 KB per call.
+
+  So, looking just at these two statements, Document inserts account for ~57% of the combined WAL (3.29 GB / (3.29 GB + 2.46 GB)), with InsertReferences contributing the remaining ~43%. On
+  a per-call basis, each document insert writes almost twice as much WAL as a reference insert because it touches the primary key, partition index, JSONB payload, and audit columns.
+
+  If we expand the lens to the other hot statements we measured:
+
+  - Document deletes (queryid -5488951830561609739): 304 M WAL over 960 311 calls (~317 B/call).
+  - Document updates (8463487787006168343): 790 M WAL over 417 504 calls (~1.89 KB/call).
+
+  Stacking those together shows that the document table is the dominant WAL emitter across the workload—roughly 4.39 GB versus 2.46 GB for references alone—so any reductions in document
+  insert/update churn (larger batches, fewer redundant updates, lighter JSON payload writes) will have the biggest impact on overall WAL write pressure.
+
+### I then asked why updates were a lot less than inserts
+
+• Even though each update rewrites the JSONB payload, PostgreSQL can treat most of those UPDATE dms.Document ... statements as HOT updates: the primary key and other indexed columns stay
+  unchanged, so the engine simply appends a new tuple version on the same heap page, marks the old version dead, and leaves all index entries untouched. That cuts the WAL volume to roughly
+  “heap tuple only,” averaging the 1.89 KB/call we observed (790 MB ÷ 417 504 calls). By contrast, an INSERT must log the full heap tuple plus every new index entry on the row, emits
+  visibility-map changes, and often includes full-page images when extending new pages after checkpoints. That extra index churn and page initialization explains why inserts are about
+  3.38 KB/call (3.29 GB ÷ 961 806), nearly double the update cost despite the JSONB rewrite.
 
 
+### I then asked about getting the insert size down
+
+• A few levers can shave real WAL off each dms.Document insert:
+
+  - Reduce full-page images. After every checkpoint, the first change to a heap or index page emits an 8 KB FPI. Raise checkpoint_timeout (and keep checkpoint_completion_target high) so
+    checkpoints aren’t hammering every 5 min, and be sure wal_compression = on so the FPIs that do fire are compressed.
+  - Trim index footprint. Every maintained index adds its own WAL records. Audit the current index set on dms.Document; if any are rarely used or could be converted to partial/covering
+    designs, removing them lowers insert WAL directly.
+  - Keep hot pages hot. Inserts that extend the table hit new pages (and thus FPIs). Lowering fillfactor isn’t helpful for inserts, but pre-warming via larger batches per transaction can
+    let multiple tuples share a page before the next checkpoint. Alternatively, consider staging bulk loads into an UNLOGGED table and merging, if durability requirements allow.
+  - Shrink the tuple. Any reduction in the JSONB payload or other wide columns (e.g., trimming metadata, compressing external blobs) lowers the heap tuple size and consequently the WAL
+    record for both heap and associated TOAST/index entries.
+  - Only necessary writes. Double-check the insert path for redundant columns (e.g., default timestamps, trace IDs) that may be set later via updates. Deferring or eliminating them during
+    the insert keeps the tuple smaller.
+
+  Combining less frequent checkpoints, compressed FPIs, and leaner indexing typically has the biggest effect on per-insert WAL without sacrificing correctness. If you’d like, I can help
+  profile the current index set or test the impact of adjusting checkpoint/WAL settings on a staging instance.
+
+
+### I then asked about C#-side optimizations for queries
+
+• Wal-Specific Opportunities
+
+  - PostgresqlDocumentStoreRepository.UpsertDocument (src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/PostgresqlDocumentStoreRepository.cs:29) and UpdateDocumentById (:87) open a fresh connection,
+    start a transaction, perform the write, then commit. Every failure path still makes it all the way through InsertDocumentAndAlias (SqlAction.cs:285) or UpdateDocumentEdfiDoc (SqlAction.cs:318) before
+    discovering invalid references; even though the caller rolls the transaction back, PostgreSQL has already emitted full WAL for the insert/update. You can trim that by validating references first: build a
+    lightweight helper (e.g. SELECT referentialId FROM unnest(...) LEFT JOIN dms.Alias … WHERE alias.Id IS NULL) and call it before you touch dms.Document or dms.Alias. If it returns anything, bail early. On the
+    insert path that short-circuits everything before InsertDocumentAndAlias; on the update path it keeps _sqlAction.UpdateDocumentEdfiDoc (called in both UpsertDocument.AsUpdate and UpdateDocumentById.UpdateById)
+    from rewriting the JSONB row only to be rolled back.
+  - For brand-new documents you already pass IsPureInsert: true into dms.InsertReferences. Once the database side has the “pure insert” branch that skips staging/equality probes, mirror that in the repo by
+    skipping the equality probe entirely when upsertRequest.DocumentInfo.DocumentReferences resolves to an empty existing set. That keeps the pure-path call down to just one heap insert and one index update
+    instead of the extra probe traffic.
+  - Make sure new document UUIDs aren’t random v4s. The unique index on (DocumentPartitionKey, DocumentUuid) (see 0001_Create_Document_Table.sql:23) and on alias (ReferentialPartitionKey, ReferentialId) (0002_…
+    sql:22) both suffer page splits with random UUIDs; switching API-side generation to sequential GUIDs (UUID v7 or SQL Server–style combs) keeps insertions append-only within each partition, which lowers index
+    churn and the accompanying WAL.
+  - Keep connection pool resets cheap. pg_stat_statements shows each call running SET SESSION AUTHORIZATION, RESET ALL, etc. If you can enable NoResetOnClose=true in the connection string (and you don’t rely on
+    session GUCs), you eliminate a handful of catalog writes per request. It doesn’t move WAL much, but it shaves a few statements off every POST/PUT and keeps headroom for the main workload.
+
+  Applying the “validate-first” change will give you the most immediate WAL drop: bad reference payloads go straight to an error without touching heap/index pages. Layering optional synchronous_commit tuning and
+  sequential GUIDs on top of the database-side fast path will squeeze the per-request log volume even more while staying within the current POST/PUT semantics.
 
 
 
@@ -987,3 +1090,9 @@ How do we monitor
   2. We should use merge
 
 How about a heuristic that we check if the counts are the same. If so, it's likely a small change or none at all.
+
+Should we instrument this and see if we can tune further that way?
+
+- Tweak checkpoint cadence
+- Aggressive AUTOVACUUM of staging table
+- compression options?
