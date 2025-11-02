@@ -863,22 +863,6 @@ After some improvements:
     set of aliases/targets already matches. A lightweight probe (e.g., SELECT bool_and(...) or EXCEPT on (aliasid, referentialpartitionkey, referenceddocumentid, referenceddocumentpartitionkey)) can
     return quickly because the unique index on (parentdocumentpartitionkey,parentdocumentid,aliasid) is selective. When the set is unchanged, avoid both the INSERT … ON CONFLICT DO UPDATE and the
     dynamic DELETE, eliminating ≈7 KB of WAL and ~248 buffer touches per call.
-  - Rewrite the staging dedupe to avoid the window sort (dms.insertreferences:26-57):
-      - Replace the ROW_NUMBER() OVER (PARTITION BY a.id ORDER BY ids.referentialId) with DISTINCT ON (a.id) or a lateral SELECT that grabs the first alias row; that removes the window sort, reducing
-        CPU and shared buffer churn inside InsertReferences.
-      - Ensure Npgsql always binds inputs so that unnest sees deduplicated pairs (the load test currently passes duplicates, forcing the extra work).
-  - Use partition-qualified delete instead of dynamic SQL (dms.insertreferences:108-123):
-      - On PostgreSQL 15+, rewrite to DELETE FROM dms.reference PARTITION FOR (p_parentdocumentpartitionkey) r USING temp_reference_stage s … with a simple USING join. This eliminates EXECUTE
-        format(...), allows the planner to reuse a cached plan, and limits the scan to the relevant partition index without building dynamic SQL strings every call.
-  - Drop the redundant temp-table cleanup deletes (dms.insertreferences:20-22 and 126-129):
-      - A temp table created with ON COMMIT DELETE ROWS can hold per-transaction state for error reporting without manual DELETEs (temp-table DML is already WAL-free). Switching from ON COMMIT
-        PRESERVE ROWS and using a RETURN QUERY before commit preserves usability while removing two extra scans per call.
-  - Short-circuit invalid-ID handling (dms.insertreferences:59-65):
-      - Promote the invalid_ids lookup into the staging CTE with a CASE expression so that we only scan the temp table once. That keeps the per-call work to a single pass and makes the early-exit
-        (first bullet) even cheaper.
-  - Optional: batch WAL writes when safe:
-      - If the application can tolerate it, wrap InsertReferences calls in a caller-level SET LOCAL synchronous_commit = 'local' or batch the operations in explicit transactions. Given the measured
-        ~2 s fsync time on client backends, reducing commit frequency has an outsized effect.
 
   Follow-up monitoring
 
@@ -887,25 +871,119 @@ After some improvements:
 
   Let me know when you’re ready to validate the revised function and we can script the changes.
 
-*** Clarification:  Explain "Ensure Npgsql always binds inputs so that unnest sees deduplicated pairs (the load test currently passes duplicates, forcing the extra work)"
-InsertReferences takes two parallel arrays—uuid[] p_referentialIds and smallint[] p_referentialPartitionKeys—and expands them with unnest:
 
-  FROM unnest(p_referentialIds, p_referentialPartitionKeys)
-       AS ids(referentialId, referentialPartitionKey)
-  LEFT JOIN dms.Alias a
-    ON a.ReferentialId = ids.referentialId
-   AND a.ReferentialPartitionKey = ids.referentialPartitionKey
+Additional info on skipping upsert if no changes:
 
-  If the caller sends the same (referentialId, referentialPartitionKey) pair more than once, unnest produces duplicates. The function has to add a ROW_NUMBER() OVER (PARTITION BY a.Id …) filter just
-  to keep the first copy (lines 38–57 in \sf+ dms.insertreferences). That window function forces a per-call sort and adds CPU and buffer churn. pg_stat_statements shows the sort is happening because
-  the staging CTE keeps the duplicates out manually instead of receiving a deduplicated set.
+• Skipping the insert/delete cycle is attractive—the current pattern at src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Deploy/Scripts/0010_Create_Insert_References_Procedure.sql:73-
+  130 keeps hammering INSERT … ON CONFLICT plus the dynamic partition delete even when the incoming snapshot already matches the table. A fast equality probe that fans out through the selective
+  ux_reference_parent_alias index could avoid ≈7 KB of WAL and buffer churn in the ~25 % “no-op” scenario.
 
-  “Npgsql binding” refers to how the C# service loads those arrays into the parameter list:
+  Key considerations before adopting it:
 
-  cmd.Parameters.AddWithValue("p_referentialids", NpgsqlDbType.Array | NpgsqlDbType.Uuid, ids);
-  cmd.Parameters.AddWithValue("p_referentialpartitionkeys", NpgsqlDbType.Array | NpgsqlDbType.Smallint, partitionKeys);
+  - The probe must be symmetric. You need to detect both “stage row missing in table” and “table row missing in stage”; an EXISTS/NOT EXISTS pair on (AliasId, ReferentialPartitionKey,
+    ReferencedDocumentId, ReferencedDocumentPartitionKey) is cheaper than an EXCEPT (which sorts) and keeps everything index-driven.
+  - Run the probe only after invalid_ids is empty. You can reuse temp_reference_stage—filter to aliasid IS NOT NULL and join to dms.Reference, letting partition pruning limit the scan to the one
+    partition. That keeps it to one additional index lookup per staged alias.
+  - If the probe finds the sets identical, short-circuit before the INSERT … ON CONFLICT and before the dynamic DELETE. You still return the success flag, and you leave the temp table in place for
+    the return clause.
+  - Concurrency remains safe under READ COMMITTED: the probe sees a fresh snapshot, so any genuine divergence forces the function down the existing write path. You just lose the side effect of
+    rewriting rows when nothing changed—which is the intent.
+  - Net win hinges on workload shape. For the 75 % of calls where something does change, you pay for the extra probe plus the original work. Benchmark with representative alias counts; if parents
+    commonly carry only a handful of rows, the added SELECT cost is negligible, but if they average hundreds, the extra scan could erase the benefit.
 
-  If ids or partitionKeys still contain repeats (e.g., the load generator builds the array from a sequence without Distinct()), the driver dutifully sends those duplicates to PostgreSQL and the
-  function must dedupe them. Ensuring the client code performs a Distinct/DistinctBy before assigning those parameter arrays means the unnest already receives a unique set. Once inputs are guaranteed
-  unique, we can simplify the staging logic (no window function) and cut work per call.
+  Implementation sketch (inside the existing IF cardinality(invalid_ids) = 0 THEN block):
 
+  IF NOT EXISTS (
+      SELECT 1
+      FROM temp_reference_stage s
+      LEFT JOIN dms.Reference r
+        ON r.ParentDocumentPartitionKey = s.parentdocumentpartitionkey
+       AND r.ParentDocumentId = s.parentdocumentid
+       AND r.AliasId = s.aliasid
+      WHERE s.aliasid IS NOT NULL
+        AND (
+          r.AliasId IS NULL OR
+          r.ReferentialPartitionKey IS DISTINCT FROM s.referentialpartitionkey OR
+          r.ReferencedDocumentId IS DISTINCT FROM s.referenceddocumentid OR
+          r.ReferencedDocumentPartitionKey IS DISTINCT FROM s.referenceddocumentpartitionkey
+        )
+  )
+  AND NOT EXISTS (
+      SELECT 1
+      FROM dms.Reference r
+      WHERE r.ParentDocumentPartitionKey = p_parentDocumentPartitionKey
+        AND r.ParentDocumentId = p_parentDocumentId
+        AND NOT EXISTS (
+            SELECT 1
+            FROM temp_reference_stage s
+            WHERE s.aliasid = r.AliasId
+              AND s.referentialpartitionkey = r.ReferentialPartitionKey
+              AND s.referenceddocumentid = r.ReferencedDocumentId
+              AND s.referenceddocumentpartitionkey = r.ReferencedDocumentPartitionKey
+        )
+  )
+  THEN
+      RETURN QUERY SELECT TRUE, ARRAY[]::uuid[];
+      RETURN;
+  END IF;
+
+  If microbenchmarks confirm the no-op rate and alias counts you quoted, this early-exit pays for itself; just measure the added probe cost under load before committing.
+
+
+
+## Update - 2025-11-01-23-04 (permanent unlogged staging table, dedup in C#, pure insert hint)
+
+• Database Findings
+
+  - WAL flushes dominate wait time: pg_stat_io shows client backends issued 1 255 650 WAL writes with 25 042 ms write_time and 427 519 ms fsync_time; pg_stat_activity frequently reports IO/WalWrite waits during COMMIT,
+    confirming a WAL-bound workload.
+  - synchronous_commit=on and 11 M commits since the last reset (pg_stat_database) mean almost every tiny transaction forces its own flush, so group commit rarely helps.
+  - Checkpoints are frequent and heavy: checkpoint_timeout is 5 min while pg_stat_checkpointer reports 1 089 510 ms of checkpoint write_time since 19:52, amplifying WAL pressure.
+  - Shared buffers are recycling effectively (1.6 B hits vs. 15.8 M reads), so the bottleneck isn’t data-page IO but log durability.
+
+  InsertReferences Metrics
+
+  - pg_stat_statements shows 757 792 calls, 1.76 ms mean execution, and 1.13 GB total WAL → ~1.78 KB per call; the function itself is CPU-light and buffer-resident.
+  - For comparison, the INSERT into dms.Document produces ~3.38 KB WAL per call, so downstream document churn is the larger WAL producer in this code path.
+  - The equality probe exercises dms.ix_referencestage_parent heavily: 3.88 M index scans with 10.1 M tuple fetches, confirming the fast-path predicate is working; dms.ReferenceStage currently holds 143 k dead tuples
+    without any recorded vacuum (pg_stat_all_tables), so plan periodic maintenance.
+  - Partition indexes (dms.reference_##_referentialpartitionkey_aliasid_idx) see ~2.4 M scans each, matching the expected selective lookups and validating the unlogged staging design.
+
+  System & Application
+
+  - The python load harness (pid 69808) runs at ~85 % CPU and 0.1 % memory with default nice level; on this 24-core host it doesn’t contend with Postgres, so the generator itself isn’t the test bottleneck.
+  - The DMS frontend (EdFi.DataManagementService.Frontend.AspNetCore, pid 69211) stays around 200 % CPU and ~1 GB RSS; plenty of headroom remains, but watch swap usage (3.3 GB in use) if more services join the run.
+  - Disk service time is low (nvme1n1 w_await ≈ 0.11 ms, 37.9 % util via iostat), reinforcing that the delay is log fsync latency, not media saturation.
+  - App logs record repeated 401s when fetching authorization metadata (src/dms/frontend/EdFi.DataManagementService.Frontend.AspNetCore/logs/20251101.log:27), which can add upstream latency and extra DB retries;
+    resolve the CMS auth issue to slim per-request work.
+
+  Next Steps
+
+  1. Reduce WAL flush contention: batch multiple API mutations into a single transaction where safe, or run Idempotent/high-volume paths with SET LOCAL synchronous_commit='local'/'off' to let group commit absorb the
+     fsync.
+  2. Relax checkpoint cadence (e.g., raise checkpoint_timeout to 15 min and keep checkpoint_completion_target ≥ 0.9) so checkpoints stop crowding the WAL writer during peaks.
+  3. Keep the new staging table lean with a scheduled VACUUM (ANALYZE) dms.ReferenceStage or periodic TRUNCATE, or enable autovacuum aggressively, to prevent stats drift as dead tuples accumulate.
+  4. Fix the CMS authorization failures so the frontend stops issuing failing HTTP calls, and consider tagging the connection string with an ApplicationName to make future pg_stat_activity attribution easier.
+
+  Let me know if you’d like help applying any of these changes or digging deeper into DMS-side timings.
+
+
+
+
+
+
+
+
+
+
+Here's a question:
+
+How do we monitor
+
+1. No references changed ** done
+2. It's all new (insert) ** done
+3. It's an update and
+  1. We should use on conflict
+  2. We should use merge
+
+How about a heuristic that we check if the counts are the same. If so, it's likely a small change or none at all.
