@@ -931,7 +931,7 @@ Additional info on skipping upsert if no changes:
 
 
 
-## Update - 2025-11-01-23-04 (permanent unlogged staging table, dedup in C#, pure insert hint) Best perf with References so far - 6.5ms
+## Update - 2025-11-01-23-04 (permanent unlogged staging table, dedup in C#, pure insert hint) Best perf with References so far - 6.5ms avg, 7ms median
 
 • Database Findings
 
@@ -1074,6 +1074,172 @@ Additional info on skipping upsert if no changes:
 
   Applying the “validate-first” change will give you the most immediate WAL drop: bad reference payloads go straight to an error without touching heap/index pages. Layering optional synchronous_commit tuning and
   sequential GUIDs on top of the database-side fast path will squeeze the per-request log volume even more while staying within the current POST/PUT semantics.
+
+
+## Update - 2025-11-02-16-58 (Check early for invalid references, Npgsql no reset)
+
+• Bottlenecks
+
+  - WAL flush contention is still the primary throttle: since the reset (pg_stat_wal, 2025‑11‑02 16:57) Postgres emitted 27 M records/8.4 GB WAL, with client backends forcing 902 690
+    synchronous WAL writes totaling 20.5 s write time and 313.9 s fsync (pg_stat_io). pg_stat_activity continues to show IO/WalWrite wait events during commits.
+  - dms.InsertReferences remains the dominant SQL hotspot: 596 484 calls at 1.66 ms mean, 1.04 GB WAL (≈1.75 KB/call) and 101 M buffer hits (pg_stat_statements). Function stats confirm
+    986 s spent inside the routine (pg_stat_user_functions), so the database is busy but not slow per-call—latency comes from log durability.
+  - Downstream document churn amplifies WAL pressure: the partitioned INSERT INTO dms.Reference call (queryid 6070861028664210120) burns another 1.03 GB WAL over 562 k invocations, and the
+    paired DELETE FROM dms.Document issues 129 MB WAL at 0.72 ms/call. These add ~2.8 KB WAL per request on top of InsertReferences.
+  - Autovacuum is working hard to keep up with delete churn: a worker is currently the #2 CPU consumer, and pg_stat_all_tables shows each reference partition holding ~20–26 k dead tuples
+    with 23–30 autovacuum runs since the reset. dms.ReferenceStage still accumulates ~118 k dead rows between purges, so continue scheduling aggressive vacuum/truncate to avoid catalog
+    bloat.
+  - Application-level behavior can add latency spikes: multiple sessions are “idle in transaction” holding FOR NO KEY UPDATE locks (pg_stat_activity), and the API logs still show
+    authorization call failures (src/dms/frontend/EdFi.DataManagementService.Frontend.AspNetCore/logs/20251101.log:27), which trigger retries and extra DB work.
+
+  System & Load Generator
+
+  - The python load script (pid 255728) runs ≈92 % CPU, 0.1 % memory, nice 0: it isn’t resource-starving Postgres, and there’s ample idle CPU (top shows 58 % idle).
+  - The DMS frontend process (pid 255084) is steady at ~260 % CPU and <1 GB RSS, so it’s not the bottleneck, but address the lingering CMS 401 errors to prevent additional request churn.
+  - Disk latency remains low (NVMe w_await ≈0.1 ms via iostat), confirming the slowdown is commit/fsync pacing, not raw IO bandwidth.
+
+  Recommendations
+
+  1. Reduce per-transaction WAL flushes: batch multiple logical operations inside a single transaction where safe, or tag idempotent paths with SET LOCAL synchronous_commit = 'local'/'off'
+     so group commit can absorb fsync latency.
+  2. Tame checkpoint pressure: lengthen checkpoint_timeout (e.g., 15 min) and keep checkpoint_completion_target ≥0.9 so checkpoints don’t pile onto peak WAL activity.
+  3. Keep the new staging table leaner: add a lightweight job to VACUUM (ANALYZE) or TRUNCATE dms.ReferenceStage between runs; it’s unlogged so this is cheap.
+  4. Eliminate “idle in transaction” holders—close connections promptly after each request—and fix CMS authorization failures to avoid extra retries.
+  5. Monitor WAL volume after these changes (reset stats, rerun load) to verify per-call WAL drops; if not, consider raising wal_buffers and lowering wal_writer_delay to 10 ms to smooth
+     bursts.
+
+### Brad's own notes
+
+WAL writes for document inserts dropped from 3.4KB/call to 2.8KB/call.
+WAL writes for reference inserts steady at 1.75KB/call (down from a pre-tuning 5-7KB/call)
+
+### I gave it my postgresql.conf and asked for suggestions - did all but group commit (ignored durability)
+
+• WAL-Focused Tweaks
+
+  - ~/Downloads/temp/2025-11-02-16-58-postgresql.conf:252 – explicitly set wal_buffers = 128MB. The default auto value (~16 MB for 16 GB shared buffers) is small for your current
+    8 GB+/10 min WAL volume; raising it lowers pressure on the WAL insertion locks and reduces partial flushes under bursty inserts.
+  - ~/Downloads/temp/2025-11-02-16-58-postgresql.conf:254 – drop wal_writer_delay from 20 ms to 5–10 ms. A faster background writer keeps the log file nearly up‑to‑date so foreground
+    commits have less to flush.
+  - ~/Downloads/temp/2025-11-02-16-58-postgresql.conf:255 – un-comment and tighten wal_writer_flush_after = 256kB. This makes the writer push out smaller chunks whenever the log grows
+    quickly, again shrinking the residual work each commit must fsync.
+  - ~/Downloads/temp/2025-11-02-16-58-postgresql.conf:267-268 – grow max_wal_size to 32GB (and optionally min_wal_size to 8GB). Your workload already generates 8 GB between resets; giving
+    the checkpointer more headroom prevents forced checkpoints that pile onto WAL writes.
+  - ~/Downloads/temp/2025-11-02-16-58-postgresql.conf:258-259 – if you want to encourage group commit, enable a modest commit_delay = 50 (µs) with commit_siblings = 20. At your concurrency
+    this lets each backend wait a hair for peers, increasing the odds that the shared flush done by walwriter covers several commits.
+  - ~/Downloads/temp/2025-11-02-16-58-postgresql.conf:236 – optional but impactful: if the durability SLA allows, switch synchronous_commit = local. That keeps WAL durable on the local OS
+    cache but lets PostgreSQL return immediately, leaving the kernel/fsync to complete in the background. Apply per role/transaction if only parts of the workload are latency sensitive.
+
+  Reload with SELECT pg_reload_conf(); after editing (or restart if you change wal_buffers). Monitor pg_stat_io and pg_stat_wal on the next run; you should see fewer IO/WalWrite waits and
+  lower per-commit fsync_time.
+
+
+## Update - 2025-11-02-21-20 (Zstd WAL compression, other tunings as above)
+
+• Findings
+
+  - dms.InsertReferences still dominates DB time post-reset: 962 278 calls at 1.57 ms average, 1.77 KB WAL per call, and 149 M shared-buffer hits (pg_stat_statements
+    queryid -7737659587446346593). The companion INSERT INTO dms.Reference adds 1.86 KB WAL per call, so each logical request still emits ≈3.6 KB of WAL despite zstd compression.
+  - WAL flush latency remains the primary bottleneck. pg_stat_io shows client backends performed 1 151 647 WAL writes with 20.7 s write_time and 450.9 s fsync_time since the reset (stats at
+    2025‑11‑02 21:52:40). Active sessions continue to wait on WalSync/WALWrite (pg_stat_activity), so synchronous commits are gating throughput.
+  - Autovacuum is busy keeping partitions clean: an autovac worker is currently vacuuming dms.document_12, and every dms.Reference_## partition has 30–41 autovac runs with 12–38 k dead
+    tuples remaining (pg_stat_all_tables). The unlogged stage table accumulated 14 M insert/delete cycles with 128 k dead rows and 20 M index probes (same view), indicating the probe path
+    is hot.
+  - System resources are not saturated: CPU still shows ~35 % idle (top), NVMe write latency is ~0.1 ms with ~38 % utilization (iostat), and the two python load generators together consume
+    ≈150 % CPU without starving Postgres. Swap is nearly exhausted (8 GB allocated, ≈0 MB free), which is worth monitoring even though no immediate contention appears.
+  - The DMS frontend process runs near 380 % CPU with ~1 GB RSS but reports only normal restarts and no recent errors (src/dms/frontend/EdFi.DataManagementService.Frontend.AspNetCore/
+    logs/20251102.log:1-20).
+
+  Recommendations
+
+  1. Continue attacking WAL flush pressure: batch mutations into fewer transactions where possible, or use SET LOCAL synchronous_commit = 'local'/'off' on idempotent operations so group
+     commit can absorb the 450 s fsync burden.
+  2. Spread out checkpoint/flush work: ensure the recent postgresql.conf tuning kept checkpoint_timeout high and consider trimming wal_writer_delay to 10 ms so the WAL writer pre-flushes
+     more aggressively.
+  3. Keep dms.ReferenceStage tidy—schedule VACUUM (ANALYZE) or TRUNCATE between runs to reclaim the 128 k dead rows and maintain planner stats for the equality probe.
+  4. Eliminate “idle in transaction” holders in the application so they don’t pin locks or inflate autovac workload; close or reuse connections promptly.
+  5. Watch memory pressure: with swap nearly maxed, consider freeing other workloads or increasing RAM/swap to avoid future OS reclamation stalls during the test harness.
+
+### Brad's own notes
+
+WAL writes for document inserts dropped from 2.8KB/call to 1.86KB/call.
+WAL write for reference inserts steady at 1.77KB/call
+
+### I gave it my postgresql.conf and asked for suggestions
+
+• Key Observations
+
+  - High WAL pressure remains despite zstd compression. Client backends still perform synchronous WAL flushes on every commit; the config leaves synchronous_commit default on and doesn’t
+    encourage group commit.
+  - Aggressive autovacuum settings (high worker slots, low scale factor, no cost delay) keep tables clean but drive heavy CPU/WAL activity exactly when the load test peaks.
+  - Memory knobs (16 GB shared_buffers, 64 MB work_mem, 2 GB maintenance_work_mem) are generous; combined with ~100 connections they explain the sustained swap exhaustion during tests.
+
+  Suggested Tuning (~/Downloads/temp/2025-11-02-21-20-postgresql.conf)
+
+  - Encourage group commit – add commit_delay = 1000 and keep commit_siblings = 5 just below the WAL section (~line 240). This queues commits for 1 ms when five or more siblings are active,
+    increasing the chance of shared WAL flushes.
+  - Trim work_mem – drop work_mem from 64 MB to 16–32 MB near the memory block (~line 120). With 20–30 concurrent sessions, the current setting can reserve several GB per complex query and
+    pushes the system into swap.
+  - Spread WAL writer effort – keep wal_writer_delay = 5ms but raise wal_writer_flush_after to 1MB (same section) so the writer amortizes writes better while still flushing frequently.
+  - Leverage fast storage – explicitly set effective_io_concurrency = 256 and maintenance_io_concurrency = 256 in the I/O section (~line 210) to let PostgreSQL exploit NVMe queue depth.
+  - Control autovacuum churn – set autovacuum_vacuum_cost_delay = 5ms and leave autovacuum_vacuum_cost_limit = 1000 in the autovacuum block (~line 700). This keeps workers active but yields
+    briefly between bursts, smoothing their WAL and CPU impact.
+  - Optional durability relaxation – if the workload can tolerate it, change default synchronous_commit to local in the WAL section (~line 230) and let critical transactions override it to
+    on. This retains crash safety but removes per-transaction fsync waits.
+  - IO method – on kernels with io_uring support, consider io_method = io_uring and a small io_workers pool (e.g., 4) in the I/O block (~line 205) to reduce backend flush latency.
+
+### Deeper analysis:
+
+• - While the run was active we sampled pg_stat_activity and saw 22 concurrent backends tied to edfi_datamanagementservice; after the load ended the view now shows a single remaining
+    session, but 22 is the practical peak during the test.
+  - From pg_stat_io (client backend / wal / normal) the full run accumulated 2 836 529 WAL writes with 942 695 ms of fsync time, which works out to roughly 0.33 ms of fsync wait per flush
+    on average—so WAL flushes did queue, but only for a third of a millisecond each.
+
+### Revised tweak recommendations:
+
+• Given the latest data—roughly 22 concurrent sessions and ~2.8 M WAL flushes averaging 0.33 ms each—the configuration looks generally healthy, and keeping synchronous_commit = on is fine.
+  I’d keep most of the earlier recommendations, with a couple of tweaks:
+
+  - Encourage group commit without sacrificing durability
+    Add commit_delay = 1000 and leave commit_siblings = 5. With 20+ simultaneous backends this nudges commits to batch for a single fsync while honoring synchronous durability.
+  - WAL writer smoothing
+    Leave wal_writer_delay = 5ms, but raise wal_writer_flush_after = '1MB'. That lets the background writer coalesce more WAL before flushing, reducing the per-commit flush pressure that
+    still shows up in waits.
+  - I/O concurrency
+    The NVMe throughput is barely tapped, so explicitly set effective_io_concurrency = 256 and maintenance_io_concurrency = 256. This helps the planner issue deeper asynchronous reads
+    during heavy work (vacuum, certain queries).
+  - Autovacuum pacing
+    Keep the aggressive thresholds, but add autovacuum_vacuum_cost_delay = 5ms. That prevents autovac workers from hammering WAL writes when the load test peaks, while still allowing them
+    to run frequently.
+  - work_mem
+    Since swap usage mostly comes from other tooling, leaving it at 64 MB is acceptable. If you ever see Postgres backends swapping under load, the first knob to turn down would still be
+    work_mem, but otherwise no change is required.
+
+  No other adjustments are warranted based on the new wait-profile; the existing zstd compression and 128 MB wal_buffers are appropriate. After applying these, reload the config and keep an
+  eye on pg_stat_io to confirm fsync time per flush stays in the same range or improves.
+
+
+### Stats
+
+  | Metric                | Value                       |
+  |-----------------------|-----------------------------|
+  | Total Requests        | 2,167,991                   |
+  | Total Failures        | 1,473 (0.068% failure rate) |
+  | Throughput            | 1,204.79 req/s              |
+  | Median Response Time  | 7ms                         |
+  | Average Response Time | 7.38ms                      |
+  | Min Response Time     | 1ms                         |
+  | Max Response Time     | 374ms                       |
+
+  Percentile Response Times
+
+  - 50th (Median): 7ms
+  - 95th Percentile: 12ms ✅ (SLA standard)
+  - 99th Percentile: 17ms ✅ (Excellent tail latency)
+  - 99.99th Percentile: 62ms
+
+
+
 
 
 
