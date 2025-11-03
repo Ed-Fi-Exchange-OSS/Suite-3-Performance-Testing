@@ -1215,6 +1215,8 @@ WAL write for reference inserts steady at 1.77KB/call
     Since swap usage mostly comes from other tooling, leaving it at 64 MB is acceptable. If you ever see Postgres backends swapping under load, the first knob to turn down would still be
     work_mem, but otherwise no change is required.
 
+  - Brad note: also enable io_uring
+
   No other adjustments are warranted based on the new wait-profile; the existing zstd compression and 128 MB wal_buffers are appropriate. After applying these, reload the config and keep an
   eye on pg_stat_io to confirm fsync time per flush stays in the same range or improves.
 
