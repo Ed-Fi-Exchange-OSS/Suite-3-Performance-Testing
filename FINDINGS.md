@@ -1241,8 +1241,210 @@ WAL write for reference inserts steady at 1.77KB/call
   - 99.99th Percentile: 62ms
 
 
+## Update - 2025-11-03-11-06-group-commit-tuning (Added group commit, other tunings as above but not io_uring)
+
+• Database
+
+  - InsertReferences remains the hot spot with 343 k calls at 1.66 ms mean and ~1.76 KB WAL per call; the coupled INSERT INTO dms.Reference adds ~1.84 KB WAL, so each logical request still
+    emits ≈3.6 KB (via pg_stat_statements queryids -7737659587446346593 and 6070861028664210120).
+  - Group-commit tuning lowered pressure but WAL syncs still gate throughput: client backends flushed 432 126 WAL writes for 10.2 s write_time and 176.5 s fsync_time (since
+    2025‑11‑03 11:25:19 reset), and live sessions still report IO/WalSync/WALWrite waits during COMMIT.
+  - Autovacuum is active on dms.document_01, and dms.ReferenceStage has cycled 20.7 M rows with 79 k dead tuples, showing the equality probe path stays hot; it was last vacuumed at
+    11:33:33.
+  - Database I/O remains buffer-resident (35 M reads vs. 3.5 B hits) with no data-file write waits, so commit durability is the remaining bottleneck.
+
+  System & Load
+
+  - The Ed-Fi frontend (pid 443309) runs near 120 % CPU with ~1 GB RSS and shows only normal restarts (src/dms/frontend/EdFi.DataManagementService.Frontend.AspNetCore/logs/20251103.log:1-
+    5).
+  - The load generator (pid 464160) consumes ~78 % CPU but stays well below host capacity (24 cores), so it isn’t throttling the test; note the separate borg check backup (pid 473721) using
+    ~88 % CPU that could steal cycles during long runs.
+  - Disk latency remains negligible (iostat shows ≈0.2 ms waits, <1 % util), confirming WAL fsync latency—not hardware bandwidth—is limiting response time.
+
+  Next Steps
+
+  - Keep amplifying group commit by batching API writes or setting synchronous_commit='local'/'off' on idempotent paths to shrink the 176 s fsync bill.
+  - Allow the WAL writer to flush more aggressively (e.g., wal_writer_delay = 10ms) and review checkpoint spacing to avoid bursts overlapping with peak load.
+  - Schedule a short job to VACUUM (ANALYZE) or TRUNCATE dms.ReferenceStage between load runs so probe statistics stay accurate.
+  - If the backup process isn’t required during tests, suspend it to leave more CPU headroom for Postgres and the DMS service.
+
+### Asked about improvement from group commit
+
+• Group-Commit Impact
+
+  - Client WAL writes dropped from 1 151 647 to 432 126 (‑62 %, pg_stat_io), and total client WAL write time fell from 20.7 s to 10.2 s (‑51 %).
+  - Client WAL fsync time shrank from 450.9 s to 176.5 s (‑61 %), so each commit now waits ≈0.28 ms for durability instead of ≈0.39 ms (‑29 %).
+  - WAL writes per commit fell from 1.01 to 0.68 (‑32 %), showing group commit is merging flush requests effectively.
+  - COMMIT execution remained tiny (mean ≈0.0007 ms) and dms.InsertReferences mean latency stayed flat at ~1.66 ms with ~1.76 KB WAL per call, so the throughput gain comes from fewer/
+    smaller fsyncs rather than faster per-call logic.
+
+  Still Watching
+
+  - A Borg backup (/usr/bin/borg check, pid 473721) is consuming ~88 % CPU; pause it during load tests to leave more headroom.
+  - WAL fsync waits persist (one active WalSync session) so further batching or lowering wal_writer_delay could squeeze out more improvement.
+
+### postgresql.conf tuning review
+
+• The new group-commit settings helped, but the stats show we still burn 176 s in WAL fsyncs across 432 k commits (≈0.41 ms each). With synchronous_commit fixed at on, here’s how I’d tune
+  ~/Downloads/temp/2025-11-03-11-06-postgresql.conf for more batching and fewer backend-driven flushes:
+
+  - Tighten WAL writer cadence – Drop wal_writer_delay from 5 ms to 2 ms (line 254) and shrink wal_writer_flush_after from 1 MB to 256 kB (line 255). That keeps the background writer
+    flushing behind the workload so foreground commits can piggyback instead of doing their own WalSync.
+  - Broaden the commit hold window – Bump commit_delay to 1000 µs and lower commit_siblings to 3 (258‑259). The current 500 µs / 5 sibling gate is still letting many commits flush solo;
+    doubling the window and lowering the threshold will catch more concurrent backends without adding noticeable latency.
+  - Keep autovacuum ahead of deletes – With autovacuum_vacuum_cost_delay = 5ms and autovacuum_vacuum_cost_limit = 1000 (706‑709), workers still accumulate tens of thousands of dead tuples
+    per reference partition. Consider cutting the delay to 1 ms and lifting the limit to 3000 so vacuum finishes faster, keeping visibility map bits hot and trimming full-page writes.
+  - Stage table maintenance – dms.ReferenceStage is still cycling ~20 M rows per hour with 79 k dead tuples. Schedule a VACUUM (ANALYZE) or TRUNCATE between runs (outside postgresql.conf)
+    so the equality probe stats stay accurate and your autovac workers stay focused on the partition tables.
+
+  Those changes should shave the remaining WAL-sync wait while honoring the synchronous durability requirement.
+
+### Test results - 1ms more latency, no throughput change
+
+  Results Summary:
+  - Duration: 31+ minutes (11:23 - 11:54)
+  - Total Requests: 2,150,923
+  - Failures: 1,480 (0.069% failure rate)
+  - Throughput: 1,195 requests/second
+  - Median Response Time: 8ms
+  - 95th Percentile: 12ms
+  - 99th Percentile: 23ms
+  - Output: 34MB of detailed history data
+
+  Comparison to Previous Run (2025-11-02-21-20):
+  - Previous: 2,167,991 requests
+  - Current: 2,150,923 requests ✓ (similar magnitude)
+  - Previous: 1,204 req/s
+  - Current: 1,195 req/s ✓ (comparable)
+  - Previous: 7ms median
+  - Current: 8ms median ✓ (very similar performance)
 
 
+## Update - 2025-11-03-12-05-expand-group-commit (Doubled commit wait to 1ms, wal writer change above, no autovac change)
+
+### This was worse
+
+• PostgreSQL
+
+  - Workload remains WAL-bound. Since the latest reset (pg_stat_wal 12:04:10), client backends issued 415 k WAL writes that took 12.8 s of write_time and 152 s of fsync time (pg_stat_io).
+    WAL writer absorbed more work (70 k writes, 1.8 s write_time, 26 s fsync), but active sessions still show COMMIT waits for WalSync.
+  - dms.InsertReferences is still the dominant SQL path: 492 k calls at 1.73 ms mean, 868 MB WAL (≈1.77 KB per call) and 86 M buffer hits (pg_stat_statements queryid -7737659587446346593).
+    The paired INSERT INTO dms.Reference adds ~1.85 KB WAL per call, so each logical reference operation still emits ≈3.6 KB.
+  - Function stats confirm 5.64 M invocations of InsertReferences consuming 9 223 s cumulative execution time (pg_stat_user_functions). Autovacuum remains active (currently on
+    dms.document_01), keeping partition dead tuples manageable.
+  - Compared to the previous run (post-group-commit tuning: 432 k writes, 10.2 s write_time, 176 s fsync), expanding the window didn’t materially lower flush counts (‑4 %) and increased
+    write_time (+25 %) while trimming fsync time (‑14 %). Group commit is still the limiting factor; the change mostly shifted work to the WAL writer without reducing per-call WAL volume.
+
+  System & Application
+
+  - The DMS frontend (pid 443309) holds ~1 GB RSS and ~210 % CPU; logs show only routine restarts (no new errors).
+  - The python load generator (pid 500865) uses ~73 % CPU with minimal memory, so it’s not throttling the test. No other heavy side processes are visible.
+  - Host resources are healthy: CPUs average ~53 % idle (top), and NVMe latency remains ~0.2 ms with <3 % utilization (iostat). Swap is nearly full (≈0 MB free), so keep an eye on
+    background services to avoid paging under heavier loads.
+
+  Recommendations
+
+  1. Further reduce commit flush frequency: batch DB operations per request or use synchronous_commit='local'/'off' for idempotent paths to shorten the 152 s fsync bill.
+  2. Tune WAL writer/flush cadence (e.g., wal_writer_delay = 10ms) so the writer absorbs more group commits before clients reach WalSync.
+  3. Keep the reference staging table tidy—schedule VACUUM (ANALYZE) or TRUNCATE between runs to prevent the equality probe stats from drifting.
+  4. Monitor swap usage; freeing nonessential services (e.g., IDE, background jobs) during load tests will maximize headroom for Postgres and the DMS service.
+
+
+### Shared the tuning that was done:
+
+Prompt: The difference between the previous run and this run is that commit_delay changed from 500 to 1000, commit_siblings changed from 5 to 3, wal_writer_delay changed from 5 ms to 2 ms, and
+  wal_writer_flush_after changed from 1 MB to 256kB. synchronous_commit must stay on. What tuning suggestions do you have, or have we reached the limits of tuning postgresql.conf?
+
+
+• - The latest config change (commit_delay = 1000 µs, commit_siblings = 3, wal_writer_delay = 2 ms, wal_writer_flush_after = 256 kB) barely reduced commit flushes (down only 4 %) and
+    actually lengthened client write time to 12.8 s (+25 %) while fsync time fell just 14 %. InsertReferences still emits ~1.77 KB WAL per call and commits once per request, so the tuning
+    window is largely exhausted on the PostgreSQL side.
+  - With synchronous_commit locked at on, two knobs still worth testing:
+      - Raise the aggregation window rather than shrink it: try wal_writer_delay = 10ms (even 20 ms) and bump wal_writer_flush_after back to ≥1 MB so the background writer absorbs more log
+        without forcing client fsyncs.
+      - Keep commit_delay conservative (500–2000 µs) but set commit_siblings higher (8–16) so the delay only activates when several sessions queue together; the current value of 3 fires the
+        delay even in light contention and costs latency without gaining much.
+      - Monitor pg_stat_io for the resulting write/fsync deltas after each change.
+  - Beyond that, more configuration tweaks won’t deliver material gains. To shrink the 152 s fsync bill you’ll need to change workload shape:
+      1. Batch API work so each transaction commits multiple reference operations.
+      2. Identify idempotent paths where SET LOCAL synchronous_commit = 'local' or 'off' is acceptable.
+      3. Ensure the WAL device has headroom (dedicated NVMe, low-latency mount options) because every flush now costs ~0.36 ms.
+
+  If you can’t restructure commits or relax durability, PostgreSQL’s config is already near its useful limit; future wins will come from the application layer or faster WAL hardware rather
+  than more postgresql.conf tuning.
+
+
+## Update - 2025-11-03-14-51-rerun-of-11-06-group-commit-tuning-after-vac  (Rerun of 2025-11-03-11-06-group-commit-tuning was slower)
+
+• - InsertReferences is still the hottest query: 472 998 calls at 1.65 ms average with 834 MB total WAL (≈1.76 KB/call), and the paired INSERT INTO dms.Reference contributes another
+    ≈1.85 KB/call (pg_stat_statements queryids -7737659587446346593 and 6070861028664210120).
+  - WAL durability remains the bottleneck: since the 15:33 reset, client backends have issued 612 447 WAL writes for 14.5 s write time and 212.6 s fsync time (pg_stat_io), and active
+    sessions show WalSync waits on commits ( pg_stat_activity).
+  - Autovacuum is keeping up but busy: it’s currently vacuuming dms.document_01, and the stage table has handled 33.9 M insert/delete cycles with 78 k dead rows, last vacuumed at 15:45
+    (pg_stat_all_tables).
+  - No application faults observed; the frontend process just restarted at 14:49 and is running normally (src/dms/frontend/EdFi.DataManagementService.Frontend.AspNetCore/
+    logs/20251103.log:1). Idle-in-transaction sessions still hold FOR NO KEY UPDATE locks, so tighten connection handling to avoid extra autovac pressure.
+  - The python load generator (pid 582222) runs at ~73 % CPU with 64 MB RSS, so it isn’t CPU-bound or throttling the test; however, an unrelated Borg backup (/usr/bin/borg check,
+    pid 597523) is consuming ~99 % CPU and Chrome is using ~81 %, which compete for cores and could inflate response times (top).
+  - Storage is healthy—iostat shows ≈0.2 ms waits and <1 % utilization—so latency is driven by commit fsyncs rather than raw IO bandwidth. Swap remains saturated (≈8 GB in use), so consider
+    freeing memory to prevent future contention.
+
+  Next steps
+
+  1. Pause the backup/Chrome workloads during load testing so Postgres and the DMS service have more CPU headroom.
+  2. Continue encouraging group commit (batch app transactions or use synchronous_commit='local'/'off' for idempotent paths) to reduce the 212 s fsync cost.
+  3. Keep vacuuming dms.ReferenceStage between runs and close idle-in-transaction sessions promptly to limit lock hold times and autovac churn.
+
+### Direct comparison ask
+
+• Comparison vs prior run
+
+  - Query timing: dms.InsertReferences stays essentially flat (1.65 ms now vs 1.66 ms before) and still emits ~1.76 KB WAL per call. The companion INSERT INTO dms.Reference behaves
+    similarly (~0.52 ms, ~1.85 KB WAL). So core SQL latency is unchanged.
+  - WAL workload: Client WAL writes rose from 432 k to 612 k (+42 %), and total client fsync time climbed from 176 s to 213 s (+21 %). That’s the main regression; fewer commits are getting
+    grouped before flush.
+  - System noise: This run had extra CPU consumers (e.g., borg check at ~99 % CPU, Chrome at ~81 %), so Postgres and the DMS service had less headroom. Disk latency and app behavior remain
+    healthy.
+
+  Overall, query performance matches the previous run, but more scattered commits and competing CPU workloads increased WAL flush volume and fsync time, so throughput isn’t quite as good.
+  Pausing the background jobs and tightening transaction batching should bring it back in line.
+
+
+### Transaction tightening ask
+
+• To boost batching you need to reduce the number of independent commits the application issues during a burst. A few practical levers:
+
+  - Wrap related work in a single unit-of-work. If a request currently does INSERT Document, InsertReferences, and cleanup each in its own transaction, wrap them in one transaction scope so they share
+    a single COMMIT.
+  - Buffer writes before committing. In bulk loaders or background jobs, gather N operations (e.g., 50–100 resource mutations) and execute them inside one transaction instead of committing after every
+    record.
+  - Reuse open commands within an existing transaction. Ensure the .NET code doesn’t open a fresh connection/transaction for each reference; use a shared connection/transaction per request and avoid
+    “idle in transaction” gaps.
+  - Tune client batching knobs. If you’re using Dapper/ADO, disable automatic auto-commit and explicitly call BeginTransaction/Commit. For EF Core, use SaveChanges() less frequently (e.g., after
+    processing a batch).
+  - Control API callers. If upstream services fire many single-row mutations, expose batch endpoints so they can post multiple changes per call, allowing the service to wrap them together.
+  - Add commit throttling logic. For high-volume background tasks, queue mutations and flush at a fixed interval or when a buffer threshold is reached, keeping commit frequency steady and group-commit
+    friendly.
+  - Watch connection pooling. Ensure pooling keeps sessions alive so transaction batching is effective; churn that reopens sessions for each call often forces extra commits.
+
+  Implementing even one or two of these changes should lower commit frequency enough for the group-commit settings to bite harder without altering PostgreSQL again.
+
+### Results
+
+  Overall Performance (Aggregated)
+
+  | Metric                | Value                       |
+  |-----------------------|-----------------------------|
+  | Total Requests        | 2,155,424                   |
+  | Failures              | 1,638 (0.076% failure rate) |
+  | Median Response Time  | 8ms                         |
+  | Average Response Time | 7.44ms                      |
+  | Min Response Time     | 1ms                         |
+  | Max Response Time     | 316ms                       |
+  | Throughput            | 1,197.47 req/s              |
+  | 95th Percentile       | 12ms                        |
+  | 99th Percentile       | 14ms                        |
+  | 99.9th Percentile     | 22ms                        |
 
 
 
