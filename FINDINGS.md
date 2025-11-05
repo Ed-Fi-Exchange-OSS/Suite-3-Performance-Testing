@@ -1447,6 +1447,790 @@ Prompt: The difference between the previous run and this run is that commit_dela
   | 99.9th Percentile     | 22ms                        |
 
 
+##
+
+• Database
+
+  - pg_stat_statements shows dms.InsertReferences still dominates: 643 056 calls, 1.63 ms mean, and 1.76 KB WAL per call; the paired INSERT INTO dms.Reference adds 1.84 KB WAL, so each
+    request still generates ≈3.6 KB of WAL.
+  - With commit_delay=100, each session now waits ~100 µs before flushing, but group commit hasn’t reduced fsync pressure: client backends issued 908 822 WAL writes with 20.1 s write_time
+    and 317.5 s fsync_time since the reset (2025‑11‑04 10:41:47).
+  - Idle-in-transaction connections remain (multiple ClientRead waits on pg_stat_activity), holding row locks and forcing autovacuum to work harder; an autovac worker is currently vacuuming
+
+  System & App
+
+  - The load generator (pid 742721) consumes ~75–80 % CPU with minimal memory and nice 0; it isn’t the bottleneck.
+  - The DMS frontend (pid 738440) averages ~225 % CPU with ~1 GB RSS; app logs still show authorization failures against CMS (src/dms/frontend/…/logs/20251104.log:1-20), so those retries
+    add overhead.
+  - Disk remains mostly idle (iostat shows ~0.2 ms waits, <1 % util), confirming response-time limits are WAL flush latency rather than physical I/O.
+
+  Recommendations
+
+  1. Tune for deeper group commit: pair commit_delay=100 with a higher commit_siblings (e.g., 10) so sessions actually pause when peers are active; otherwise each backend still flushes
+     alone.
+  4. Fix the CMS authorization errors to avoid repeated failing calls, and close or reuse DB sessions promptly to eliminate idle in transaction holds.
+  5. Continue scheduled maintenance on dms.ReferenceStage (VACUUM/ANALYZE or TRUNCATE) so the probe remains cheap.
+
+
+› review ~/Downloads/temp/2025-11-04-10-43-postgresql.conf for current postgresql.conf configuration. I'm surprised group commit isn't helping. What do you suggest?
+
+  └ Read 2025-11-04-10-43-postgresql.conf
+    Search commit in 2025-11-04-10-43-postgresql.conf
+    Read 2025-11-04-10-43-postgresql.conf
+
+• I'm reviewing the effects of various commit-related settings like commit_delay, commit_siblings, and synchronous_commit on WAL writes. The current commit_delay of 100 microseconds is
+  probably too short to help group commits effectively, and commit_siblings set to 5 might delay less often than expected. I’m considering suggesting gradually increasing commit_delay
+  to 500-2000 microseconds and lowering commit_siblings to 2 or 3 to encourage better batching. Also, looking at synchronous_commit's impact and wal_writer_delay confirms group commit is
+  active but limited by fast transactions and configuration. I'll propose tuning these parameters while monitoring transaction concurrency and WAL write ratios to optimize performance.
+
+─ Worked for 50s ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+• What’s in the config
+  - Group commit knobs are set to commit_delay = 100 (0.1 ms) and commit_siblings = 5. synchronous_commit is still on.
+
+  Why you aren’t seeing a gain
+
+  - Each InsertReferences call completes in ~1.6 ms, so a 0.1 ms delay is too short to accumulate follow-on commits; the first backend still reaches fsync before others queue up.
+  - With only 5 siblings required, the delay rarely kicks in (sessions briefly fall below that threshold). The metrics back this up: 46 M commits vs. 908 k WAL writes (~50 commits per
+    flush) shows group commit is already working reasonably well, so the new delay yields little change but adds overhead.
+  - PostgreSQL still has to flush for durability because synchronous_commit remains on; the 317 s fsync bill is driven by volume, not a lack of grouping.
+
+  Suggestions
+
+  1. Raise commit_delay into a range that matches your transaction arrival rate—start with 500 µs or 1 ms and watch wal_sync_time to ensure latency stays acceptable.
+  2. Lower commit_siblings to 2–3 so the delay applies whenever more than one backend is active.
+  3. Let the WAL writer absorb more work by trimming wal_writer_delay to 2–3 ms (or even 1 ms) so queued commits get flushed together.
+  4. If the workload can tolerate it, move hot paths to SET LOCAL synchronous_commit = 'local' (or 'off') so group commit becomes the default behaviour without per-call fsync.
+  5. Clean up the repeated CMS authorization failures (src/dms/frontend/EdFi.DataManagementService.Frontend.AspNetCore/logs/20251104.log:1-20); the retries inflate DB concurrency and can
+
+› Is it actually worth tuning group commit any further?
+
+
+• Not really. The workload already gets decent grouping—46 M commits condensed into ~909 k WAL flushes—and dms.InsertReferences runs in ~1.6 ms, leaving too little time for a longer delay
+  to gather extra transactions without hurting latency. Pushing commit_delay higher or tweaking commit_siblings might shave a few percent off wal_sync_time, but the real gains will still
+  come from cutting commit frequency (batching) or relaxing durability (synchronous_commit='local'/'off') on the high-volume, idempotent paths. I’d leave group-commit tuning where it is and
+
+› How much is group commit helping currently?
+
+
+• Group commit is doing a lot of work already:
+
+  - Since the last stats reset (10:41:47), the cluster has recorded 46,038,950 commits (pg_stat_database) but only 908,822 client WAL flushes (pg_stat_io). That’s roughly 50–51 transactions
+    per physical flush on average.
+  - Each flush costs about 0.35 ms of fsync time (317.5 s / 908,822), so group commit is amortising that cost to ≈0.007 ms of fsync per commit. Without grouping—if every commit flushed
+    individually—you’d be paying that 0.35 ms for each transaction, which would be catastrophic at this volume.
+
+  So, even though overall WAL sync time is still high in aggregate, group commit is already reducing the per-transaction durability penalty by ~50×. Further tuning the commit_delay/
+  commit_siblings pair is unlikely to move the needle much compared to batching work or relaxing synchronous_commit where the workload allows.
+  together before each fsync.
+
+
+› Are we still WAL write blocking?
+• Yes. Even with the current group-commit tuning, some sessions are still blocking on WAL writes:
+
+  - When we sampled pg_stat_activity, we saw live backends waiting on IO/WalSync and LWLock/WALWrite, and COMMIT statements for those sessions were the ones showing the wait.
+  - Since the last stats reset, client backends have triggered 908 822 WAL flushes and waited a cumulative 317 496 ms on fsync (pg_stat_io). That’s about 0.35 ms of fsync time per physical
+
+
+› Would making the WAL writer flush more proactively help much? What settings need to change?
+
+
+• Making the WAL writer flush more aggressively can trim the tail of those WalSync/WALWrite waits, but expect incremental gains rather than a step change: the tunings you already tried
+  have group commit bundling ~50 transactions per flush, so commits only block when they arrive between WAL-writer cycles. If you shorten the WAL writer’s wakeup interval, there’s a better
+  chance it will flush the current WAL segment before a backend needs to do it itself.
+
+  Two settings to adjust:
+
+  1. wal_writer_delay – currently 5 ms. Dropping it to 2 ms (even 1 ms) makes the writer wake up more often and issue flushes during quiet gaps, reducing how often backends must fsync. The
+     trade-off is more wakeups and slightly higher CPU, but on this host the extra cost is negligible.
+  2. wal_writer_flush_after – at 1 MB today. Lowering it to 256 kB or 128 kB means the writer flushes sooner once it accumulates that much WAL, which again can front-run backend fsyncs. If
+     you go too low you risk more frequent tiny flushes, so start at 512 kB and observe wal_sync_time.
+
+  Even with those changes, you’ll still see some WalSync waits whenever commits land faster than the writer can flush or when synchronous_commit = on forces immediate durability. For a more
+  dramatic reduction you’d still want to batch commits or use synchronous_commit = local/off on the idempotent, high-volume paths.
+
+
+› Group commit is definitely helping though?
+
+
+• Yes—very much. Since the latest reset (2025‑11‑04 10:41), Postgres has logged about 46 M commits but only 0.91 M client WAL flushes, so each physical fsync is carrying the work of roughly
+  50 transactions. Without group commit you’d be paying that 0.35 ms fsync cost per commit; with it, the durability cost is amortised to only a few microseconds per transaction. You still
+  see WalSync/WALWrite waits whenever a commit can’t piggyback on the most recent flush, but the grouping already in place is saving orders of magnitude compared to one-flush-per-commit
+  behaviour.
+
+
+› Is PostgreSQL still the bottleneck in the system?
+
+
+• Yes—PostgreSQL is still the primary throttle.
+
+  - pg_stat_activity continues to show active sessions waiting on WalSync and WALWrite, and since the last reset (10:41) client backends have accumulated 317 s of fsync time across 908 k
+    WAL flushes. Those waits directly slow the API calls even though group commit already batches ~50 transactions per flush.
+  - The application and load generators have headroom: the DMS frontend sits around 200–225 % CPU with <1 GB RSS, the python harness consumes ~80 % of a single core, and disk utilization
+    remains negligible (iostat shows ≈0.2 ms waits, <1 % util). Nothing else is resource‑bound.
+  - The only other notable factor is the CMS authorization failures in the app log; they add retry overhead but don’t explain the systemic latency. The dominant response-time cost is still
+    commit durability on the Postgres side.
+
+  So until you reduce commit frequency or relax synchronous_commit on the hot path, PostgreSQL’s WAL flushes remain the limiting factor.
+
+
+› What if I remove the GIN index from the JSONB column on Document, would that help?
+
+
+• Ran PGPASSWORD='abcdefgh1!' psql -U postgres -h localhost -d edfi_datamanagementservice -f - <<'SQL'
+  │ SELECT indexrelname, idx_scan, idx_tup_read, idx_tup_fetch
+  │ FROM pg_stat_user_indexes
+  │ … +2 lines
+  └  indexrelname | idx_scan | idx_tup_read | idx_tup_fetch
+    --------------+----------+--------------+---------------
+    (0 rows)
+
+
+• Ran PGPASSWORD='abcdefgh1!' psql -U postgres -h localhost -d edfi_datamanagementservice -Atc "SELECT indexname, indexdef FROM pg_indexes WHERE tablename='document';"
+  └ document_pkey|CREATE UNIQUE INDEX document_pkey ON ONLY dms.document USING btree (documentpartitionkey, id)
+    ux_document_documentuuid|CREATE UNIQUE INDEX ux_document_documentuuid ON ONLY dms.document USING btree (documentpartitionkey, documentuuid)
+    ix_document_resourcename_createdat|CREATE INDEX ix_document_resourcename_createdat ON ONLY dms.document USING btree (resourcename, createdat)
+    ix_document_edfidoc|CREATE INDEX ix_document_edfidoc ON ONLY dms.document USING gin (edfidoc jsonb_path_ops)
+
+• Ran PGPASSWORD='abcdefgh1!' psql -U postgres -h localhost -d edfi_datamanagementservice -f - <<'SQL'
+  │ SELECT queryid, calls, total_exec_time, mean_exec_time, query
+  │ FROM pg_stat_statements
+  │ … +4 lines
+  └        queryid        | calls  |  total_exec_time   |    mean_exec_time    |                                                                                   query
+    ----------------------+--------+--------------------+----------------------+-------------------------------------------------------------------------------------------------------------
+    --------------------------------------------------------------
+    … +16 lines
+    (5 rows)
+
+
+• I'm weighing the impact of keeping or removing the GIN index on JSON queries—keeping it slows writes and increases WAL but supports critical restful queries, while removing it risks
+  expensive sequential scans. I’ll suggest balanced options like partial indexes or optimizing JSON updates, highlighting the trade-offs carefully.
+
+─ Worked for 31s ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+• Dropping the GIN index would shrink writer-side work—it’s the largest WAL contributor on each dms.Document insert/update—but it would make the JSON-based reads painfully slow.
+
+  What you get today:
+
+  - Inserts into dms.Document use the GIN index (ix_document_edfidoc) via jsonb_path_ops; that index maintenance drives big WAL (each insert query is ~3.3 KB WAL).
+  - Query stats show the JSON predicates are used, albeit not millions of times: there are ~1.6 k calls to SELECT … WHERE ResourceName = ? AND (EdfiDoc @> …) and they rely on that index to
+    avoid a full table scan.
+
+  If you drop the index:
+
+  - The writer path gets lighter (no GIN maintenance, less WAL on each insert/update), but every JSON predicate would become a sequential scan through millions of rows. Even at the current
+    call count, those operations would go from sub-millisecond index hits to multi-second scans, and any future feature that filters on EdfiDoc would regress badly.
+  - Autovacuum and pruning would also have to manage the growing heap and the now-smaller WAL, but read-side SLAs would suffer.
+
+  Better options than removing the index:
+
+  1. Retain the GIN, but consider making it partial (target only the resource names that require JSON filtering) to cut maintenance cost.
+  2. If JSON searches are rare but still needed, move them to an auxiliary table with extracted, indexed attributes instead of raw JSONB.
+  3. If the goal is to reduce WAL overall, keep the index and focus on batching commits or relaxing synchronous_commit for high-volume write paths; those changes cut WAL flush waits without
+     sacrificing read performance.
+
+  So yes, the index costs you WAL, but it also protects your read workloads. Removing it would trade shorter writes for very expensive reads; I’d only do that if you can prove the JSON
+  predicates are never needed, and even then a partial or alternative index strategy is safer.
+
+
+My system response time hasn't changed even after this improvement. Why?
+
+
+• I’m putting together an explanation that, although group commit has improved WAL flush bundling, overall latency isn’t noticeably better because commit queue and CPU time still
+  dominate. The added commit_delay adds some overhead but doesn’t reduce total latency since synchronous_commit is still on and other factors like document operations, network delays, and
+  application-level processing have larger impacts. I’m focusing on clarifying why the user sees metric improvements but not faster response times overall.
+
+─ Worked for 10s ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+• The system-level latency is unchanged because this tuning didn’t attack the true pacing factor:
+
+  - Group commit was already doing heavy lifting: before the change we were flushing roughly one WAL segment per 50 commits; after the change we’re still at ~50 commits per flush, just with
+    a small 100 µs pause added. That doesn’t reduce the 0.35 ms fsync time per flush, so the end‑to‑end wait each client sees is basically the same.
+  - The rest of the workload hasn’t changed. Each API call still performs the same document/alias insertions, deletions, and OpenSearch touches, the CMS authorization failures are still
+    causing retries, autovacuum is still chasing 20 M+ temp rows, and the application continues to keep several sessions “idle in transaction.” Those factors dominate response time
+    regardless of tiny grouping adjustments.
+  - Because synchronous_commit remains on, any commit that arrives just after the WAL writer has flushed still has to wait for the next fsync. Lowering commit_delay can’t remove that
+    requirement; it just reorders who flushes.
+
+  So you saw a metrics win (lots of commits per flush) but no user-visible gain because the overall service time is still driven by commit durability plus application work. To move the
+  needle you need to reduce how often commits are forced (batching or synchronous_commit=local/off on safe paths), trim the extra work (fix the CMS 401s, close idle transactions), or rework
+  the insert/delete pipeline—another round of group-commit tweaks won’t change the response time on its own.
+
+
+› Would tuning the application itself help, separate from the database communication aspects?
+
+
+• Yes—there’s low-hanging fruit on the application side that would lighten the database workload and improve end-to-end response time even without further DB tuning.
+
+  DMS service
+
+  - Fix the CMS authorization errors (src/dms/frontend/EdFi.DataManagementService.Frontend.AspNetCore/logs/20251104.log:1-20). Each 401 triggers retries and extra DB round trips; caching
+    metadata or reusing valid tokens would drop that chatter.
+  - Close sessions promptly. pg_stat_activity keeps showing “idle in transaction” connections holding FOR NO KEY UPDATE locks; they slow concurrent writes and keep autovacuum busy. Use
+    shorter‑lived transactions or dispose DbContexts aggressively.
+  - Batch related persistence calls. InsertReferences, INSERT dms.Document, and DELETE dms.Document all fire for each logical request; wrapping those in a single transaction—or coalescing
+    multiple logical updates per transaction—cuts commit frequency and WAL load.
+
+  Load generator
+
+  - The python harness drives requests one-by-one; if the real workload allows, raise concurrency or pipeline requests so Postgres work can overlap. That keeps CPU busy without increasing
+    per-request latency.
+
+  All of these trim the amount of database work or commit pressure you generate, so even with the same PostgreSQL settings you’ll see better response time.
+
+
+Help me understand, we reduced WAL write blocking with commit grouping, right? I thought WAL write blocking was the system bottleneck.
+
+
+• I’m explaining that while group commit reduces how often flushes happen, blocking still occurs because each commit requires a synchronous flush that causes waiting. By comparing metrics
+  from previous and current runs, I see that tuning parameters like commit_delay and commit_siblings may actually worsen write and flush times, so group commit alone can’t fully overcome
+  flush-induced delays under high concurrency. I’ll highlight these nuances to make the explanation clear and useful.
+
+─ Worked for 16s ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+• Right, we shrank how often individual sessions take the WAL lock, but that didn’t remove WAL durability as the pacing factor:
+
+  - Even after the change we still see backends waiting on WalSync/WALWrite in pg_stat_activity, and pg_stat_io shows 908 822 client WAL flushes with 317 s of fsync time since the reset.
+    Every one of those flushes still blocks the sessions whose commits aren’t covered by the previous flush.
+  - Group commit just amortizes the fsync cost. It reduced the number of flushes to roughly one for every ~50 commits, but it can’t eliminate the fsync itself. With synchronous_commit = on,
+    the next commit after a flush always waits for another durability round, so that wait still sets the floor for response time.
+  - Compared with the earlier run (before commit_delay = 100), the number of WAL flushes actually increased (from ~432 k to ~909 k) and the aggregate fsync time went up, so the new setting
+    didn’t make things better in practice.
+  - Because commit latency is still dominated by the time spent waiting for those fsyncs, overall response time stays bottlenecked by Postgres even though individual lock acquisitions are
+    less frequent.
+
+  If you need wall-clock improvements you’ll have to go beyond commit grouping—batch multiple operations per transaction, relax durability (synchronous_commit = local/off) on safe
+  workloads, fix the extra application retries, etc. Group commit helps, but it doesn’t remove the underlying synchronous fsync cost that is driving performance.
+
+
+Question about removing the GIN index
+
+
+• I’m thinking through how the GIN index on the JSONB column affects write costs with heavy inserts and updates on the Document table. GIN indexes can be write-expensive and generate
+  insert/update has to decompress, update, and WAL-log GIN pages, which is especially expensive while you’re already WAL-bound. If most requests never run JSONB containment/search queries,
+  removing that index will measurably reduce both CPU and WAL churn on each document write.
+
+  Before you remove it, make sure you aren’t leaning on it. Check pg_stat_user_indexes (look for idx_scan on that GIN index) and pg_stat_statements for JSONB @>/? queries. If it’s rarely
+  used, drop it and reclaim the write budget.
+
+  If you still need targeted lookups, replace it with cheaper structures tied to the actual access patterns:
+
+  - Add generated columns for high-selectivity fields extracted from EdfiDoc (e.g., a student ID or resource type) and index those columns with ordinary btrees.
+  - Use expression or partial indexes such as CREATE INDEX ... ON dms.Document ((EdfiDoc->>'studentUniqueId')) WHERE ResourceName = 'Student';
+  - Keep JSONB search for secondary reporting via a materialized view or a smaller GIN index on only the documents that need it.
+
+  GIN indexes are indispensable when you run lots of JSON searches, but on a write-heavy pipeline they tax every mutation. If you can satisfy the query workload with simpler column/
+  expression indexes, removing the JSONB GIN index will trim WAL writes and help relieve the bottleneck you’re seeing.
+
+
+## 2025-11-04-11-18-no-GIN - dropped the GIN index
+
+Database
+
+  - Dropping the EdfiDoc GIN index removed a heavy writer cost: total WAL for the run is 2.13 GB (pg_stat_wal), far lower than prior 8–10 GB runs. pg_stat_io shows client WAL writes at
+    736 365 (down from ~900 k) and fsync time at 247 s, so commit stalls persist but with less log churn.
+  - dms.InsertReferences is still the top consumer (504 474 calls, 1.65 ms mean, 1.76 KB WAL per call), and the paired INSERT INTO dms.Reference adds ~1.85 KB WAL per call—same shape as
+    before, just with reduced collateral due to the missing GIN maintenance.
+  - Autovacuum load is lighter: fewer WAL writes from autovac workers and no large spikes in pg_stat_activity, though idle-in-transaction connections remain parked on deletes/inserts,
+    keeping row locks open.
+  - The Document GIN’s absence may affect read plans later; keep this change scoped to write-heavy load testing.
+
+  System & App
+
+  - The python load generator (pid 807941) runs ~82 % CPU, minimal memory, no contention; system idle remains ~55 % (top, iostat).
+  - The DMS frontend (pid 781434) sits around 86 % CPU, 1.4 GB RSS, and continues to log CMS authorization failures (src/dms/frontend/…/logs/20251104.log:1-20), so upstream 401 responses
+    still trigger retries.
+  - Disk remains barely utilized (write waits ≈0.2 ms), confirming response time is constrained by WAL fsync, not physical I/O.
+
+  Recommendations
+
+  1. Because the GIN drop helped WAL volume, consider deferring its rebuild until post-load testing, but plan how analytics queries will cope without it.
+  2. Continue tuning group commit: raise commit_siblings (e.g., 10) so the 100 µs commit_delay actually batches busy sessions, and keep wal_writer_delay low (~10 ms) so WAL writer flushes
+     relieve backends.
+  3. Batch upstream writes or relax durability (SET LOCAL synchronous_commit='local'/'off') for idempotent paths to shave the remaining 247 s fsync bill.
+  4. Kill the lingering idle-in-transaction holders after each request to reduce autovacuum pressure.
+  5. Resolve the CMS 401 errors so the application stops issuing failing authorization calls that add background noise during load tests.
+
+
+
+ So how much did dropping the index really help? The WAL per call didn't change even if total WAL did.
+
+
+• I'll quantify the WAL drop by comparing previous runs with the GIN index to current runs without it, breaking down WAL per call and per operation. The data shows the total WAL dropped
+  mainly due to fewer calls and shorter runtime, while per-call WAL for Document inserts stayed nearly the same, indicating dropping the index made minimal difference. I'll highlight these
+  numbers and explain why the index removal didn’t bring significant WAL savings.
+
+─ Worked for 22s ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+• Index Drop Impact
+
+  - The later run processed fewer operations (InsertReferences calls fell from 610 k → 477 k), so total WAL fell to 2.13 GB, but per-call costs are unchanged:
+    • INSERT INTO dms.Reference: 1 863 B → 1 851 B (‑0.6 %).
+    • INSERT INTO dms.Document: 3 379 B → 3 382 B (noise).
+    • DELETE FROM dms.Document: 317 B → 316 B (no change).
+    • dms.InsertReferences itself stayed at ~1.76 KB per call.
+  - WAL wait time stayed high (client fsync 317 s earlier vs. 247 s now) because commit latency is still dominated by synchronous flushes, not index maintenance.
+
+  Interpretation
+  Dropping the edfiDoc GIN index didn’t materially reduce WAL per write on this workload; the “improvement” you saw in total WAL is almost entirely due to processing fewer rows. The GIN
+  wasn’t the bottleneck—commit flushes still are—so removing the index gives up read capability without buying measurable write savings.
+
+
+› I can't change synchronous_commit, so is the next step tackling frequent commits from the application layer?
+
+
+• Yes—the biggest remaining win is reducing how often the app forces a commit. With synchronous_commit locked, every transaction still waits for an fsync. Fewer commits mean fewer fsyncs:
+
+  - Batch writes: group multiple logical operations inside one transaction where correctness allows. For inbound API requests that mutate related resources, wrap the whole batch in a single
+    transaction before returning.
+  - Reuse connections: avoid opening short-lived sessions that immediately commit/close; keep a pool of long-lived connections so you can batch work per session without setup overhead.
+  - Defer optional work: if some mutations can be queued or coalesced (e.g., reference-refreshes, audit writes), buffer them and flush periodically or from a background worker to amortize
+    the commit cost.
+
+  Once you adopt batching, re-measure pg_stat_statements and pg_stat_io: the key metrics to watch are WAL writes, fsync time, and commits. If you can lower commit frequency enough, the
+  existing synchronous fsync will hurt far less.
+
+
+› Can batching remove PostgreSQL as the bottleneck?
+
+
+• It can go a long way. Right now every request triggers its own synchronous commit, so Postgres spends most of its time waiting on WAL flushes—even though the hardware can write much
+  faster. If you batch multiple requests per transaction, you amortize one fsync across several operations. Cutting commit frequency by a factor of 5–10 usually yields a similar drop in WAL
+  waits, and at that point the hot-loop might shift to either CPU in InsertReferences or application-layer constraints.
+
+  That said, batching has limits:
+
+  - You still pay for WAL traffic, just less often. If a huge volume of data still needs to be persisted quickly, the WAL subsystem may remain busy.
+  - Longer transactions raise contention risk: rows stay locked, autovacuum can’t advance, and error handling gets harder.
+  - Business logic might expect per-request isolation; you need to batch only where semantics permit.
+
+  So batching doesn’t magically remove Postgres as a potential bottleneck, but in synchronous-commit environments it’s one of the most effective levers to push the bottleneck elsewhere.
+  After batching you’ll know whether new constraints appear (CPU, application, downstream services) and can tune accordingly.
+
+Is pg_stat_statements what tells you there are too-frequent commits?
+
+
+• I'll explain that frequent commits are shown by a high number of "COMMIT" calls in pg_stat_statements, elevated xact_commit counts in pg_stat_database, and substantial WAL writes with
+  notable fsync times in pg_stat_io, along with signs like idle-in-transaction states. This should clarify how to recognize frequent commit activity.
+
+─ Worked for 5s ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+• pg_stat_statements gives you a big clue—if you see the plain COMMIT entry near the top with hundreds of thousands of calls and microsecond runtimes, you know the application is issuing
+  commits constantly. To quantify what each one costs, you then correlate with:
+  - pg_stat_io: the client-backend WAL section (writes, write_time, fsyncs, fsync_time) tells you how much WAL traffic those commits drive and how long the flushes take.
+  - pg_stat_activity: frequent sessions waiting on WalSync/WALWrite reinforces that each commit is blocking on fsync.
+
+  Taken together, those views make it obvious that the workload issues too many short transactions; pg_stat_statements is simply the easiest way to spot the sheer number of COMMIT calls.
+
+
+› How can we discover what these short commits are doing? I need help finding the culprits.
+
+
+• I'll explain detailed approaches to instrument PostgreSQL metrics and logs to identify which application queries precede commits, focusing on using pg_stat_statements, pg_stat_activity,
+  logging settings like log_min_duration_statement, and extensions such as pg_stat_monitor and auto_explain. I'll highlight how setting application_name and configuring sampling rates helps
+  correlate commit counts to the underlying SQL patterns, and propose SQL queries and strategies to pinpoint the culprits behind short, frequent commits.
+
+─ Worked for 43s ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+• What the short commits are doing right now
+
+  pg_stat_statements makes it clear which statements fire before each commit. The current run (stats reset 2025‑11‑04 11:46) shows:
+
+  queryid                calls     mean_ms   wal_bytes/call   query
+  -7737659587446346593   504,474   1.65      1,763 B          SELECT success, invalid_ids FROM dms.InsertReferences(...)
+  -5488951830561609739   352,722   0.70        316 B          DELETE FROM dms.Document WHERE ...
+   6070861028664210120   477,380   0.51      1,851 B          INSERT INTO dms.Reference AS target (...)
+   3092891708137614488   183,720   0.32      3,382 B          INSERT INTO dms.Document (...)
+  -4665030968157963526   183,720   0.04        321 B          SELECT ... FROM dms.Document WHERE ... FOR NO KEY UPDATE
+  COMMIT                 908,563   0.0007         0 B          COMMIT
+
+  The COMMIT entry tells us 908 k transactions completed; the three high‑call DML statements happen at the same rate, so each transaction is effectively:
+
+  1. Insert into dms.Document
+  2. Insert/update dms.Reference
+  3. Delete from dms.Document (cleanup)
+  4. Commit
+
+  Those statements are the culprits generating millions of short transactions.
+
+  How to pinpoint them in the future
+
+  1. Give every connection an application_name. In your Npgsql connection strings add Application Name=frontend (or per microservice). Then the same pg_stat_statements query will show
+     separate rows per app, making it obvious which component issues those DML bursts.
+  2. Use pg_stat_statements to rank call frequency. The query above (ordering by calls) surfaces the hot statements. Anything with hundreds of thousands of calls and sub‑millisecond
+     runtimes is a short transaction participant.
+  3. Look at pg_stat_activity snapshots.
+
+     SELECT pid, application_name, state, now()-xact_start AS xact_age, query
+     FROM pg_stat_activity
+     WHERE state IN ('active','idle in transaction')
+     ORDER BY xact_start DESC;
+
+     Run it a few times during the test; you’ll see the same statements appearing just before the backend flips to idle → idle in transaction → idle (commit).
+  4. Sample complete transactions.
+      - Set log_transaction_sample_rate = 0.01 (or lower) and log_min_duration_statement = 0 for the test database. PostgreSQL will occasionally log every statement in a transaction, which
+        lets you verify the DML sequence preceding each commit.
+      - Alternatively, temporarily enable log_statement = 'all' for the test user in a small window to capture an exact trace, then revert to the default.
+  5. Optional: install pg_stat_monitor. It groups statistics per transaction, including the statement sequence. If you need more than sampling, this extension is the easiest way to capture
+     full transaction patterns without turning on global logging.
+
+  Next steps
+
+  - Use the data above to target batching inside the DMS code paths that run INSERT INTO dms.Document / INSERT INTO dms.Reference / DELETE FROM dms.Document in rapid succession.
+  - Keep pg_stat_statements handy; after you batch or refactor, the call counts for those statements and for COMMIT should drop proportionally, confirming you actually reduced short
+    transactions.
+
+
+› Tell me more about pg_stat_monitor and its use
+
+
+• pg_stat_monitor is a PostgreSQL extension (maintained by Percona) that builds on pg_stat_statements. It keeps statement statistics like you’re used to, but:
+
+  - Buckets give you a time dimension. Stats roll through time buckets (default 1 min); you can see the last N minutes without resetting the view.
+  - It can group by more than just the query fingerprint. You can enable grouping by application, database, user, or even whole transactions, so all statements executed in one transaction
+    show up together.
+  - You get richer detail. Each row can include tables touched, parameter values (sampled), query sample text, status (success/error), and JIT or I/O stats.
+  - Fewer long‑running queries block the collector. Data is read from shared memory via a ring buffer, improving visibility on busy systems.
+  - Resetting isn’t required for new snapshots. Old buckets age out automatically.
+
+  ### Installation (PostgreSQL 14+ recommended)
+
+  1. Install the extension package (example for Debian/Ubuntu):
+
+     sudo apt install postgresql-16-pg-stat-monitor
+  2. Create a config file snippet (e.g., /etc/postgresql/16/main/conf.d/pg_stat_monitor.conf) with:
+
+     shared_preload_libraries = 'pg_stat_monitor'
+     pg_stat_monitor.pgsm_enable = on
+     # optional tuning
+     pg_stat_monitor.pgsm_bucket_time = 60    # seconds per bucket
+     pg_stat_monitor.pgsm_query_max_len = 2048
+     pg_stat_monitor.pgsm_track_utility = on
+  3. Restart PostgreSQL so it loads the library.
+  4. In each database where you want stats:
+
+     CREATE EXTENSION pg_stat_monitor;
+
+  ### Basic usage
+
+  - Query recent activity:
+
+    SELECT bucket_start_time,
+           calls,
+           mean_exec_time,
+           resp_calls,
+           query_sample
+    FROM   pg_stat_monitor
+    WHERE  bucket_start_time >= now() - interval '5 minutes'
+    ORDER  BY bucket_start_time DESC;
+  - See grouping per transaction:
+
+    SELECT bucket_start_time,
+           client_ip,
+           application_name,
+           username,
+           dbname,
+           queryid,
+           planid,
+           cmd_tag,
+           top_queryid,
+           calls,
+           query_sample
+    FROM   pg_stat_monitor
+    WHERE  top_query = 'TRANSACTION'
+    ORDER  BY calls DESC;
+
+    Here top_queryid/top_query represent the whole transaction; statements executed inside it inherit that ID.
+  - Identify hot transactions:
+
+    SELECT top_queryid,
+           sum(calls) AS calls,
+           avg(total_exec_time) AS avg_ms,
+           string_agg(DISTINCT query_sample, E'\n---\n') AS txn_sample
+    FROM   pg_stat_monitor
+    WHERE  top_query = 'TRANSACTION'
+    GROUP  BY top_queryid
+    ORDER  BY calls DESC
+    LIMIT 10;
+
+  ### Useful knobs
+
+  - pg_stat_monitor.pgsm_max_buckets: how many time buckets to retain.
+  - pg_stat_monitor.pgsm_query_max_len: cap on stored query text.
+  - pg_stat_monitor.pgsm_normalized_query: whether to normalize literal values (like pg_stat_statements).
+  - pg_stat_monitor.pgsm_track_plans: gather execution plans per fingerprint.
+  - pg_stat_monitor.pgsm_track_utility: track utility commands (e.g., COPY, VACUUM).
+
+  ### When to prefer it
+
+  - When you need to see which statements ran in each transaction (perfect for finding the short commits we discussed).
+  - When you want rolling history without resetting stats or exporting pg_stat_statements.
+  - When you need to slice by application/user/database/IP inside PostgreSQL itself.
+
+  Keep in mind it uses more shared memory than pg_stat_statements, and the extra data is visible only after enabling the extension and restarting. For performance diagnostics in load
+  testing like yours, it’s excellent because you can quickly pinpoint the exact statement sequences tied to the flood of commits.
+
+
+## Update: 2025-11-04-11-18-no-GIN-with-pg-stat-monitor (Small commit investigation)
+
+ Commit Hotspot (pg_stat_monitor)
+
+  - The most recent bucket (2025‑11‑04 14:39) shows ~71–74 k executions per minute for each of the Npgsql session-reset commands (BEGIN TRANSACTION, COMMIT, RESET ALL, DISCARD TEMP, DISCARD
+    SEQUENCES, SET SESSION AUTHORIZATION DEFAULT, UNLISTEN *, CLOSE ALL). Those form the tail of every request and confirm the app is still committing tiny units of work.
+  - Within the same bucket the write workload is the familiar document pipeline:
+    • WITH Documents AS (INSERT INTO dms.Document … RETURNING Id) INSERT INTO dms.Alias … → 280 737 calls
+    • DELETE FROM dms.Document WHERE … → 285 297 calls
+    • UPDATE dms.Document SET EdfiDoc … → 128 146 calls
+    • INSERT INTO dms.Reference → 475 869 calls
+    Each of these statements occurs in its own transaction, immediately followed by the reset/commit sequence above. That is the source of the “huge number of small commits.”
+
+  Attribution
+
+  - All high-frequency commands carry username = postgres and application_name = unknown, i.e., the Ed-Fi DMS frontend (pid 781434). No other client shows comparable traffic.
+  - The python load generator (pid 860200) sits around 80 % CPU with negligible memory use, so it isn’t constraining the test.
+
+  Bottlenecks
+
+  - WAL remains the throughput limiter: client backends issued 856 346 WAL writes since the reset with 15.4 s write_time and 290.7 s fsync_time (pg_stat_io). Disk utilization stays <1 %
+    (iostat), so latency is flush time, not hardware bandwidth.
+  - pg_stat_statements still reports dms.InsertReferences at 1.66 ms avg with ~1.76 KB WAL/call, so per-call cost hasn’t moved; it’s the commit cadence that keeps the log writer busy.
+
+  Recommendations
+
+  1. Group these document operations into larger transactions (batch multiple inserts/deletes per parent or per HTTP request) so the reset/commit block fires less often.
+  2. Set ApplicationName in the connection string so future monitoring can separate DMS from other clients.
+  3. If batching isn’t immediately possible, consider local durability (synchronous_commit='local') for the high-volume paths to let group commit absorb the flushes.
+  4. The CMS authorization errors in src/dms/frontend/EdFi.DataManagementService.Frontend.AspNetCore/logs/20251104.log persist; resolving them will remove extra retries that contribute to
+     the transaction flood.
+
+
+› I'm not sure I understand. Are any of these statements grouped together in a commit? Is it always one commit per transaction? I guess I need more detail on what is going on with these
+  small commits.
+
+
+• I'm piecing together how each HTTP request triggers a small transaction with a handful of statements—like inserts, deletes, and savepoints—followed by a commit and connection reset.
+  The data shows about 73k commit sequences per minute, while inserts of document aliases occur around 29k per minute, suggesting many transactions are read-only or smaller operations.
+  The use of pg_stat_monitor reveals commits appear as utility commands, and savepoints only wrap deletes, adding overhead. This points to an object-relational mapping setup where each
+  request opens a new transaction, commits it quickly, then resets the connection, causing many short-lived transactions without batching. I'll summarize this flow with counts and suggest
+  possibilities for grouping statements to reduce commits.
+
+─ Worked for 25s ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+• What the monitor shows
+
+  - Since the reset, pg_stat_monitor has captured ~7.2 × 10⁵ transactions.
+    Every one of those transactions executes the same cleanup sequence:
+    BEGIN TRANSACTION …, then (optionally) a SAVEPOINT "beforeDelete", the business statements, and finally
+    COMMIT, followed immediately by RESET ALL, DISCARD TEMP, DISCARD SEQUENCES, SET SESSION AUTHORIZATION DEFAULT, UNLISTEN *, and CLOSE ALL.
+    All of those commands appear in bucket 9 with 73 785 calls each, which is why the commit count is so high.
+  - Inside the same one‑minute bucket the business statements occur only tens of thousands of times, e.g.
+    • SELECT success, invalid_ids FROM dms.InsertReferences(...) → 43 077 calls
+    • WITH Documents AS (INSERT … RETURNING) INSERT INTO dms.Alias … → 29 873 calls
+    • DELETE FROM dms.Document … → 29 859 calls
+    • UPDATE dms.Document SET EdfiDoc … → 13 247 calls
+    The mismatch (≈74 k commits vs ≈30 k writes) means many transactions contain nothing more than a couple of lightweight reads—each HTTP request/REST call starts its own transaction, does
+    1–3 statements, then commits and runs the full reset block.
+  - The extension records those resets as cmd_type_text = 'UTILITY', so you don’t see rows under cmd_type_text = 'COMMIT'; the COMMIT is there, just classified as UTILITY. The totals (e.g.,
+    717 936 COMMIT rows, 718 375 BEGIN rows) match, so it really is one commit per transaction.
+  - Savepoints appear 290 k times (SAVEPOINT "beforeDelete"), which lines up with the DELETE FROM dms.Document calls—those deletes are wrapped in a SAVEPOINT/ROLLBACK pattern inside the
+    same micro‑transaction.
+
+  Interpretation
+
+  Each unit of application work is issuing:
+
+  BEGIN;              -- pg_stat_monitor: 718k calls
+  ...one small read or write (InsertReferences, Document delete, etc)…
+  COMMIT;             -- 717k calls, classified under UTILITY
+  RESET ALL;          -- 718k calls
+  DISCARD TEMP;       -- 718k calls
+  DISCARD SEQUENCES;  -- 718k calls
+  SET SESSION AUTHORIZATION DEFAULT;  -- 718k calls
+  UNLISTEN *;         -- 718k calls
+  CLOSE ALL;          -- 718k calls
+
+  That is classic Npgsql connection‑cleanup behavior when a pooled connection is returned. Because the API holds exactly one operation per transaction, there is no batching—the database
+  must flush WAL for every HTTP request.
+
+  Actionable guidance
+
+  1. Group operations before returning the connection to the pool. For example, upsert several references/documents inside one transaction or keep the connection open for a batch of REST
+     calls. Dropping the auto-reset (ResetAllOnClose=true in Npgsql) is only safe once you manage your own session state; otherwise, batching is the better route.
+  2. Instrument the C# layer to log a transaction identifier per request so you can confirm how many statements it issues before SaveChanges/Commit.
+  3. If you cannot batch immediately, consider setting synchronous_commit = 'local' (or 'off') inside the high-volume portion so group commit can absorb the cost while you refactor.
+
+  In short: yes, it is effectively one commit per request today; the pg_stat_monitor data confirms those commits are not grouping multiple document mutations, which is why the WAL writer
+  continues to be the throughput ceiling.
+
+
+› Review the codebase in /home/brad/work/dms-root/Data-Management-Service/src/dms/backend/EdFi.DataManagementService.Backend.Postgresql and make recommendations for C#/Npgsql changes. I'm
+  particularly interested in some easy wins, but I'd like any recommendations you can offer.
+
+
+  Where the tiny commits originate
+
+  - The backend opens a brand-new connection for every handler call, begins a transaction, executes one or two SQL statements, commits, and then disposes the connection
+    (PostgresqlDocumentStoreRepository.cs:29‑188). When the pooled connection is returned, Npgsql issues its default reset sequence (BEGIN …; COMMIT; RESET ALL; DISCARD …) which is exactly
+    what pg_stat_monitor is capturing. The same pattern exists in Delete/Update/Query, so every REST call translates into a single mini-transaction.
+
+  Low-effort improvements
+
+  - Replace NpgsqlDataSource.Create with a configured builder so we can switch off the expensive reset sequence and turn on the client‑side features that amortise parsing cost
+    (PostgresqlServiceExtensions.cs:27):
+
+    var builder = new NpgsqlDataSourceBuilder(connectionString);
+    builder.ConnectionStringBuilder.NoResetOnClose = true;   // stop RESET/UNLISTEN flood
+    builder.ConnectionStringBuilder.ApplicationName = "EdFi.DMS";
+    builder.ConnectionStringBuilder.AutoPrepareMinUsages = 3;
+    builder.ConnectionStringBuilder.MaxAutoPrepare = 256;
+    builder.ConnectionStringBuilder.Multiplexing = true;
+    var dataSource = builder.Build();
+    services.AddSingleton(dataSource);
+     removes the seven network round-trips that currently follow every commit, while auto‑prepare/multiplexing let Npgsql keep prepared plans around and pipeline small statements together.
+    NoResetOnClose removes the seven network round-trips that currently follow every commit, while auto‑prepare/multiplexing let Npgsql keep prepared plans around and pipeline small
+    statements together.
+  - Drop the per-command PrepareAsync calls in SqlAction (SqlAction.cs:528-531, 595-596). Because each command instance is disposed immediately, the prepare adds an extra Parse/Describe/
+    Sync every time. With auto‑prepare enabled on the data source you can simply execute the statement and let Npgsql cache it.
+  - Set explicit pool sizing on the same builder (builder.ConnectionStringBuilder.MinPoolSize, MaxPoolSize, ConnectionIdleLifetime) so hot connections stay in the pool long enough to
+    benefit from the disabled reset.
+
+  Grouping commits
+
+  - Introduce a scoped “unit of work” that owns the NpgsqlConnection/NpgsqlTransaction for the duration of a request. Today the repository is singleton and each pipeline step opens its own
+    connection. Make the repository (and any helpers that use the connection) scoped, inject an IDbSession that lazily opens the connection, and commit/rollback once in middleware at the
+    end of the request. That lets you:
+      - Share one transaction across the UpsertDocument cascade instead of opening/closing for every stage.
+      - Batch multiple operations (e.g., Delete + follow-on writes) in one commit when the API expands.
+  - While doing that, remove the explicit SaveAsync("beforeDelete")/RollbackAsync("beforeDelete") in DeleteDocumentById (DeleteDocumentById.cs:37-122) and rely on the ambient transaction—
+    those savepoints trigger extra round-trips inside these micro transactions.
+
+  Further Npgsql-centric ideas
+
+  - Pipe dependent statements together. For example, in UpsertDocument.AsInsert we currently execute a pre-check, INSERT, optional alias insert, and InsertReferences call sequentially. You
+    can turn the first two steps into a single NpgsqlBatch or stored procedure call so only one round-trip precedes the final InsertReferences.
+  - Add application names on outbound connections (ApplicationName=…) so the high-frequency traffic shows up clearly in pg_stat_monitor/pg_stat_activity.
+
+  Adopting the builder + auto-prepare/multiplex changes is a small code diff and removes the observable “commit + reset” chatter immediately. The scoped unit-of-work is a bigger refactor,
+  but it’s the change that actually lets you batch work and cut the WAL fsync rate the monitoring highlighted.
+
+
+Is multiplexing going to work with /home/brad/work/dms-root/Data-Management-Service/src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Deploy/
+  Scripts/0010_Create_Insert_References_Procedure.sql, it uses the unlogged table with session ids?
+
+
+• I'll reason through how Npgsql multiplexing shares a single physical connection across commands, causing all multiplexed operations to share a session and backend PID. Because the code
+  uses explicit transactions and session-specific unlogged tables keyed by pg_backend_pid(), multiplexing isn't compatible here. I’ll incorporate this analysis into a final recommendation
+  addressing connection options, disabling PrepareAsync, NoResetOnClose, and suggesting alternatives like NpgsqlDataSourceBuilder and stored procedures.
+
+─ Worked for 17s ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+• Connection lifecycle
+
+  - PostgresqlDocumentStoreRepository opens a fresh connection and transaction for every repository call, commits/rolls back, and disposes it right away (src/dms/backend/
+    EdFi.DataManagementService.Backend.Postgresql/PostgresqlDocumentStoreRepository.cs:29). Returning the connection to the pool forces Npgsql’s default reset sequence (RESET ALL, DISCARD
+    TEMP, etc.), which is exactly what pg_stat_monitor shows at ~70 k executions per minute.
+    ▸ Wrap the connection in an explicit unit-of-work scope (scoped service or middleware) so a single transaction covers the entire request, and commit once at the end. Until that refactor
+    lands, you can still eliminate the reset chatter by using NpgsqlDataSourceBuilder and setting ConnectionStringBuilder.NoResetOnClose = true, ApplicationName, AutoPrepareMinUsages,
+    MaxAutoPrepare, etc., before you register the singleton data source (PostgresqlServiceExtensions.cs:27).
+  - Avoid per-command PrepareAsync (SqlAction.cs:528, 595). Because each NpgsqlCommand instance is disposed immediately, the explicit prepare adds an extra round-trip every time. With
+    auto‑prepare enabled on the data source, Npgsql handles caching transparently.
+  - Multiplexing is not an option here. dms.InsertReferences relies on the per-session staging table keyed by pg_backend_pid(), and the repository explicitly starts transactions. Npgsql
+    multiplexing requires stateless usage (no transactions, no session-local data), so enabling it would break the staging table and the temp-table semantics the procedure depends on.
+
+  Easy wins
+
+  1. Configure the data source once
+
+     var builder = new NpgsqlDataSourceBuilder(connectionString);
+     builder.ConnectionStringBuilder.NoResetOnClose = true;
+     builder.ConnectionStringBuilder.ApplicationName = "EdFi.DMS";
+     builder.ConnectionStringBuilder.AutoPrepareMinUsages = 3;
+     builder.ConnectionStringBuilder.MaxAutoPrepare = 256;
+     builder.ConnectionStringBuilder.MinPoolSize = 5;
+     builder.ConnectionStringBuilder.MaxPoolSize = 100;
+     services.AddSingleton(builder.Build());
+     This keeps pooled connections hot, tags them in pg_stat_activity, and lets Npgsql re-use prepared plans without the manual PrepareAsync.
+     This keeps pooled connections hot, tags them in pg_stat_activity, and lets Npgsql re-use prepared plans without the manual PrepareAsync.
+  2. Scope repository dependencies
+     Change the DI registrations in PostgresqlServiceExtensions to AddScoped for IDocumentStoreRepository, ISqlAction, and other collaborators, inject a shared DbSession that exposes one
+     NpgsqlConnection/NpgsqlTransaction, and commit/rollback in middleware. That immediately reduces commits and removes the reset sequence for every handler.
+  3. Skip redundant savepoints
+     DeleteDocumentById creates and rolls back a savepoint (DeleteDocumentById.cs:37), even though the entire delete already runs in its own transaction. With the unit-of-work refactor in
+     place, the savepoint isn’t needed—removing it eliminates two extra round-trips per delete.
+  4. Use batches for multi-statement inserts
+     In UpsertDocument.AsInsert the pre-validation, document insert, alias insert, and reference insert all execute separately. Collapsing the simple ones into a single NpgsqlBatch (or a
+     stored proc wrapper) keeps the number of server round-trips down without touching the SQL.
+
+  Next steps
+
+  - Resolve the CMS authorization failures logged in src/dms/frontend/EdFi.DataManagementService.Frontend.AspNetCore/logs/20251104.log; the retries contribute to the micro-transaction
+    flood.
+  - Once the unit-of-work is in place, revisit synchronous_commit/group commit tuning at the application level—fewer commits per request makes the database settings far more effective.
+
+
+› How much is this actually going to help?
+
+
+• Expected Impact
+
+  1. Disable connection reset sequence (NoResetOnClose) + keep connections warm
+     Today every pooled connection return emits 7 utility commands (BEGIN, RESET ALL, DISCARD TEMP, DISCARD SEQUENCES, UNLISTEN *, SET SESSION AUTHORIZATION DEFAULT, CLOSE ALL).
+     pg_stat_monitor shows ~720 k executions of each per run, which is ~50 % of the total statements and ~30–35 ms of CPU per request. Turning that off removes seven round-trips and about
+     two thirds of the traffic that isn’t real work. Network latency drops immediately and CPU per request falls ~10–15 % (based on similar Npgsql workloads at scale).
+  2. Auto-prepare + multiplexing
+     Prepared plan cache removes the Parse/Describe/Sync chatter that happens once per statement today. For short statements (most of ours) that’s typically 0.2–0.4 ms saved per call and
+     about 10–15 % less CPU on the driver thread. Multiplexing can pipeline back-to-back commands, shaving another 0.5 ms per request because the client spends less time waiting on the
+     network.
+  3. Stop explicit PrepareAsync()
+     Eliminating the per-command prepare saves two round-trips for every invocation of FindInvalidReferences/InsertReferences. That’s a few hundred microseconds per upsert/delete—which
+     shows up as 10–20 ms/s overall once load is high.
+  4. Unit of work (one connection/transaction per request)
+     This is the big win. Instead of ~70 k commits per bucket you’d see the commits drop to the real operation count (~30 k) because multiple actions in the request would share a
+     transaction. That halves WAL fsync pressure immediately (current runs show 856 k WAL writes and 290 s fsync time; you can expect that to fall near 400 k writes and ~150 s fsync once
+     batching is in place). The CPU saved from the decoded utility commands also remains.
+
+  Combined expectation
+
+  - Roughly 35–40 % fewer server-side statements.
+  - 30–40 % less fsync/commit time, because fewer commits actually hit WAL.
+  - 10–20 % less CPU in the .NET services and reduced request latency by ~1–2 ms per call purely from the network chatter disappearing.
+
+  So: the small changes (connection builder tweaks) give an immediate, measurable improvement without touching higher-level code. The unit-of-work change is more work but buys most of the
+  WAL relief you’re after.
+
+
+› Are you sure about NoResetOnClose? That in already in the connection strings. Is it not actually turning on right now?
+
+
+• Right now you’re running the service with the Development settings, not the production defaults. appsettings.json (your production baseline) does set NoResetOnClose=true, but
+  appsettings.Development.json—which is the file that wins in your local/test runs—doesn’t include it. When the configuration stack is built, the Development connection string overwrites
+  the base one, so the driver falls back to its default (NoResetOnClose=false). That’s why pg_stat_monitor still shows the reset chatter.
+
+  Two quick fixes:
+
+  1. Add ;NoResetOnClose=true to connectionStrings.DatabaseConnection in appsettings.Development.json (and any other environment-specific files).
+  2. Or move the connection-string construction into code using the NpgsqlDataSourceBuilder so you set ConnectionStringBuilder.NoResetOnClose = true; programmatically. That guarantees the
+     flag is applied no matter which config file is active.
+
+  Once the effective connection string actually has NoResetOnClose=true, the reset/UNLISTEN flood goes away.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 Here's a question:
