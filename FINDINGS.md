@@ -2216,37 +2216,377 @@ Is multiplexing going to work with /home/brad/work/dms-root/Data-Management-Serv
 
 
 
+## Update: 2025-11-05-01-07-npgsql-reset-off (Like it sounds)
+
+• Summary
+
+  - Small commits source: app EdFi.DMS issues nearly one COMMIT per DML statement.
+  - Impact: response time gated by WAL fsync; hardware not saturated; the python load driver isn’t the bottleneck.
+
+  Evidence (7‑min window)
+
+  - Commit density (pg_stat_monitor):
+      - app=EdFi.DMS commits=692,164, toplevel=true; DML calls=702,767 ⇒ 984.9 commits per 1,000 DML (≈1:1).
+      - Overall DML calls (cmd_type IN 2,3,4): 712,202; COMMIT calls: 692,950 ⇒ 0.97 commits/DML.
+  - Hot paths (pg_stat_monitor):
+      - InsertReferences calls: 404,637.
+      - Document writes (pattern match): ~281,174 INSERTs.
+      - COMMIT family calls: 735,700 in the same window.
+  - Waits (pg_stat_activity): active waits include ClientRead and IO/WalSync; confirms commit flushes are limiting.
+  - WAL/IO (pg_stat_io): client backends still doing synchronous WAL fsyncs; writer not the bottleneck.
+  - System: CPU ~55–60% idle and NVMe waits ~0.2 ms; python load at ~80% CPU with tiny RSS; not starving Postgres or DMS.
+
+  Why this matters
+
+  - A 1:1 commit-to-DML ratio yields many tiny transactions. Each COMMIT forces WAL syncs, inflating latency despite group commit and WAL compression. You’ll get bigger wins by batching
+    logical operations per transaction than by further kernel/PG tuning.
+
+  Recommendations
+
+  - Batch transactions in the DMS C# code:
+      - Wrap the typical write sequence (Document insert/update + InsertReferences + any deletes) in a single transaction per logical request, not per statement.
+      - When safe, coalesce multiple requests (e.g., N=50–200) per transaction to drive group commit; measure at 50/100 to pick a knee in the curve.
+      - Use NpgsqlTransaction or TransactionScope; consider NpgsqlBatch to reduce round trips inside the transaction.
+  - Reduce durable flush frequency for idempotent flows:
+      - SET LOCAL synchronous_commit='local' (or 'off') inside those transactions; keep defaults for non‑idempotent/critical writes.
+  - Keep the DB-side optimizations you’ve added:
+      - Fast equality probe in InsertReferences avoids no‑op writes.
+      - Pass p_isPureInsert=true to skip the partition delete when applicable.
+      - Maintain dms.ReferenceStage with periodic VACUUM (ANALYZE) or TRUNCATE between runs.
+  - Operational:
+      - If using commit_delay, set commit_siblings (e.g., 10–20) so sessions actually wait when peers are active.
+      - Keep wal_writer_delay low (~10 ms) so the WAL writer gathers records before flush.
+
+  If you want, I can pinpoint the top committing endpoints by tagging application_name per request (easy in Npgsql) and re‑running this pg_stat_monitor breakdown, then propose concrete
+  batching boundaries per controller.
+
+### Results
+
+  Overall Aggregated Statistics:
+  - Total Requests: 2,254,754
+  - Failures: 1,603 (0.071% failure rate)
+  - Median Response Time: 7ms
+  - 95th Percentile: 11ms
+  - 99th Percentile: 22ms
+  - Throughput: 1,253 req/s
+
+  Key Performance Metrics:
+  - Min Response Time: 1ms
+  - Max Response Time: 580ms
+  - Average Response Time: 7.07ms
+
+  Notable Observations:
+  1. High Throughput: Achieved ~1,253 requests/second with 10 concurrent users
+  2. Low Latency: Most responses under 22ms (99th percentile)
+  3. Single Endpoint Issue: studentSchoolAssociations had 1,600 failures out of 71,652 requests (2.2% failure rate)
+  4. All Other Endpoints: Showed 0 failures - healthy data validation
+
+
+## Update: 2025-11-05-08-22-with-15-clients (Like it sounds)
+
+ Database hotspots
+
+  - pg_stat_monitor shows dms.InsertReferences remains dominant: ~446 k calls per bucket at ~74 s total time and ~78 MB WAL each; per-call cost is ~1.76 KB WAL, unchanged. The total WAL
+    since reset is 3.32 GB (pg_stat_wal).
+  - Raising client count to 15 increased concurrency: client backends logged 903 502 WAL flushes taking 13.97 s write_time and 311.77 s fsync_time (pg_stat_io). Commit wait events are now
+    mostly ClientRead, indicating sessions often block on results rather than on WALWrite.
+  - Idle-in-transaction sessions (same pattern as earlier) still hold row locks during inserts/deletes, keeping autovacuum busy. dms.ReferenceStage shows ~67 k dead tuples even after
+    frequent autovacs.
+
+  System & application
+
+  - The python load generator (pid 1052084) uses ~83 % CPU at nice 0; system idle stays around 55 % (iostat/top), so the generator isn’t saturating the host.
+  - The DMS frontend (pid 1016772) runs around 86 % CPU with ~1.4 GB RSS; today’s log (src/dms/frontend/.../logs/20251105.log) shows only normal restarts—no CMS auth errors surfaced this
+    run.
+  - Disk I/O remains trivial (NVMe waits ~0.2 ms, <1 % util), confirming response time is still WAL/transaction bound, not storage.
+
+  Observations from pg_stat_monitor
+
+  - ~15 buckets are capturing 3.97 M total calls; InsertReferences dominates every bucket, with per-bucket WAL 75–82 MB and shared buffer hits ~7.4 M. The delete step accounts for ~9.8 MB
+    WAL per bucket.
+  - pg_stat_monitor_reset() left stats_since at 2025‑11‑05 01:22:54; current stats indicate no gaps, so the extension is logging correctly under load.
+
+  Recommendations
+
+  1. To capitalize on the extra clients, ensure commit_siblings is high enough (≥10) so your commit_delay actually batches group commits; otherwise each client still flushes individually,
+     driving the 0.34 ms average fsync.
+  2. Reduce idle transactions: close or reuse connections promptly after each write phase to remove ClientRead holds and lighten autovacuum load.
+  3. Continue periodic VACUUM (ANALYZE) or TRUNCATE on dms.ReferenceStage to keep probe stats fresh.
+  4. Monitor pg_stat_monitor buckets during the run for lateral queries (e.g., document queries) to see if any new hotspots appear under 15 clients; right now they’re overshadowed by
+     InsertReferences but may surface as you add more concurrency.
+
+
+› What does it mean that Commit wait events are now
+      mostly ClientRead, indicating sessions often block on results rather than on WALWrite after increasing concurrency?
+
+
+• I’m noting that wait events shifted from WalWrite (commit flush waits) to ClientRead (backend waiting on client). This suggests the app or network is now the bottleneck, perhaps due to
+  more concurrency or slower result consumption, while commits still use synchronous flush. I’ll clarify what this means for performance and resource use.
+
+─ Worked for 7s ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+  wait_event = ClientRead. That wait class is PostgreSQL’s way of saying “I’ve finished my work and I’m waiting for the client to read or acknowledge the data I’ve already sent.”
+
+  So, with the extra concurrency, the bottleneck shifts:
+
+  - Commit-level WAL flushes still happen, but the flush completes quickly.
+  - The server then tries to return results/OK status to each client, and it stalls until the client drains the socket. The general causes are: the client thread hasn’t called read() yet
+    (busy doing something else), the application is single-threaded and can’t keep up, or the network stack is backed up (usually the first two on localhost).
+
+  In short, you’ve alleviated the WAL flush contention enough that the next choke point is client-side consumption of responses. If you need more throughput:
+
+  1. Make sure the client app consumes results promptly—avoid long processing between issuing commands and reading responses; maybe use async/pipelined calls.
+  2. Spread the load across more frontend threads or processes—even with 15 DB connections, if only a few app threads handle responses, they’ll bottle up here.
+  3. Keep an eye on commits that sit idle in transaction after finishing; they hold row locks and contribute to autovacuum work.
+
+  This doesn’t mean WAL cost went away—it just stopped being the current blocker. The system now spends more time waiting on the clients you launched to read their commit confirmations.
 
 
 
+• I’m concluding the database is waiting on the DMS frontend because the ClientRead wait event shows the server is stalled waiting for the client to consume data. Given that the
+  application_name is EdFi.DMS and CPU usage is high on its process, it’s likely the DMS is the bottleneck rather than the database or load generator. I'll explain this connection and back
+  it up with the observed CPU usage and wait events, then offer recommendations based on this diagnosis.
+
+─ Worked for 9s ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+• Yes—the database is now waiting on the DMS process. In pg_stat_activity, the active sessions all report application_name = EdFi.DMS and wait_event = ClientRead. That wait class means
+  PostgreSQL has already finished the SQL work and sent the commit response back, but the client hasn’t read it yet. Since the client is the DMS C# service, the bottleneck has moved out of
+  the database and into DMS:
+
+  - DMS threads have to pull responses off the socket, deserialize them, and keep issuing new work. When they fall behind, the DB spends time idling on ClientRead even though WAL flushes
+    are already done.
+  - You can see DMS sitting around 85 % CPU, while the python load generator is around the same level; neither is saturating the machine, but DMS becomes the pacing factor for the commit
+    loop.
+
+  Next steps to relieve it:
+
+  1. Increase DMS’s request-processing parallelism (more worker threads/Task.Run concurrency) so all 15 DB sessions are serviced promptly.
+  2. Make sure DMS drains DbDataReader results immediately after each statement (no long-running business logic before reading).
+  3. Profile DMS to catch synchronous work—serialization, validation, queuing—that might be holding up response handling.
+  4. Keep trimming idle-in-transaction spans; they still show up, holding locks and forcing extra autovacuum churn.
+
+  So with WAL no longer the main pain point, squeezing more throughput will come from tuning DMS rather than the database.
 
 
+› Is this bottleneck change a good thing? I'm not understanding why greater concurrency would remove WAL write waits as a bottleneck. Is it just that DMS has become slower?
 
 
+• It’s neither purely “good” nor purely “bad”—it just means your limiting factor moved. Before you added clients, the database was spending most of its time waiting to flush WAL at commit.
+  After you raised concurrency, DMS generated more parallel work, so:
+
+  1. Group commit did its job – With more transactions in flight at once, WAL flushes now carry batches of commits, so each individual commit waits less on the flush. That’s why WalWrite
+     waits dropped: the extra concurrency made the WAL pipeline more efficient.
+  2. DB still finishes first – Even though it flushes more work per fsync, the database still turns around each statement faster than DMS can issue the next one or read the response. Rather
+     than being idle waiting for storage, it now idles waiting for the client (ClientRead).
+  3. Throughput is higher overall – You pushed the system harder and the old bottleneck (WAL) kept up. The new constraint is the application consuming results. That’s typically a sign you
+     got some headroom by tuning the database, and now you’ll get bigger gains from optimizing DMS’s responsiveness.
+
+  It doesn’t mean DMS suddenly became “slower”; it just means the database no longer stalls on storage, so it exposes whatever delay comes next in the chain. To go further, focus on DMS’s
+  concurrency, response handling, and any post-commit work it does between issuing statements and reading results. Meanwhile, keep an eye on total throughput—if your requests per second
+  went up when WAL waits disappeared, that’s a positive outcome even though a new bottleneck surfaced.
 
 
+› The move to 15 clients only improved throughput by 1%. Median response time was similar, and tail latency went up 3x
 
 
+• Right now you’re getting only ~1 % throughput gain from 50 % more clients, with the median flat and the 99th percentile 3× worse. That lines up with what we saw in pg_stat_activity:
+  the database now spends most of its time sitting in ClientRead, waiting for DMS to pull responses off the socket. Since it can’t hand work back faster than DMS consumes it, we’d expect
+  throughput to barely move while queues build up—hence the longer tail latency.
+
+  A few concrete checks on the DMS side:
+
+  Connection & worker concurrency
+
+  - • Make sure the ASP.NET connection pool actually uses all 15 DB sessions. With PGPOOL/Npgsql, you need both Max Pool Size and enough request threads. If the pool defaults to 10, the
+    extra clients just sit in line.
+  - • Confirm DMS has enough request processors; if it serializes work or reuses a small TaskScheduler, you can’t leverage the additional DB slots.
+
+  Request handling and serialization
+
+  - • See where the latency accumulates after a DbCommand.Execute returns. If the response parsing, validation, or logging runs synchronously on the same thread, the socket isn’t drained
+    until that completes.
+  - • Add lightweight timing at the controller/service boundary (request start → DB call → response flush) to see whether the long tails appear before or after the DB round-trip.
+
+  Queue behavior
+
+  - • Check the load generator’s connections: if each client waits on DMS for a response before sending the next request, they amplify the stall. Try pipelining or letting the generator
+    send the next write as soon as it gets the DB ack.
+  - • Monitor DMS thread pool starvation via EventCounters or ThreadPool.GetAvailableThreads(); heavy blocking can throttle 15 clients to only a few active worker threads.
+
+  Measure the DB side just to confirm
+
+  - • Use pg_stat_monitor to collect query latencies and WAL waits per bucket; if the p95 latency inside the DB is still ≤ a few milliseconds but your tail is seconds, it validates that the
+    slowdown is upstream.
+  - • Track pg_stat_activity.query_start vs state_change to see how long sessions linger ‘idle in transaction’; the longer they sit, the more tail latency grows.
+
+  Once you’ve got those numbers, you can decide whether to keep the client count higher or pull it back until DMS can keep up. Adding more clients without addressing the DMS throttles will
+  just stretch the tails, so look for cheap wins in response consumption and parallelism before pushing concurrency further.
 
 
+## Update: 2025-11-05-08-22-with-15-clients-again (Re-run last run)
+
+• Comparison Summary
+
+  - Higher concurrency (15 clients) deepens the WAL bottleneck. Client wal writes climbed from 736 k → 1 037 k (+41 %), with fsync_time rising 247 s → 356 s (+44 %) since the earlier
+    snapshot, so commit stalls are even more pronounced.
+  - Query mix unchanged: dms.InsertReferences now 735 k calls at 1.69 ms mean (was 537 k at 1.68 ms), and INSERT INTO dms.Reference 695 k calls at 0.53 ms (was 508 k at 0.53 ms). Per-call
+    WAL remains ≈1.8 KB; total WAL grew to ~3.05 GB as expected.
+  - pg_stat_monitor shows EdFi.DMS workload at 4.32 M calls, 1.46 GB WAL (+7 % calls, –7 % WAL from prior sample, likely due to longer run). The hottest bucket still corresponds to
+    InsertReferences bursts with ~72 ms bucket execution times.
+  - pg_stat_activity continues to show WalSync waits plus multiple “idle in transaction” Document sessions, so row locks and autovacuum pressure persist.
+  - System resources remain comfortable: CPU 62 % idle, disk waits ≈0.2 ms, swap saturating but stable. The python load harness stays ~83 % CPU (not limiting), and DMS frontend
+    (pid 1016772) holds ~390 % CPU with no new errors.
+
+  Key Differences vs. Previous Snapshot
+
+  - Increased client count produced ~37 % more InsertReferences calls and ~36 % more WAL, but no improvement in per-call latency—synchronous flushes are the limiting factor once again.
+  - Fsync backlog grew sharply (+44 %), negating potential throughput gains from the extra clients.
+  - Total database commits rose (xact_commit 1.29 M vs. 0.97 M earlier), but each commit now waits longer (mean commit time ≈0.00072 ms previously; still tiny but fsync duration dominates
+    actual response).
+
+  Recommendations
+
+  1. Enable deeper group commit: raise commit_siblings (e.g., 10) so the 100 µs commit_delay only applies during heavy load, and reduce wal_writer_delay to 10 ms to offload flush work from
+     backends.
+  2. Batch or relax durability for safe paths (SET LOCAL synchronous_commit='local'/'off') to reduce fsync pressure now that client count increased.
+  3. Eliminate “idle in transaction” requests in the DMS app; each open transaction keeps locks and extends autovacuum work.
+  4. Use pg_stat_monitor buckets for more granular analysis (top query/WAL per bucket) to spot any outlier statements once the load finishes.
 
 
+## Update: 2025-11-05-12-30-middlewares-disabled (Disabled all validation and coercion) - Increased throughput from 1200 -> 1350
+
+### Circuit breaker tripped, but may not have had an impact:
+
+025-11-05 12:40:05.500 ERR DeleteById failure - 0HNGSJ60H7JU6:00011429
+Npgsql.PostgresException (0x80004005): 23001: update or delete on table "alias_08" violates RESTRICT setting of foreign key constraint "fk_reference_referencedalias_9" on table "reference"
+
+DETAIL: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+   at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+   at Npgsql.NpgsqlCommand.ExecuteNonQuery(Boolean async, CancellationToken cancellationToken)
+   at EdFi.DataManagementService.Backend.Postgresql.Operation.SqlAction.DeleteDocumentByDocumentUuid(PartitionKey documentPartitionKey, DocumentUuid documentUuid, NpgsqlConnection connection, NpgsqlTransaction transaction, TraceId traceId) in /home/brad/work/dms-root/Data-Management-Service/src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Operation/SqlAction.cs:line 662
+   at EdFi.DataManagementService.Backend.Postgresql.Operation.SqlAction.DeleteDocumentByDocumentUuid(PartitionKey documentPartitionKey, DocumentUuid documentUuid, NpgsqlConnection connection, NpgsqlTransaction transaction, TraceId traceId) in /home/brad/work/dms-root/Data-Management-Service/src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Operation/SqlAction.cs:line 662
+   at EdFi.DataManagementService.Backend.Postgresql.Operation.DeleteDocumentById.DeleteById(IDeleteRequest deleteRequest, NpgsqlConnection connection, NpgsqlTransaction transaction) in /home/brad/work/dms-root/Data-Management-Service/src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Operation/DeleteDocumentById.cs:line 63
+  Exception data:
+    Severity: ERROR
+    SqlState: 23001
+    MessageText: update or delete on table "alias_08" violates RESTRICT setting of foreign key constraint "fk_reference_referencedalias_9" on table "reference"
+    Detail: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+    SchemaName: dms
+    TableName: reference
+    ConstraintName: fk_reference_referencedalias_9
+    File: ri_triggers.c
+    Line: 2785
+    Routine: ri_ReportViolation
+2025-11-05 12:40:05.508 WRN Circuit breaker detected failure: UnknownFailure - UnknownFailure { FailureMessage = Unknown Failure }
 
 
-Here's a question:
+### Results
 
-How do we monitor
+• Database
+  - Removing per-request work trimmed CPU but you’re still WAL-bound: since the reset Postgres generated 2.1 GB WAL (pg_stat_wal) with 803 457 client WAL writes and 265.6 s of fsync time (pg_stat_io). Commit
+    buckets in pg_stat_monitor show ~80 k commits per bucket and ~0.0019 ms mean execution, so latency comes from synchronous flush, not CPU.
+  - The new pg_stat_monitor extension is healthy; stats show jumpy bucket counts but match pg_stat_statements for top queries.
+  - pg_stat_activity still has occasional idle-in-transaction sessions holding locks on deletes/inserts, which sustains autovacuum work despite removed middleware.
+  - Logs reveal repeated foreign-key violations when deleting documents with remnants in dms.reference (src/dms/frontend/…/logs/20251105.log:1-20), causing circuit breaker warnings. That failure path bypasses
+    cleanup and may introduce additional retries.
 
-1. No references changed ** done
-2. It's all new (insert) ** done
-3. It's an update and
-  1. We should use on conflict
-  2. We should use merge
+  System & Load
 
-How about a heuristic that we check if the counts are the same. If so, it's likely a small change or none at all.
+  - Disk remains underutilized (iostat waits ≈0.2 ms), so commit latency remains the bottleneck, not I/O bandwidth.
 
-Should we instrument this and see if we can tune further that way?
+  Recommendations
 
-- Tweak checkpoint cadence
-- Aggressive AUTOVACUUM of staging table
-- compression options?
+  1. Since WAL flush is still dominant even after disabling middleware, focus on batching transactions or relaxing durability (synchronous_commit='local'/'off') for high-volume, retryable paths to shrink the
+     265 s fsync budget.
+  2. With pg_stat_monitor active, track bucket-level spikes; consider raising commit_siblings to make commit_delay effective at merging flushes, and keep wal_writer_delay around 10 ms so the WAL writer handles
+  4. Close idle-in-transaction sessions promptly to reduce autovac work and prevent lock contention.
+  5. Keep monitoring pg_stat_monitor buckets to catch regressions quickly; the extension is now a reliable view into per-minute trends.
+
+
+  Test Configuration:
+  - Duration: 30 minutes
+  - Concurrent Clients: 15
+  - Total Requests: 2,423,439
+  - Test Period: 12:31 - 13:01 (Nov 5, 2025)
+  - Output Directory: DmsTestResults/2025-11-05-12-30-middlewares-disabled
+
+  Overall Performance Metrics
+
+  | Metric                | Value                       |
+  |-----------------------|-----------------------------|
+  | Throughput            | 1,346.78 req/s              |
+  | Median Response Time  | 7 ms                        |
+  | Average Response Time | 10.2 ms                     |
+  | 95th Percentile       | 37 ms                       |
+  | 99th Percentile       | 45 ms                       |
+  | Max Response Time     | 452 ms                      |
+  | Total Failures        | 1,790 (0.074% failure rate) |
+
+ Circuit Breaker Impact Analysis
+
+  Yes, a circuit breaker tripped, but the impact was minimal. Here's what happened:
+
+  Root Cause
+
+  At 12:40:05 (9 minutes 50 seconds into the 30-minute test):
+  - FK constraint violation: violates RESTRICT setting of foreign key constraint "fk_reference_referencedalias_9" on table "reference"
+  - The DELETE operation on table alias_08 failed because it was referenced by reference table rows
+  - Circuit breaker logged the failure with severity: WRN Circuit breaker detected failure: UnknownFailure
+
+  Requests Affected
+
+  Very few:
+  - Only 4 HTTP 500 errors out of 2.4M total requests (0.00016%)
+    - DELETE /data/ed-fi/staffs/{id} - 1x
+    - DELETE /data/ed-fi/staffEducationOrganizationAssignmentAssociations/{id} - 1x
+    - POST /data/ed-fi/calendars - 1x
+    - PUT /data/ed-fi/calendars/{id} - 1x
+  - The other 1,786 failures were 400 Bad Request validation errors (EnrollmentTypeDescriptor), unrelated to circuit breaker
+
+  Did It Skew Throughput Numbers?
+
+  No, negligibly:
+  - Failure rate only spiked to ~1.33 failures/sec at 12:40 timestamp
+  - Declined gradually to 0.5 failures/sec over next few seconds
+  - Circuit breaker recovered without cascading (no persistent open state logged)
+  - Overall test impact: 0.074% failure rate (essentially healthy)
+  - Median response time: 7ms, 95th percentile: 37ms - unaffected
+
+  The circuit breaker worked as designed—it caught the FK constraint failure without causing a cascading system failure.
+
+## Update: 2025-11-05-15-48-middlewares-disabled-rerun - Increased throughput from 1200 -> 1370
+
+Just a confirmation because of the FK violation that leaked out on last run
+
+  Test Results Summary
+
+  Test Duration: 30 minutes | Clients: 15 | Configuration: Middlewares Disabled
+
+  Key Performance Metrics
+
+  | Metric                | Value                      |
+  |-----------------------|----------------------------|
+  | Total Requests        | 2,465,578                  |
+  | Failures              | 1,705 (0.07% failure rate) |
+  | Median Response Time  | 7 ms                       |
+  | Average Response Time | 10.03 ms                   |
+  | Min Response Time     | 1 ms                       |
+  | Max Response Time     | 353 ms                     |
+  | Throughput            | 1,370.38 req/s             |
+  | Failure Rate          | 0.95 failures/s            |
+
+  Percentile Response Times
+
+  - 50th percentile: 7 ms
+  - 75th percentile: 9 ms
+  - 90th percentile: 28 ms
+  - 95th percentile: 37 ms (SLA standard)
+  - 99th percentile: 50 ms (Tail latency)
+  - 99.9th percentile: 74 ms
+  - 100th percentile: 350 ms
+  
