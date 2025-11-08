@@ -2589,4 +2589,151 @@ Just a confirmation because of the FK violation that leaked out on last run
   - 99th percentile: 50 ms (Tail latency)
   - 99.9th percentile: 74 ms
   - 100th percentile: 350 ms
-  
+
+## Update: 2025-11-07-15-58-first-csharp-tweak - Increased throughput from 1200 -> 1330
+
+  30-Minute Volume Performance TestDirectory: DmsTestResults/2025-11-07-15-58-first-csharp-tweak
+
+  Aggregated Performance Metrics
+
+  | Metric                | Value                      |
+  |-----------------------|----------------------------|
+  | Total Requests        | 2,400,895                  |
+  | Failed Requests       | 1,701 (0.07% failure rate) |
+  | Median Response Time  | 7 ms                       |
+  | Average Response Time | 10.32 ms                   |
+  | Min/Max Response Time | 1 ms / 369 ms              |
+  | Throughput            | 1,334 req/s                |
+  | 95th Percentile       | 37 ms                      |
+  | 99th Percentile       | 45 ms                      |
+
+### DB Findings - Need more autovac of temp table, but also need more load
+
+  - pg_stat_activity (~20 sessions) shows only 6 active backends and most waits are ClientRead (DB is waiting on the DMS app); there are no blocking locks and only single WALWrite/WalSync
+    events. Transactions since the Nov 5 reset total 4,034,737 commits over 174,616 s (~24 TPS), so the database is well under capacity.
+  - Buffer/cache efficiency is high (835 M shared hits vs 9.1 M reads = 98.9 % hit ratio). pg_stat_io reports only ~114 k relation reads (≈897 MB, 10.8 s read time) and client backends
+    perform no direct writes; checkpointer/walwriter have ~1.7 s of write time combined. iostat confirms NVMe latency near 0.14 ms with <35 % utilization, so the system isn’t I/O bound.
+  - Top statements from pg_stat_statements:
+    • SELECT success… FROM dms.InsertReferences(...) – 2.2 M calls, 3,769 s total, 1.71 ms mean, 3.99 GB WAL.
+    • DELETE FROM dms.Document ... DocumentUuid = $2 – 1.5 M calls, 1,141 s total, 0.75 ms mean, 0.5 GB WAL.
+    • INSERT INTO dms.Reference … ON CONFLICT DO UPDATE – 2.1 M calls, 1,109 s total, 0.54 ms mean, 3.97 GB WAL.
+    • Document insert CTE – 1.65 M calls, 367 s total, 0.24 ms mean, 2.79 GB WAL.
+    Execution times are sub‑2 ms, so Postgres is keeping up; the reference-ingestion path simply produces the vast majority of WAL.
+  - Autovacuum is constantly cleaning up after that churn: referencestage currently has ~160 k dead tuples with 48 autovac runs and >400 k sequential scans; reference_% partitions each
+    show 55–60 k dead tuples even though their last autovac finished seconds ago, and autovac workers are hitting VacuumDelay. Without tuning, this loop wastes CPU and generates extra WAL
+    despite the table being unlogged.
+  - Config snapshot: shared_buffers=16 GB, work_mem=64 MB, maintenance_work_mem=2 GB, synchronous_commit=on, track_io_timing/track_wal_io_timing/track_functions=pl all enabled. pg_stat_wal
+    shows 9.06 GB WAL since Nov 5 (~0.05 MB/s) and wal_buffers_full=0, so WAL flushes are not a latency driver today.
+
+  System & App
+
+  - Host resources remain comfortable: load average 10.6/9.5/5.9 on 24 cores, vmstat shows ~57–60 % idle, memory has 41 GiB available with only 57 MiB swap, and NVMe utilization stays below
+    33 % with negligible await.
+  - pidstat puts the DMS front-end (EdFi.DataManagementService.Frontend.AspNetCore, PID 87917) at ~240 % CPU (~2.4 cores) while the combined PostgreSQL worker pool consumes ~4.3 cores; the
+    remaining cores are idle. Because the DB processes mostly wait on ClientRead, response-time bottlenecks are currently in the C# layer (JSON serialization/business logic) rather than
+    in PostgreSQL.
+
+  Load Test Health
+
+  - The python load generator (PID 96311) runs at ~87 % user CPU with 0 % iowait and tiny memory usage. On a 24-core box this is <5 % of total CPU, so the harness itself isn’t throttling
+    the test; to drive more load you’ll need more client threads/processes.
+
+  Key Risks / Opportunities
+
+  - The dms.InsertReferences workflow plus the shared ReferenceStage table is responsible for nearly all WAL output and autovacuum work. Because each call issues row-by-row DELETE/INSERTs
+    on a shared unlogged table, it leaves ~160 k dead tuples between autovac runs and forces >400 k sequential scans. Consider session-private temp tables or explicit TRUNCATE/VACUUM
+    ownership per backend, and ensure callers set p_isPureInsert=true whenever deletes aren’t needed, so the expensive cleanup path is skipped.
+  - Autovac workers are sleeping on VacuumDelay while trying to keep up with reference_% partitions. Raising autovacuum_vacuum_cost_limit (or lowering the delay) for those partitions and/or
+    scheduling heavier manual vacuums during off-peak hours will reduce churn and keep table bloat from creeping up.
+  - The hot SELECT ... FROM dms.Document ... FOR NO KEY UPDATE grab row locks for simple existence checks. If the logic only needs read consistency, switching to FOR KEY SHARE or optimistic
+    retries will avoid unnecessary lock escalation as concurrency scales.
+
+  Next steps
+
+  1. Increase request concurrency (multiple python workers or higher client thread counts) so the application no longer keeps PostgreSQL waiting on ClientRead; only then will true DB
+     bottlenecks surface.
+  2. Profile the DMS service (dotnet-trace, dotnet-counters) around the reference-ingest code path to locate the CPU hotspot that’s consuming ~2.4 cores while the DB is idle.
+  3. Refactor or retune the reference staging workflow (session-local temp tables, explicit TRUNCATE, higher autovac limits for referencestage/reference_%) and reset pg_stat_statements
+     afterward to measure the WAL/CPU savings.
+
+## Update: 2025-11-07-16-42 Rerun with 20 clients
+
+
+● 30-Minute Volume Test Results with 20 Clients
+
+  Directory: DmsTestResults/2025-11-07-16-42-first-csharp-tweak-more-load
+
+  Aggregated Performance Metrics
+
+  | Metric                | Value                      |
+  |-----------------------|----------------------------|
+  | Total Requests        | 2,399,949                  |
+  | Failed Requests       | 1,685 (0.07% failure rate) |
+  | Median Response Time  | 7 ms                       |
+  | Average Response Time | 14.08 ms                   |
+  | Min/Max Response Time | 1 ms / 329 ms              |
+  | Throughput            | 1,333.5 req/s              |
+  | 95th Percentile       | 65 ms                      |
+  | 99th Percentile       | 78 ms                      |
+
+  Comparison: 15 Clients vs 20 Clients
+
+  | Metric          | 15 Clients  | 20 Clients    | Change          |
+  |-----------------|-------------|---------------|-----------------|
+  | Total Requests  | 2,400,895   | 2,399,949     | -0%             |
+  | Failures        | 1,701       | 1,685         | -16             |
+  | Median          | 7 ms        | 7 ms          | Same            |
+  | Average         | 10.32 ms    | 14.08 ms      | +3.76 ms (+36%) |
+  | Throughput      | 1,334 req/s | 1,333.5 req/s | -0.4 req/s      |
+  | 95th percentile | 37 ms       | 65 ms         | +28 ms (+76%)   |
+  | 99th percentile | 45 ms       | 78 ms         | +33 ms (+73%)   |
+  | Max Response    | 369 ms      | 329 ms        | -40 ms          |
+
+
+Current Load
+
+  - 20-client edfi_performance_test run (PID 132649) has been executing ~17 min; pidstat shows it steady at 82–88 % user CPU on a single core with 0 % wait and trivial memory, so the
+    harness is healthy but inherently single-process—it is not saturating the 24-core host.
+  - Host telemetry remains light: load averages 8.85/8.98/7.23 with vmstat 1 still showing 59–61 % idle CPU and <2 % iowait, free -h leaves 48 GiB RAM available, and iostat -xz reports
+    NVMe1n1 utilization ≤32 % with 0.14 ms await. No systemic CPU, memory, or storage pressure was introduced by the extra clients.
+
+  Database Health
+
+  - pg_stat_activity lists only six non-idle sessions and the wait summary is dominated by ClientRead; PostgreSQL is typically waiting for the ASP.NET Core service rather than for locks or
+    I/O.
+  - pg_stat_statements (reset 16:41:56) shows the same reference ingestion chain as the top consumer:
+    • dms.InsertReferences → 618,906 calls (≈610/s) at 1.73 ms mean, 1.03 GB WAL.
+    • INSERT INTO dms.Reference…ON CONFLICT → 586,644 calls at 0.54 ms mean, 1.03 GB WAL.
+    • DELETE FROM dms.Document… → 429,396 calls at 0.75 ms mean, 0.13 GB WAL.
+    Execution times remain sub‑2 ms, so PostgreSQL is not the latency bottleneck even with ~2 MB/s WAL generation (pg_stat_wal: 2.36 GB since 16:41:44, no buffer-full events).
+  - pg_stat_io attributes just 2,449 shared-block reads (≈19 MB, 0.10 s read time) vs 890,126 writes (≈9 GB, 15.6 s write time) for client backends in this interval, matching the healthy
+    NVMe metrics and confirming the workload is WAL/CPU heavy, not read heavy.
+  - Autovacuum churn persists: dms.ReferenceStage holds ~163 k dead tuples with 74 autovac runs since the stats reset, and multiple reference_% partitions each have ~50 k dead rows
+    even though their latest autovac finished seconds earlier. The shared unlogged staging table plus row-by-row deletes remain the main source of background work, but they have not yet
+    manifested as blocking waits.
+
+  Application & Response-Time Bottlenecks
+
+  - The DMS ASP.NET Core process (PID 87917) now burns ~245 % CPU (≈2.5 cores) continuously, whereas PostgreSQL as a whole uses only ~6 cores (pidstat -C postgres). With >12 cores still
+    idle, end-to-end response time is application-bound, not database-bound.
+  - Despite doubling client count, only ~6 database sessions are active at any moment—suggesting the C# service thread pool or Npgsql connection pool is limiting concurrency. ClientRead
+    waits on the database confirm the backend frequently waits for the app to consume results.
+  - There are still no WALWrite/WalSync waits, lock contention, or disk-latency spikes; synchronous_commit=on remains acceptable because flush latency stays sub-millisecond on NVMe.
+
+  Load-Test Driver Check
+
+  - The Python harness consumes <1 core and exhibits no iowait or memory pressure, so it is not distorting the test. To truly realize 20+ concurrent clients, you may need multiple driver
+    processes or to run the generator from another host; the current single process can only push what one CPU core can schedule.
+
+  Next Steps
+
+  1. Profile the ASP.NET Core service (dotnet-counters, dotnet-trace) to identify why only ~6 DB sessions stay active and raise thread-pool/connection-pool limits so the extra clients reach
+     PostgreSQL.
+  2. Refactor the reference staging pipeline (session-local temp tables or explicit TRUNCATE, ensure p_isPureInsert is set when possible) and raise autovacuum_vacuum_cost_limit on
+     referencestage/reference_% to curb the 4–5 autovac runs per minute and reduce WAL churn.
+  3. Increase load-driver concurrency (multiple Python processes or off-box generation) and rerun; monitor pg_stat_statements/pg_stat_wal afterward to see whether any true PostgreSQL
+     bottlenecks emerge once the application layer scales out.
+
+  Overall, even with 20 clients, PostgreSQL 18 remains comfortably within CPU, memory, and I/O limits; the dominant bottleneck for response time is still the DMS C# application layer rather
+  than the database or the load harness.
+
