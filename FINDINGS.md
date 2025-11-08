@@ -2737,3 +2737,84 @@ Current Load
   Overall, even with 20 clients, PostgreSQL 18 remains comfortably within CPU, memory, and I/O limits; the dominant bottleneck for response time is still the DMS C# application layer rather
   than the database or the load harness.
 
+## Update: 2025-11-08-13-50 Rerun with 20 clients after bug fix to python load tester 
+
+### Load test results - 67% more throughput - 2200 req/sec - Python single thread is maxxed
+
+● 30-Minute Volume Test Results with 20 Clients
+
+  Directory: DmsTestResults/2025-11-08-13-50-dms-monitoring
+
+  Aggregated Performance Metrics
+
+  | Metric                | Value                       |
+  |-----------------------|-----------------------------|
+  | Total Requests        | 4,013,548                   |
+  | Failed Requests       | 2,936 (0.073% failure rate) |
+  | Median Response Time  | 8 ms                        |
+  | Average Response Time | 8.08 ms                     |
+  | Min/Max Response Time | 1 ms / 323 ms               |
+  | Throughput            | 2,231 req/s                 |
+  | 95th Percentile       | 14 ms                       |
+  | 99th Percentile       | 18 ms                       |
+
+  Key Observations
+
+  Performance Improvement Over 15 Clients (Baseline):
+  - Requests increased: 2.4M → 4.0M (+67% more throughput)
+  - Throughput increased: 1,334 req/s → 2,231 req/s (+67%)
+  - Median latency stable: 7ms → 8ms (minimal increase)
+  - 95th percentile: 37ms → 14ms (significantly improved!)
+  - 99th percentile: 45ms → 18ms (much better tail latency)
+
+  Excellent Consistency:
+  - DELETE operations: consistently 5ms median
+  - Most POST operations: 8-10ms median
+  - Failures remained low (0.073%)
+  - Better tail latencies than the baseline test
+
+  Highest Volume Endpoints:
+  - POST /calendars: 562,065 requests (8ms median)
+  - PUT /calendars: 551,099 requests (9ms median)
+  - POST /classPeriods: 56,141 requests (8ms median)
+  - DELETE /classPeriods: 56,140 requests (5ms median)
+
+  CPU Note:
+  - Single warning about CPU usage >90% at 2 minutes (locust warning about single-process load)
+  - Test completed successfully despite this
+
+### DB monitoring - PG not the bottleneck
+
+ Observations
+
+  - Application tier is the choke point: EdFi.DataManagementService.Frontend.AspNetCore (PID 777052) consumes ~385 % CPU
+    (≈4 cores) while PostgreSQL backends hover near 30–34 % each and pg_stat_activity shows only 5 active queries with 12
+    sessions waiting in ClientRead, so the database is mostly idle waiting on the C# service.
+  - After the stats reset at 14:02:55, PostgreSQL executed ~828 k commits in 379 s (~2.2 k TPS) with per-statement means
+    still sub‑2 ms; pg_stat_statements again identifies dms.InsertReferences, the paired INSERT INTO dms.Reference … ON
+    CONFLICT DO UPDATE, and the document CTE as the dominant workload by execution time and shared buffers, confirming the
+    reference-ingestion pipeline is the hot path.
+  - WAL generation jumped to 1.99 GB in 419 s (~4.6 MB/s) with synchronous_commit=on, yet walwriter plus checkpointer
+    accumulate only ~1.9 s of write time and NVMe latency stays ~0.13 ms, so WAL flushing isn’t blocking; instead these
+    reference operations are simply very write-heavy.
+  - Autovacuum is already cycling hard just minutes into the run: reference_08/10/02 each hold 53–66 k dead tuples
+    (5 autovacs) and the shared unlogged referencestage table shows ~47 k dead rows after 7 autovacs, meaning each
+    InsertReferences call still deletes rows that autovac must later prune, adding CPU/WAL overhead.
+  - Host resources remain comfortable (load 15.5 on 24 cores, 35 GiB memory free, NVMe util ≤33 %, iowait ~1–2 %); the
+    Python load driver (PID 796974) uses ~97 % of a single core with negligible wait time, so it isn’t currently throttling
+    the test but, being single-process, it will cap future client expansion unless parallelized.
+
+  Recommendations
+
+  1. Scale or optimize the DMS frontend: raise Kestrel/ThreadPool concurrency or run additional instances so more than 4
+     cores can service requests—PostgreSQL has headroom, and reducing application CPU will let those 20 clients keep the
+     database busy.
+  2. Rework the reference staging workflow to cut churn (per-connection temp tables or fast TRUNCATE, ensure
+     p_isPureInsert=true whenever possible, and consider batching deletes) to reduce the 50 k+ dead tuples that autovac has
+     to chase every few minutes and to lower WAL volume from the reference upsert/delete loop.
+  3. For future larger tests, distribute the Python harness across multiple processes or machines to avoid the GIL-bound
+     single-core ceiling; while it’s not limiting today, the script is already CPU-bound and won’t scale linearly with
+     additional client counts.
+
+
+
