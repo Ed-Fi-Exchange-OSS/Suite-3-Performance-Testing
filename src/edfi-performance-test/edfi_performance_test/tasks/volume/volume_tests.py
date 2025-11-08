@@ -40,10 +40,13 @@ class VolumeTestUser(FastHttpUser):
     volume_test_root_namespace: str = "edfi_performance_test.tasks.volume."
 
     def on_start(self):
+        # Always associate the current user's HTTP client with the EdFiAPIClient so that
+        # every simulated Locust user maintains its own socket/connection pool.
+        EdFiAPIClient.client = self.client
+
         if VolumeTestUser.is_initialized:
             return
 
-        EdFiAPIClient.client = self.client
         EdFiAPIClient.token = None
 
         # Import root pipeclean modules
