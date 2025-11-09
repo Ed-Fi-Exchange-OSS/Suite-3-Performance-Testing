@@ -2737,7 +2737,7 @@ Current Load
   Overall, even with 20 clients, PostgreSQL 18 remains comfortably within CPU, memory, and I/O limits; the dominant bottleneck for response time is still the DMS C# application layer rather
   than the database or the load harness.
 
-## Update: 2025-11-08-13-50 Rerun with 20 clients after bug fix to python load tester 
+## Update: 2025-11-08-13-50 Rerun with 20 clients after bug fix to python load tester
 
 ### Load test results - 67% more throughput - 2200 req/sec - Python single thread is maxxed
 
@@ -2817,4 +2817,69 @@ Current Load
      additional client counts.
 
 
+## Update: 2025-11-08-13-50 Rerun with 20 clients after bug fix to python load tester
 
+PostgreSQL Findings
+
+  - Stats reset at 22:18; in the 32‑minute window the system executed 4.0 M commits/2.8 K rollbacks with 1.03 B buffer hits vs 7.5 M reads (pg_stat_database), so
+    virtually all activity is served from cache and single-query latency stays sub‑2 ms (pg_stat_statements only shows >5 ms for the admin queries I ran).
+  - Nearly all database time is spent in the ingestion pipeline: SELECT … FROM dms.InsertReferences(...) ran 2.48 M times, INSERT INTO dms.Reference 2.12 M times,
+    and INSERT INTO dms.Document… 1.73 M times, together consuming ~4,080 s of CPU and generating 4.2 GB+ of WAL (pg_stat_statements). Each call writes ~1.7 KB of
+    WAL, which produced 8.9 GB since the reset (pg_stat_wal ≈4.8 MB/s).
+  - Wait sampling shows several EdFi.DMS sessions in wait_event_type='LWLock'/'IO' with wait_event='WALWrite' or WalSync, meaning commits often stall on synchronous
+    WAL fsyncs. pg_stat_io confirms client backends issued 1.7 M WAL writes (36.8 s cumulative) while walwriter spent 18.1 s doing fsyncs since 22:18.
+  - Autovacuum is running almost continuously: every dms.reference_* partition has been auto‑vacuumed/analyzed 21‑24 times in the window and still carries ~55 K dead
+    tuples (~4.4% of rows). dms.ReferenceStage shows 361 K dead tuples with zero live rows and has been vacuumed 22 times. Autovac workers scanned 1.33 M buffers
+    (~10 GB) in 3.9 s of read time (pg_stat_io) and were observed active (autovacuum: VACUUM ANALYZE dms.reference_13 in pg_stat_activity). No blocking locks or temp
+    files were observed.
+  - Current config favors durability but amplifies the wal/fsync pressure: synchronous_commit=on, wal_buffers=128 MB, max_worker_processes=8, max_parallel_workers=8,
+    autovacuum_max_workers=5, work_mem=64 MB, shared_buffers=16 GB, wal_compression=zstd, max_wal_size=32 GB.
+
+  System & Load Generator
+
+  - System load averages hover around 23 with 16 runnable tasks (top/vmstat). CPU is 68‑70 % user, 6‑8 % system, <1 % iowait; so we are CPU‑bound, not I/O‑bound.
+    Context switches >80 K/s indicate heavy thread scheduling.
+  - The DMS ASP.NET Core process (src/dms/frontend/.../EdFi.DataManagementService.Frontend.AspNetCore --urls http://localhost:8080, pid 928362) uses ~400 % CPU (≈4
+    cores) steadily.
+  - PostgreSQL backends each show ~27 % CPU because they continually service the volume workload; however their per-query times remain low.
+  - Two load generators are running locally (PIDs 1192485 & 1194136) executing edfi_performance_test … --testType volume --clientCount 20. Each consumes ~90 % CPU
+    (almost two full cores combined) but stays in R state with small memory use, so the scripts themselves are healthy. Note they do share CPU with DMS/PostgreSQL—if
+    you need completely uncontended measurements, pin them to specific CPUs or move them off-box.
+  - Storage remains healthy: NVMe1n1 writes ~2.4 K ops/s at 17 MB/s with 0.13 ms wait and ~30 % util (iostat); / has 537 GB free (df) and only 98 MB of swap is in
+    use (free ‑h).
+
+  Likely Bottlenecks
+
+  - The request path is CPU-bound before it reaches the database: DMS uses ~4 cores by itself, queries complete in ~1 ms, and WAL flush waits are short, so rising
+    API latency is almost certainly inside the C# layer (serialization, validation, or threadpool limits). More instances or profiling of dms.InsertReferences
+    callers is warranted.
+  - Commit throughput is limited by synchronous WAL flushes. With 2,100+ commits/sec and synchronous_commit=on, even fast NVMe shows noticeable WalSync/WALWrite
+    waits. Every ingestion call incurs multiple small transactions (insert/delete/select) which amplifies fsync frequency and WAL volume.
+  - Autovacuum churn on Reference partitions and the ReferenceStage staging table is burning CPU and cache bandwidth; the stage table is effectively append/delete
+    with no live rows yet keeps accruing dead tuples, so VACUUM never keeps up.
+  - max_worker_processes=8 (with 5 autovacuum workers + wal/checkpoint/background writer) leaves almost no headroom for parallel query or extra background workers,
+    so maintenance tasks must queue even though 24 CPUs are available.
+
+  Recommendations / Next Steps
+
+  1. Triage the application layer: profile the ASP.NET Core service (e.g., dotnet-trace or dotnet-counters) to confirm where the 400 % CPU is spent. Consider
+     additional front-end instances, ensuring server-GC/tiered PGO are enabled, and revisiting JSON serialization or per-request validation costs.
+  2. Reduce WAL/fsync pressure in the ingestion path: batch multiple upserts per transaction, or mark the ingestion role with SET synchronous_commit = off (or local)
+     if acceptable. Alternatively, make dms.ReferenceStage UNLOGGED/TEMP and TRUNCATE it instead of delete+vacuum to avoid WAL and autovac churn. Monitor pg_stat_wal
+     after changes.
+  3. Tune autovacuum for hot partitions: raise max_worker_processes (e.g., 32) and autovacuum_max_workers (e.g., 10) to use available cores, and give
+     dms.reference_*/referencestage per-table reloptions (lower autovacuum_vacuum_scale_factor, higher autovacuum_vacuum_cost_limit) so they vacuum predictable
+     batches rather than constantly. If the stage table truly doesn’t need persistence, truncating it at session end will eliminate the 361 K dead tuples instantly.
+  4. Isolate the load generator: although the two python processes are running correctly, they and the desktop apps (e.g., gnome-system-monitor at 36 % CPU, VS
+     Code at 27 %) add noise. For cleaner latency measurements, either stop heavy desktop apps and pin the python processes to dedicated CPUs (taskset) or move load
+     generation to another host/container.
+  5. Continue monitoring: keep pg_stat_statements snapshots and pg_stat_io/pg_stat_wal samples every few minutes during the test so you can correlate spikes in
+     WAL sync waits or autovac runs with response-time regressions. If response times still degrade while DB metrics remain flat, the focus should stay on the DMS
+     service layer.
+
+  Let me know if you’d like help automating these captures or testing specific config tweaks.
+
+### How many database connections were open during the measurement?
+
+ 41 database connections were open when I captured the diagnostics (22:47 local time). That count comes from pg_stat_activity, where 40 sessions reported
+  application_name='EdFi.DMS' plus one additional client backend on 127.0.0.1; background workers and my admin psql session were separate.
