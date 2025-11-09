@@ -2883,3 +2883,10 @@ PostgreSQL Findings
 
  41 database connections were open when I captured the diagnostics (22:47 local time). That count comes from pg_stat_activity, where 40 sessions reported
   application_name='EdFi.DMS' plus one additional client backend on 127.0.0.1; background workers and my admin psql session were separate.
+
+### What where request latencies like?
+
+Database-side latency stayed extremely low during the run. The heaviest statements in pg_stat_statements executed in roughly 0.2–1.8 ms on average
+  (dms.InsertReferences, INSERT INTO dms.Reference, INSERT INTO dms.Document, etc.), and nothing outside the admin queries exceeded 5 ms. That indicates the
+  PostgreSQL portion of each API request was sub‑millisecond to low‑single‑millisecond, so any higher end-to-end latency you saw would have originated in the DMS
+  application tier or upstream (e.g., serialization, HTTP handling, or the python load harness), not inside the database engine.
