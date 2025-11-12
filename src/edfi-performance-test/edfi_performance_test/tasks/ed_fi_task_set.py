@@ -56,8 +56,14 @@ class EdFiTaskSet(TaskSet):
 
         self.client_class = self.generate_client_class()
 
+        # Prefer the Locust user's HTTP client so every simulated user maintains its own
+        # socket pool. Fall back to the shared class attribute for backwards compatibility.
+        locust_http_client = getattr(getattr(self, "user", None), "client", None)
+        if locust_http_client is None:
+            locust_http_client = EdFiAPIClient.client
+
         self._api_client: EdFiAPIClient = self.client_class(
-            client=EdFiAPIClient.client, token=EdFiAPIClient.token
+            client=locust_http_client, token=EdFiAPIClient.token
         )
 
     def __getattr__(self, item):
