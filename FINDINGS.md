@@ -2890,3 +2890,223 @@ Database-side latency stayed extremely low during the run. The heaviest statemen
   (dms.InsertReferences, INSERT INTO dms.Reference, INSERT INTO dms.Document, etc.), and nothing outside the admin queries exceeded 5 ms. That indicates the
   PostgreSQL portion of each API request was sub‑millisecond to low‑single‑millisecond, so any higher end-to-end latency you saw would have originated in the DMS
   application tier or upstream (e.g., serialization, HTTP handling, or the python load harness), not inside the database engine.
+
+### What where DMS transaction latencies like?
+
+ - Average per-transaction latency (planning + execution): 3.64 ms
+  - Execution-only average: 2.17 ms
+
+  Method
+
+  - Filtered to edfi_datamanagementservice since stats reset 2025-11-08 22:18:26.
+  - Computed as:
+      - (sum(total_exec_time + total_plan_time) from pg_stat_statements for db) / (xact_commit + xact_rollback from pg_stat_database for db) = 3.644 ms
+      - Execution-only uses total_exec_time → 2.171 ms
+  - These are database-only timings; they exclude COMMIT/WAL fsync and any network/app overhead.
+
+
+
+## Update: 2025-11-15--28-with-gin-again-2  - Added back GIN, 10 clients, some really good tuning suggestions ****
+
+### PG
+• InsertReferences Pipeline
+
+  - dms.InsertReferences (definition in src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Deploy/Scripts/0010_Create_Insert_References_Procedure.sql:8) is the top statement in pg_stat_statements: 672 k calls since 15:30 with
+    1.75 ms mean latency and 1.26 GB of WAL (wal_kB_per_call ≈1.7). pg_stat_monitor buckets show ~38 k calls/min, ~1.75 ms mean, ≤11 ms max, and 63–68 MB of WAL per minute, so the function itself is fast but extremely write-heavy.
+  - Backends frequently wait on WalSync/WalWrite during InsertReferences (see pg_stat_activity), and pg_stat_io attributes 13.7 GB of WAL writes and 19 s of write time to client backends since the last reset. pg_stat_wal shows 7.5 GB
+    generated in ~15 min (~8.3 MB/s), confirming WAL flush is the dominant shared resource.
+  - Each upsert issues a serialized series of commands (DELETE dms.Document…, WITH Documents AS (INSERT …), DELETE dms.Alias…, INSERT INTO dms.Reference…, and finally SELECT … FROM dms.InsertReferences) from SqlAction.InsertReferences (src/
+    dms/backend/EdFi.DataManagementService.Backend.Postgresql/Operation/SqlAction.cs:488). Even though every statement averages ≤0.8 ms, they all commit synchronously (synchronous_commit = on), so throughput is bound by WAL flush, not CPU
+    or locks.
+  - dms.ReferenceStage is unlogged (src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Deploy/Scripts/0026_Create_Reference_Stage_Table.sql:7), yet repeated DELETE … WHERE SessionId = pg_backend_pid() leaves ~52 k dead tuples
+    between autovacuum cycles, so the PK/index continually churns; replacing DELETE with TRUNCATE or a temporary ON COMMIT DELETE ROWS table per backend would avoid needless index maintenance.
+  - Recommendations: (1) if acceptable for the load test, set a lower-durability path (synchronous_commit = off or commit_delay/commit_siblings) for the ingestion connection string to amortize WAL fsync costs; (2) collapse the document/
+    alias/reference work into a single stored procedure so the client sends one round trip and the server can batch writes before commit; (3) tighten the needs_upsert fast-path so that pure replays skip the INSERT…ON CONFLICT and follow-up
+    DELETE entirely; (4) monitor WAL with pg_stat_monitor so changes can be tied to per-minute wal_bytes.
+
+  Document GIN Index
+
+  - The partitioned dms.Document table (src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Deploy/Scripts/0001_Create_Document_Table.sql:5) carries a jsonb GIN index per partition (IX_Document_EdfiDoc in src/dms/backend/
+    EdFi.DataManagementService.Backend.Postgresql/Deploy/Scripts/0023_Create_Indexes.QueryHandler.sql:6). Each partition’s index is ~520 MB, so maintaining 16 partitions costs ~8.3 GB of cache and WAL.
+  - pg_stat_all_indexes shows only single-digit idx_scan counts, while pg_statio_user_indexes reports millions of buffer hits and zero reads, meaning the indexes stay hot but are hardly ever consulted—yet each document update still rewrites
+    them, driving WAL volume.
+  - Real-world queries (SELECT … WHERE ResourceName = $1 AND EdfiDoc @> …) average 0.43 ms with ≤0.9 ms max according to pg_stat_monitor, but an EXPLAIN (ANALYZE, BUFFERS) shows the planner has to append all 16 partitions because the
+    predicates never include DocumentPartitionKey. Each execution touches ~1 000 shared buffers even when only one partition holds the row. Capturing the partition key earlier (e.g., propagate it from dms.Alias during lookups) or switching
+    to a hash partitioning strategy that aligns with ReferentialPartitionKey would let PostgreSQL prune partitions and cut both CPU and buffer churn. If ResourceName/JSON queries stay rare, consider dropping or partially recreating the GIN
+    index for low-volume resource types, or increasing gin_pending_list_limit/turning fastupdate off on hot partitions to shrink WAL spikes.
+
+  Application & Load Test
+
+  - The Kestrel process (EdFi.DataManagementService.Frontend.AspNetCore) uses ~190 % CPU (≈2 cores) with no wait, and maintains only ~15 Postgres sessions, so the C# layer is not CPU-saturated. Response-time inflation stems from the number
+    of sequential DB calls per request, not from host pressure.
+  - The Python harness (edfi_performance_test) consumes ~72 % of a single core and <20 kB/s write IO, so it is not throttling itself; its telemetry (Suite-3-Performance-Testing/DmsTestResults/2025-11-15-28-with-gin-again-2/
+    volume_stats.csv:5) shows 1.42 M completed requests with an 8 ms median (p99 ≈55 ms). Failures are limited to 960 expected HTTP 400s on the studentSchoolAssociations POST (Suite-3-Performance-Testing/DmsTestResults/2025-11-15-28-with-
+    gin-again-2/volume_failures.csv:2).
+  - System-wide metrics back this up: load average 8 on 24 CPUs with ~60 % idle, iowait <3 %, and nvme1n1 at only 30–33 % utilization. Autovac is active (e.g., currently vacuuming dms.document_05) but not blocking backends.
+
+  Next Steps
+
+  1. Decide whether to relax durability for this load profile (synchronous_commit=off for the ingestion role or commit_delay tuning) to relieve WalSync waits.
+  2. Prototype a server-side stored procedure (wrapping document/alias/reference work) so each HTTP upsert generates a single transactional call instead of five round trips; this should also let you batch WAL writes before commit.
+  3. Rework Document lookups so the partition key is known (store it alongside alias metadata or derive it from the request) and update the ORM/SQL to include it, enabling partition pruning and letting you drop the least-used GIN
+     partitions.
+  4. Keep pg_stat_monitor snapshots during future runs so you can correlate wal_bytes, shared_blks_dirtied, and max_exec_time with application throughput, and flag any regression early.
+
+  No additional throttling from the load generator or host was observed; the remaining bottleneck is PostgreSQL WAL throughput driven by the current InsertReferences write pattern.
+
+
+### Perf metrics 30 minutes into a 60 minute run
+
+● Excellent! Here are the current results as the test runs (in progress):
+
+  Test Progress Summary
+
+  Overall Aggregated Metrics (In Progress):
+  | Metric                | Value                      |
+  |-----------------------|----------------------------|
+  | Total Requests        | 2,179,434                  |
+  | Throughput            | 1,134.81 req/sec           |
+  | Median Response Time  | 8ms                        |
+  | Average Response Time | 7.89ms                     |
+  | 95th Percentile       | 12ms                       |
+  | 99th Percentile       | 14ms                       |
+  | Min Response Time     | 0ms                        |
+  | Max Response Time     | 562ms                      |
+  | Failures              | 1,734 (0.08% failure rate) |
+
+  Performance Improvements vs 25 Clients Test
+
+  With 10 clients (this test) vs 25 clients (previous test):
+  - Response times are MUCH BETTER: 8ms median vs 10ms (25% faster)
+  - 95th percentile: 12ms vs 32ms (63% faster!)
+  - 99th percentile: 14ms vs 46ms (70% faster!)
+  - More stable throughput: Better response time consistency
+
+  Failure Breakdown
+
+  - 1,734 failures out of 2.17M requests
+  - Main issue: 1,482 failures on POST /studentSchoolAssociations (validation errors, expected)
+  - Rest are scattered 401 auth errors and a few other errors across different endpoints
+
+  Top Performers
+
+  - DELETE operations: 5ms median
+  - GET operations: 7ms median
+  - Most POST/PUT: 9-11ms median
+  - Token endpoint: 84-167ms (expected for OAuth)
+
+  The test is running smoothly with 10 clients showing much better performance characteristics than the 25-client run. Will continue until 60
+  minutes completes.
+
+### GIN index impact
+
+• GIN Maintenance Cost
+
+  - The jsonb GIN (IX_Document_EdfiDoc) is created for every document partition (src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Deploy/Scripts/0023_Create_Indexes.QueryHandler.sql:6). Because the table is LIST-partitioned by
+    DocumentPartitionKey, every insert/update touches exactly one partitioned index, and we can apportion the global pg_stat_statements figures using the per-partition row counters in pg_stat_user_tables.
+  - Since the last stats reset (15:30:43), the document insert statement ran 993 995 times, taking 285.6 s total (0.287 ms/call) and emitting 2.00 GiB of WAL (≈2.11 KB/call). The update statement ran 439 334 times (48.7 s total, 0.111 ms/
+    call) and produced 568 MiB WAL (≈1.32 KB/call). Deletes (which also prune GIN entries) ran 997 302 times (807.8 s total, 0.81 ms/call) and wrote 301 MiB WAL (0.31 KB/call).
+  - Mapping those totals to each partitioned GIN index yields the following cumulative cost so far in this load test window:
+
+  Index Name              | Insert rows | Insert time (s) | Insert WAL (MB) | Update rows | Update time (s) | Update WAL (MB)
+  document_00_edfidoc_idx |     63 205  |            17.85|           128.17|      27 659 |            3.01 |           35.14
+  document_01_edfidoc_idx |     62 816  |            17.74|           127.38|      27 779 |            3.03 |           35.30
+  document_02_edfidoc_idx |     63 052  |            17.81|           127.85|      27 916 |            3.04 |           35.47
+  document_03_edfidoc_idx |     62 985  |            17.79|           127.72|      27 816 |            3.03 |           35.34
+  document_04_edfidoc_idx |     63 410  |            17.91|           128.58|      28 049 |            3.06 |           35.64
+  document_05_edfidoc_idx |     62 871  |            17.76|           127.49|      27 908 |            3.04 |           35.46
+  document_06_edfidoc_idx |     63 539  |            17.95|           128.84|      28 113 |            3.06 |           35.72
+  document_07_edfidoc_idx |     63 161  |            17.84|           128.08|      28 009 |            3.05 |           35.59
+  document_08_edfidoc_idx |     63 680  |            17.99|           129.13|      28 216 |            3.07 |           35.85
+  document_09_edfidoc_idx |     63 558  |            17.95|           128.88|      28 063 |            3.06 |           35.66
+  document_10_edfidoc_idx |     62 995  |            17.79|           127.74|      27 847 |            3.03 |           35.38
+  document_11_edfidoc_idx |     63 177  |            17.84|           128.11|      28 075 |            3.06 |           35.67
+  document_12_edfidoc_idx |     63 264  |            17.87|           128.28|      27 829 |            3.03 |           35.36
+  document_13_edfidoc_idx |     63 189  |            17.85|           128.13|      27 997 |            3.05 |           35.57
+  document_14_edfidoc_idx |     62 880  |            17.76|           127.51|      27 576 |            3.00 |           35.04
+  document_15_edfidoc_idx |     63 438  |            17.92|           128.64|      28 027 |            3.05 |           35.61
+
+  - Removal of rows (which also churns the GIN pending lists) accounts for another ~50 s of backend time and ~18.8 MB of WAL per partition during this same window.
+  - Because every index is ~520 MB and receives ~130 MB of WAL for inserts plus ~35 MB for updates in less than 30 minutes, the jsonb GIN is the dominant contributor to WAL volume and CPU for document writes. This is why the load test hits
+    WAL-sync waits even though heap/BTREE activity stays light.
+
+  Next actions: consider whether all partitions really need the jsonb GIN (usage stats show only a few scans) and/or throttle its maintenance (e.g., drop it on cold partitions, increase gin_pending_list_limit, or route read-heavy queries
+  through OpenSearch) to cut the ~2.1 KB of WAL per insert attributed to GIN maintenance.
+
+## Update 2025-11-13-11-21-looking-for-ideas (Has GIN index still on)
+
+ Findings
+
+  - Observation window: all stats were reset at 11:25:12 using /usr/lib/postgresql/17/bin/psql, then we waited 10 minutes before querying; everything reported below is from that fresh 10‑minute
+    run.
+  - InsertReferences dominates the database: pg_stat_user_functions shows 1,273,025 calls, 2,076,452 ms total, 1.63 ms/call, all self time; pg_stat_statements for queryid -7737659587446346593
+    records 140 M shared buffer hits vs only 12 k reads, 1.99 GB WAL, and ≈1,800 calls/sec. pg_stat_monitor buckets 0‑9 consistently report ~74 k calls/minute and ~123 s total_exec_time per minute
+    with no spikes, so the function’s workload is steady.
+  - Statements executed inside the function account for most of the remaining time/WAL:
+    • The CTE WITH Documents AS (INSERT INTO dms.Document …) (queryid -8359663333965759041) executed 0.99 M times, cost 249 s, read 32 k blocks, and emitted 1.98 GB WAL even before downstream
+    updates/deletes.
+    • DELETE FROM dms.Document WHERE DocumentPartitionKey = $1 AND DocumentUuid = $2 (queryid -5488951830561609739) executed 0.97 M times at 0.76 ms each, writing another 0.74 GB WAL.
+    • The dynamic DELETE FROM "dms"."reference" tied to the function’s cleanup ran 0.75 M times (0.017 ms average) and still produced 153 MB WAL.
+  - Autovacuum is the largest IO consumer: pg_stat_io reports autovac workers in vacuum context reading 5.2 M blocks / 75.6 GB and spending 19.9 s doing so, dwarfing client read traffic (426 MB,
+    2.5 s). That matches pg_stat_all_tables, where every document/reference partition shows ≥20 autovac runs since the reset.
+  - WAL volume is high but healthy: pg_stat_wal shows 9.85 GB generated in 10 min (~16 MB/s) with zero wal_buffers_full. pg_stat_io for object wal indicates client backends spent 21.4 s performing
+    synchronous WAL writes (synchronous_commit is on), yet pg_stat_activity only had a single backend briefly waiting on IO:WalSync, so write latency is not (yet) the throughput limiter.
+  - Database health looks good elsewhere: pg_stat_database logged 1.57 M commits vs 1.2 k rollbacks (≈2.6 k tx/s), 0 temp files, 0 deadlocks; pg_stat_activity currently has 20 EdFi.DMS sessions,
+    all short-lived with waits dominated by ClientRead (clients, not the server, are waiting). pg_locks shows only RowShare locks on document indexes—no blocking.
+
+  System & Load
+
+  - Application side: ps shows EdFi.DataManagementService.Frontend.AspNetCore PID 20608 running at ~267 % CPU (~3 cores) with 1.5 % RAM, while individual PostgreSQL backends and autovac workers
+    hover around 30–45 % CPU each; there are plenty of idle cores on this 24‑CPU host.
+  - Load generator: Python PID 23269 (edfi_performance_test) consumes ~96 % of one core, 0.1 % RAM, confirming it is not throttling the system.
+  - Resource headroom: vmstat 1 5 reports ~50 % user CPU and ~42 % idle with negligible wait; iostat -dx nvme0n1p3 1 3 shows 2.7–2.9 k writes/s at ~25 MB/s and only 32–34 % device util; free -h
+    leaves 5.6 GiB free plus 43 GiB page cache and almost unused swap. Nothing indicates the load driver or hardware is constraining the test.
+
+  Recommendations
+
+  1. Reduce InsertReferences frequency/weight. The function already accepts arrays but is still invoked >1.2 M times/10 min. Skipping the call for empty reference sets, batching more references
+     per call, or short‑circuiting on the API side when nothing changed will directly lower the 2 s of database time and 2 GB WAL it currently burns. If durability allows, consider SET LOCAL
+     synchronous_commit = OFF inside the function to avoid per-call WAL fsyncs (measurable 21 s of WAL write time) for this write-only workload.
+  2. Rework ReferenceStage so autovacuum stops thrashing. Because every call deletes its own rows, consider turning the staging structure into a per-connection GLOBAL TEMP TABLE … ON COMMIT DELETE
+     ROWS, or keep it unlogged but ALTER TABLE dms.ReferenceStage SET (autovacuum_enabled = false) and issue an explicit TRUNCATE (or VACUUM FREEZE) on a low-frequency timer. Eliminating the dead
+     tuples will save the 75 GB of autovacuum read traffic that currently competes with foreground cache usage.
+  3. Tame document churn. The insert → update → delete cycle on dms.Document alone produces >4 GB WAL in 10 min. If functional requirements permit, replace the delete+insert pattern with INSERT …
+     ON CONFLICT DO UPDATE, or track no-op changes in the C# layer so you avoid rewriting JSONB and its GIN index when nothing meaningful changed. Even a 20 % drop in document rewrites would cut
+     checkpoint pressure and autovac work significantly.
+
+### Followup on ReferenceStage - temp table may be ok now that sessions are held open?
+
+› Let's talk about reworking ReferenceStage. It is currently set up the way it is in part to avoid connection reset spamming. How would "GLOBAL TEMP TABLE … ON COMMIT DELETE ROWS" help? Doesn't
+  it need to create the table on every connection? What about setting up ReferenceStage to also have "ON COMMIT DELETE ROWS", would that help?
+
+• - In PostgreSQL the GLOBAL TEMP TABLE syntax is just an alias for TEMP/TEMPORARY; it creates a catalog definition once, but each backend that references it gets its own physical copy
+    (pg_temp_<backend> schema). You do not rebuild the table on every call—only when a new connection touches it for the first time. With pooled connections, that’s a one‑time CREATE TEMP TABLE …
+    IF NOT EXISTS per backend lifespan, after which the table lives in that backend’s temp schema until the session ends. No catalog churn occurs at every function call.
+  - Because each backend’s copy is private, there is no shared bloat, no need for a SessionId column, and no autovacuum pressure. Adding ON COMMIT DELETE ROWS guarantees the rows vanish
+    automatically (even across failed transactions) without issuing manual DELETE/TRUNCATE, so you eliminate both the 3 M row churn and the follow-up autovacuum sweeps that are currently burning
+    ~75 GB of IO every 10 minutes.
+  - The fear of “connection reset spamming” stemmed from needing to DELETE staged rows explicitly when a pooled connection is handed to the next request. With a temp table the cleanup happens
+    automatically on transaction boundaries; even if the connection is forcibly reset, PostgreSQL drops the whole temp schema, so you never inherit another client’s leftovers.
+  - Applying ON COMMIT DELETE ROWS to the existing UNLOGGED dms.ReferenceStage is not possible—PostgreSQL only allows the ON COMMIT clause on temporary tables. Leaving it as a shared unlogged
+    table would still require explicit deletes (and autovac), so the only way to get the automatic cleanup semantics you’re looking for is to switch to a temp-table design.
+
+  Typical migration pattern:
+
+  CREATE OR REPLACE FUNCTION dms.ensure_reference_stage()
+  RETURNS void LANGUAGE plpgsql AS $$
+  BEGIN
+      -- Does nothing if this backend already created its temp copy.
+      CREATE TEMP TABLE IF NOT EXISTS reference_stage (
+          parentdocumentid bigint NOT NULL,
+          parentdocumentpartitionkey smallint NOT NULL,
+          referentialpartitionkey smallint NOT NULL,
+          referentialid uuid NOT NULL,
+          aliasid bigint,
+          referenceddocumentid bigint,
+          referenceddocumentpartitionkey smallint,
+          PRIMARY KEY (referentialpartitionkey, referentialid)
+      ) ON COMMIT DELETE ROWS;
+  END$$;
+
+  Call dms.ensure_reference_stage() once per connection (e.g., at session init or from the top of InsertReferences). After that, the rest of the function can use INSERT INTO reference_stage
+  without session IDs, and rows disappear automatically at commit/rollback.
