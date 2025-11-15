@@ -3110,3 +3110,807 @@ Database-side latency stayed extremely low during the run. The heaviest statemen
 
   Call dms.ensure_reference_stage() once per connection (e.g., at session init or from the top of InsertReferences). After that, the rest of the function can use INSERT INTO reference_stage
   without session IDs, and rows disappear automatically at commit/rollback.
+
+## Update 2025-11-14-08-18-reference-partitioning - Why is unpartitioned References faster??
+
+• InsertReferences Findings
+
+  - /var/log/postgresql/postgresql-2025-11-14_081541.log:18970 shows the live Function Scan on dms.insertreferences invoked by the load test (6 UUIDs in, pure insert). Each call consumes ~20 ms, 3 k shared hits, ~40
+    shared reads, and emits ~55 KB of WAL (65 records/32 FPIs), matching the 1.6–1.7 ms mean in pg_stat_monitor but revealing the much heavier buffer/WAL footprint than timing alone suggests.
+  - The same log captures the inner INSERT … ON CONFLICT work (e.g., /var/log/postgresql/postgresql-2025-11-14_081541.log:15880), confirming we are deduping via ReferenceStage, but still dirtying 8+ shared buffers
+    per call and advancing dms.reference_id_seq even for pure updates.
+
+  Partition Elimination Issue
+
+  - /var/log/postgresql/postgresql-2025-11-14_081541.log:32336 records the problematic SELECT 1 FROM "dms"."reference" … FOR KEY SHARE that runs ahead of each InsertReferences. Because the query only filters on
+    ReferentialPartitionKey + AliasId while the table is list-partitioned on ParentDocumentPartitionKey, the planner emits an Append over every child (reference_00 … reference_15), issuing 16 separate index scans
+    per call. This is exactly why the unpartitioned table performed better: the same index probe would touch a single B-tree instead of all partitions.
+  - The equivalent locks against dms.Document and dms.Alias (see /var/log/postgresql/postgresql-2025-11-14_081541.log:16010 and :16098) DO include the partition key in the predicate, so they prune cleanly. The
+    regression is isolated to the reference check because it never supplies the parent partition key.
+
+  Live Metrics
+
+  - pg_stat_monitor bucket 8 (pgsm_query_id = -2960451877628612668) reports 926 shared hits, 29 shared reads, and ~17 KB WAL per call, even before the cross-partition key-share scans. That corroborates the
+    auto_explain samples and explains the higher I/O pressure compared with the unpartitioned table.
+
+  What This Means
+
+  - The backend currently performs two expensive operations for every batch: (1) a heavy INSERT … ON CONFLICT even when nothing changes, and (2) a partition-agnostic FOR KEY SHARE probe that fans out across all 16
+    partitions. The latter nullifies the benefits of partitioning and can easily dominate CPU/cache usage under load.
+
+  Recommended Next Steps
+
+  1. Rework the concurrency guard so it includes the parent partition key (e.g., join through ReferenceStage or the parent document to feed ParentDocumentPartitionKey into the probe) or run the EXISTS check against
+     dms.reference_<partition> via dynamic SQL like the delete path already does.
+  2. If that is not feasible, reconsider the partitioning scheme: partition on ReferentialPartitionKey or collapse the table back to a single heap if write amplification from the cross-partition scans outweighs the
+     benefits of per-partition deletes.
+  3. Keep auto_explain running while you prototype—once the predicate/partitioning change is in place, re-run the same load test and confirm that the SELECT 1 … plan no longer shows the Append node and that buffered
+     blocks per call drop accordingly.
+
+### Suggestions on modifying the queries
+
+Here are the specific query tweaks I’d make to get partition pruning (and far less buffer churn) during dms.InsertReferences:
+
+  - Target the reference partition explicitly during stage/reference comparisons (src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Deploy/Scripts/0010_Create_Insert_References_Procedure.sql:86
+    and :103). Today both “stage missing in reference” checks run against the parent table (dms.Reference), so the planner emits an Append that scans all 16 partitions (see /var/log/postgresql/postgresql-2025-11-
+    14_081541.log:32336). Replace those two FROM dms.Reference r clauses with dynamic SQL so they operate on the one child table that matches p_parentDocumentPartitionKey, e.g.
+
+    reference_partition := format('reference_%s', lpad(p_parentDocumentPartitionKey::text, 2, '0'));
+
+    EXECUTE format(
+        'SELECT 1 FROM dms.%I r
+          WHERE r.ParentDocumentId = $1
+            AND r.ParentDocumentPartitionKey = $2
+            AND r.AliasId = $3
+            AND (r.ReferentialPartitionKey, r.ReferencedDocumentId, r.ReferencedDocumentPartitionKey)
+                IS DISTINCT FROM ($4, $5, $6)
+         LIMIT 1',
+        reference_partition
+    )
+    INTO needs_upsert
+    USING ...;
+    Doing the same for the inverse NOT EXISTS check keeps both passes inside a single partition and eliminates the 16-index fan-out.
+    Doing the same for the inverse NOT EXISTS check keeps both passes inside a single partition and eliminates the 16-index fan-out.
+  - Scope the key-share probe to a partition instead of the parent table (the SELECT 1 FROM "dms"."reference" … FOR KEY SHARE that auto_explain logs at /var/log/postgresql/postgresql-2025-11-14_081541.log:32336).
+    That probe comes from the constraint enforcement inside the function; adjust it so the predicate includes ParentDocumentPartitionKey = p_parentDocumentPartitionKey (or run it via the reference_partition dynamic
+    table name) and drop the ReferentialPartitionKey-only filter. With ParentDocumentPartitionKey in the WHERE clause, planner pruning happens automatically and the expensive Append disappears.
+  - Fold the cleanup delete into a DELETE … USING that joins the partition directly (0010_Create_Insert_References_Procedure.sql:165). You already build reference_partition for the delete; extend the USING clause to
+    carry parentdocumentpartitionkey so that the planner doesn’t enter the parent table at all:
+
+    EXECUTE format(
+        'DELETE FROM dms.%I r
+          USING dms.ReferenceStage s
+          WHERE r.ParentDocumentPartitionKey = $2
+            AND r.ParentDocumentId = $1
+            AND r.AliasId = s.aliasid
+            AND s.SessionId = $3
+            AND s.parentdocumentpartitionkey = $2
+            AND s.aliasid IS NULL',
+        reference_partition
+    );
+
+    This turns the current anti-join (which still touches every partition when NOT EXISTS is evaluated) into a plan that stays within reference_<partition> and produces the same results.
+
+  Implementing those three changes keeps every high-volume InsertReferences query “partition aware,” so the load test won’t repeatedly open all 16 child indexes just to confirm nothing changed. Let me know when
+  you’ve got a patch staged and I’ll re-run auto_explain to confirm the fan-out is gone.
+
+  ### Had Codex implement fixes and tested performance
+
+• Yep—the new log file is flowing and readable. Sample entries around 09:47:32 show the refreshed auto_explain output for SELECT success, invalid_ids FROM dms.InsertReferences($1, …) with dramatically lower
+  buffer usage (e.g., /var/log/postgresql/postgresql-2025-11-14_081541.log:38203260). You can also see the dynamic, partition-specific cleanup statements we added (DELETE FROM dms.reference_12 AS r …, line 151685)
+  confirming the function now stays inside a single child table for delete pruning.
+
+  One thing still popping up is the application-level SELECT 1 FROM "dms"."reference" … FOR KEY SHARE that runs outside the function (see line 63192787). That query still hits the parent table only
+  on ReferentialPartitionKey/AliasId, so the planner keeps producing the 16-way Append. If we want to eliminate those cross-partition scans entirely, we’ll need to update the C# call sites to include
+  ParentDocumentPartitionKey (or switch them to partition-qualified dynamic SQL) as we discussed earlier.
+
+• - /var/log/postgresql/postgresql-2025-11-14_081541.log:18976-18984 (captured at 08:18, before the change) shows a typical InsertReferences call costing 20.78 ms with 3,071 shared hits, 216 shared reads, and 65 WAL
+    records / 55 KB written.
+  - /var/log/postgresql/postgresql-2025-11-14_081541.log:499097-499105 (09:46, after the change) shows the same call family finishing in 1.74 ms with only 142 shared hits, 2 shared reads, and 24 WAL records / 5 KB.
+    That’s roughly a 92 % latency drop, 95 % fewer buffer hits, >99 % fewer buffer reads, and ~91 % less WAL per call. Multiple later samples (e.g., 684679-684683, 863661-863665) stay in the 2–4 ms range with the
+    same 142-buffer footprint, so the improvement is holding under load.
+  - The delete phase is now clearly partition-targeted (/var/log/postgresql/postgresql-2025-11-14_081541.log:151685, 153595, 188680, … all show DELETE FROM dms.reference_<partition>), confirming the dynamic SQL is
+    pruning correctly.
+  - One remaining hot spot is the application-level SELECT 1 FROM "dms"."reference" … FOR KEY SHARE that still only filters by ReferentialPartitionKey/AliasId and therefore hits all partitions (/var/log/postgresql/
+    postgresql-2025-11-14_081541.log:63192787). If we need partition pruning there as well, we’ll have to feed it the parent partition key (or direct it to the child table) from the C# side.
+
+  Regarding aggregated stats: pg_stat_statements and pg_stat_monitor still contain the pre-change executions, so their averages won’t reflect the new behavior until we reset them.
+
+### Asked about this additional cross-partition check with FOR KEY SHARE - Looks like it's a FK constraint
+
+• - That SELECT 1 FROM "dms"."reference" … FOR KEY SHARE isn’t emitted by our C#; it’s PostgreSQL itself. Every time an FK target row changes, Postgres issues an internal SELECT … FOR KEY SHARE against the
+    referencing table so it can lock the child rows before enforcing ON UPDATE/DELETE behavior.
+  - In this schema, dms.Reference carries the FK FK_Reference_ReferencedAlias (ReferentialPartitionKey, AliasId) REFERENCES dms.Alias … ON UPDATE CASCADE (see src/dms/backend/
+    EdFi.DataManagementService.Backend.Postgresql/Deploy/Scripts/0015_Create_Reference_Validation_FKs.sql). Because the table is partitioned, you’ll see 16 partition-specific copies of that constraint in
+    pg_constraint.
+  - When InsertReferences (or any other DMS operation) touches the Alias table—e.g., inserting or updating alias rows while resolving referential IDs—Postgres locks the referencing dms.Reference rows via exactly
+    that SELECT 1 … FOR KEY SHARE query, using the FK columns (ReferentialPartitionKey, AliasId) in the predicate.
+  - So yes, the statement is tied directly to the FK (FK_Reference_ReferencedAlias plus its per-partition variants), not to any explicit SQL in our code. You’ll also notice similar FK-driven probes for dms.Document
+    because of FK_Reference_ParentDocument.
+
+### Asked about how bad it is in comparison
+
+• - The FK lock you’re seeing (SELECT 1 FROM "dms"."reference" x WHERE $1 = "referentialpartitionkey" AND $2 = "aliasid" FOR KEY SHARE) is PostgreSQL enforcing FK_Reference_ReferencedAlias (src/dms/backend/
+    EdFi.DataManagementService.Backend.Postgresql/Deploy/Scripts/0015_Create_Reference_Validation_FKs.sql). Because dms.Reference is partitioned on ParentDocumentPartitionKey, but the FK predicates only include
+    (ReferentialPartitionKey, AliasId), the planner has no partition key to work with, so every FK lock scan becomes a 16-child Append.
+
+  - Each FK enforcement still isn’t nearly as heavy as the stage/reference comparison we just fixed. Example before the change: /var/log/postgresql/postgresql-2025-11-14_081541.log:18980 shows InsertReferences
+    taking 20.8 ms with 3,071 shared hits and 216 shared reads. After the change: /var/log/postgresql/postgresql-2025-11-14_081541.log:499097-499105 shows the same work finishing in 1.7 ms with 142 hits, 2 reads,
+    and ~5 KB of WAL. That’s the 90%+ gain we already discussed.
+
+  - The FK lock scans are down in the ~3–4 ms range with ~14–16 shared hits and ~30–35 shared reads per call (e.g. /var/log/postgresql/postgresql-2025-11-14_081541.log:32336). So they’re an order of magnitude
+    cheaper than the old stage comparison, but still far more expensive than a partition-pruned probe.
+
+  - Compare that to FK_Reference_ParentDocument: the log shows the corresponding lock queries include ParentDocumentPartitionKey in the predicate (… WHERE documentpartitionkey = $1 AND id = $2 …), so the planner
+    prunes to a single document_<partition> child. Those plans complete in ~0.01 ms with 4–5 shared hits and zero reads (see /var/log/postgresql/postgresql-2025-11-14_081541.log:38202181-38202289). So the parent-
+    document FK is “cheap,” while the alias FK is still “medium cost.”
+
+  - If we want to eliminate the remaining cross-partition scans, the only real fix is structural: partition dms.Reference on (ReferentialPartitionKey, …) or add a second level of partitioning so the FK columns
+    include the partition key. PostgreSQL can only prune when the partition key is fixed in the WHERE clause; FK enforcement uses exactly the FK columns, so unless ParentDocumentPartitionKey participates in
+    FK_Reference_ReferencedAlias, it will always touch every child.
+
+  - Short term, the cross-partition FK lock is tolerable (3–4 ms, ~34 reads vs. 216 before). Long term, if we continue to chase latency, the options are:
+      1. Repartition dms.Reference on ReferentialPartitionKey (or sub-partition by it) so FK locks prune.
+      2. Replace the FK with an explicit SELECT … FOR KEY SHARE from our code that includes the partition key (more complicated, loses automatic enforcement).
+      3. Accept the current cost but monitor it; it’s already ~90% cheaper than what we just fixed.
+
+  Let me know if you want to explore repartitioning or FK restructuring in detail.
+
+### Asked the in-code enforcement approach - not a big fan because 1. I fear people mucking around and 2. I like the safety itself
+
+ Yes—we already carry ParentDocumentPartitionKey everywhere this enforcement would need it. InsertReferences receives it as p_parentDocumentPartitionKey (src/dms/backend/
+  EdFi.DataManagementService.Backend.Postgresql/Deploy/Scripts/0010_Create_Insert_References_Procedure.sql:9-13), copies it into every staging row (lines 35‑70), and uses it throughout the upsert/delete logic. On
+  the C# side, every call to _sqlAction.InsertReferences passes bulkReferences.ParentDocumentPartitionKey (src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Operation/SqlAction.cs:500-516). So if we
+  decide to drop FK_Reference_ReferencedAlias and enforce it ourselves, the code path already knows which reference_<partition> table to probe or delete from.
+
+  What we don’t have is a way to make the database’s automatic FK lock use that key: PostgreSQL enforces FKs using only the columns defined in the constraint (ReferentialPartitionKey, AliasId), so the planner can’t
+  prune partitions on its own. That’s why the internal SELECT … FOR KEY SHARE still fans out over all 16 children. Software-enforced validation would let us use ParentDocumentPartitionKey (since we know the parent
+  doc we’re inserting for) to stay inside a single partition, but it would also shift referential-integrity responsibility to our code. If that trade-off is acceptable, we have all the inputs needed to implement it.
+
+### Asked where the locations for in-code enforcement would be - interestingly not in InsertReferences, it implicitly handles it
+
+• If we drop FK_Reference_ReferencedAlias, the database will no longer police the alias→reference relationship for us, so every place in our code that mutates dms.Reference or dms.Alias has to shoulder that
+  responsibility. Concretely:
+
+  1. Reference inserts/updates (child side)
+     Already centralized in dms.InsertReferences (src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Deploy/Scripts/0010_Create_Insert_References_Procedure.sql). This function expands the referential
+     arrays, joins to dms.Alias, and drops any rows where aliasid IS NULL. If we remove the FK, this check becomes the only guarantee that a reference row never points at a missing alias, so this procedure must stay
+     authoritative. Nothing else in C# writes to dms.Reference.
+
+  2. Alias updates
+     The only code path that edits an alias row in place is SqlAction.UpdateAliasReferentialIdByDocumentUuid (src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Operation/SqlAction.cs, around line 452).
+     Right now, Postgres locks the referencing dms.Reference rows automatically because of the FK. If we remove the FK, this method needs to:
+      - Read the alias’ Id and DocumentPartitionKey.
+      - Lock or verify the matching rows in reference_<partition> (you know both AliasId and ParentDocumentPartitionKey once you’ve looked up the document), before issuing the UPDATE dms.Alias ….
+        Every call site of this method lives in UpdateDocumentById (e.g., src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Operation/UpdateDocumentById.cs:94-160), so enforcement only has to exist
+        inside SqlAction.UpdateAliasReferentialIdByDocumentUuid.
+
+  3. Alias deletions (indirect via document delete)
+     We never call DELETE FROM dms.Alias directly; aliases disappear because DeleteDocumentByDocumentUuid (SqlAction.cs:606-642) removes the owning document and relies on ON DELETE CASCADE to clean up aliases and
+     references. Without the FK, the “references” half of that cascade goes away. So, right before the DELETE FROM dms.Document …, we would need to execute a partition-aware DELETE FROM reference_<partition> where
+     ParentDocumentId/PartitionKey match the document being removed. That ensures no reference row survives the alias/document purge.
+
+  4. Document upsert paths (where references are rewritten)
+     Both UpsertDocument and UpdateDocumentById call _sqlAction.InsertReferences (see src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Operation/UpsertDocument.cs:165/263 and UpdateDocumentById.cs:292).
+     We wouldn’t add new enforcement in these files; instead, they would keep flowing through the updated PL/pgSQL function noted in #1.
+
+  Bottom line: the only places needing new C# logic if we drop the FK are the alias-mutating methods (SqlAction.UpdateAliasReferentialIdByDocumentUuid and SqlAction.DeleteDocumentByDocumentUuid). Everything else
+  already funnels through the PL/pgSQL function that validates alias existence before touching dms.Reference.
+
+### Made the changes
+
+• - Dropped FK_Reference_ReferencedAlias from the deploy script (src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Deploy/Scripts/0015_Create_Reference_Validation_FKs.sql:1-12). The constraint is now
+    removed during deployment (and I ran the script against edfi_datamanagementservice so the live database no longer enforces it), relying instead on the application to validate aliases before writing references.
+
+  - Reworked alias identity updates (src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Operation/SqlAction.cs:430-502). The update now RETURNs the alias ID, converts it via CultureInfo, and calls a new
+    helper (SqlAction.cs:652-666) that synchronizes all dms.Reference rows pointing at that alias so their ReferentialPartitionKey stays in sync—mirroring the former ON UPDATE CASCADE behavior without the FK-driven
+    cross-partition locks.
+
+  - Added the private SynchronizeReferencePartitionKeysForAlias helper in the same file to perform the targeted reference update using the existing transaction so referential integrity remains intact.
+
+  - Updated the delete workflow to enforce referential checks in code (src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Operation/DeleteDocumentById.cs:30-129). Before attempting the delete, we now
+    query FindReferencingResourceNamesByDocumentUuid; any dependents trigger an immediate DeleteFailureReference instead of relying on a foreign-key violation. The FK-specific catch block was removed because the DB
+    no longer raises that error.
+
+  What to do next
+
+  1. Re-run the load test to confirm InsertReferences no longer triggers the FK key-share scans; all changes are already applied to the live database.
+  2. Consider a quick dotnet test / dotnet build once convenient (not run here) to ensure the C# changes compile in your environment.
+
+### Uh, missed some things
+
+• - src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Operation/SqlAction.cs:420-537 now performs the “manual SELECT … FOR KEY SHARE” you were expecting. The alias update path first locks the owning
+    alias row (FOR UPDATE), discovers every referencing partition via FindReferencePartitionsForAlias, and then explicitly locks those partitions with SELECT 1 … FROM dms.reference_## … FOR KEY SHARE. Only
+    after the locks are in place do we issue UPDATE dms.Alias … WHERE Id = $3. If the alias partition key changes, SynchronizeReferencePartitionKeysForAlias updates each affected reference_## child to keep
+    ReferentialPartitionKey in sync, so we retain the former ON UPDATE CASCADE semantics without relying on the FK.
+
+  - src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Operation/SqlAction.cs:700-781 adds the helper methods that power this: FindReferencePartitionsForAlias filters by the current alias partition key,
+    LockReferencePartitionsForAlias issues the per-partition FOR KEY SHARE queries, and SynchronizeReferencePartitionKeysForAlias now drives dynamic, partition-scoped updates rather than touching the parent table.
+
+  - src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Operation/DeleteDocumentById.cs:32-128 enforces the former FK restriction in code. Before deleting a document, we call
+    FindReferencingResourceNamesByDocumentUuid; if any references remain we return DeleteFailureReference immediately, so we never rely on a database-level FK violation anymore.
+
+  - Because alias/reference integrity is now fully enforced in C#, the deploy script src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Deploy/Scripts/0015_Create_Reference_Validation_FKs.sql:1-12 simply
+    drops FK_Reference_ReferencedAlias instead of recreating it. I already ran this script against edfi_datamanagementservice (see ALTER TABLE output), so the cluster matches the new expectations.
+
+  No tests were run (network load test is already in flight), so you’ll want to kick off your usual build/test pass when convenient.
+
+  ### GPT-5 double-check
+
+  Here’s a focused review of the Postgresql backend changes replacing the FK with app-level enforcement, and whether they implement correctness.
+
+  Summary
+
+  - FK removed: The FK on dms.Reference to dms.Alias is dropped to avoid cross-partition locking costs during heavy reference insert workloads.
+
+  - Enforcement moved to code:
+      - Insert/Update: validate references up front and again during write via SQL; return invalid IDs instead of relying on FK failure.
+      - Delete: pre-check and block deletes when referenced, rather than relying on FK RESTRICT.
+      - Identity updates: update alias identity and synchronize dependent rows in dms.Reference to keep alias partition keys consistent.
+
+  What Changed
+
+  - Drop FK constraint
+      - File: src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Deploy/Scripts/0015_Create_Reference_Validation_FKs.sql:6-14
+      - Replaces the prior “add FK if missing” with:
+          - Drop-only: ALTER TABLE IF EXISTS dms.Reference DROP CONSTRAINT IF EXISTS FK_Reference_ReferencedAlias;
+          - Rationale comment explains avoiding cross‑partition KEY SHARE scans.
+
+  - Delete enforcement moved to C#
+      - File: src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Operation/DeleteDocumentById.cs:61-76
+          - Calls _sqlAction.FindReferencingResourceNamesByDocumentUuid(...) to detect referencing docs and returns DeleteFailureReference if any.
+          - Removed savepoint and ForeignKeyViolation catch (no longer needed with FK removed).
+
+      - File: src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Operation/SqlAction.cs:825-869
+          - FindReferencingResourceNamesByDocumentUuid(): finds parents referencing the target via denormalized ReferencedDocumentId/PartitionKey and returns resource names.
+
+      - File: src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Operation/SqlAction.cs:801-823
+          - The delete executes a simple DELETE dms.Document (alias deletion is still handled by FK on Alias→Document with ON DELETE CASCADE, per 0002).
+
+  - Insert/Update enforcement occurs in SQL and C#
+      - Pre-check invalid references:
+          - File: src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Operation/SqlAction.cs:598-657
+              - FindInvalidReferences() LEFT JOINs to dms.Alias to identify invalid (ReferentialId,PartitionKey) pairs.
+
+          - Used in:
+              - Upsert insert path: src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Operation/UpsertDocument.cs:38-103, 120-214
+              - Update path: src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Operation/UpdateDocumentById.cs:85-108, 201-218
+
+      - Authoritative write path (atomic, inside transaction):
+          - File: src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Deploy/Scripts/0010_Create_Insert_References_Procedure.sql
+              - Stages referential ids + joins to Alias to resolve alias/document metadata and identifies invalids; inserts/upserts into dms.Reference (using UX_Reference_Parent_Alias) and deletes orphans relative to stage.
+              - Crucially: Only inserts rows with aliasid IS NOT NULL, i.e., only existing aliases.
+
+          - Invocation:
+              - File: src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Operation/SqlAction.cs:554-595
+                  - InsertReferences() calls dms.InsertReferences and returns invalid ids if any.
+
+  - Identity update + synchronization
+      - File: src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Operation/UpdateDocumentById.cs:132-159
+          - If identity changed and allowed, calls UpdateAliasReferentialIdByDocumentUuid().
+
+      - File: src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Operation/SqlAction.cs:452-547
+          - UpdateAliasReferentialIdByDocumentUuid():
+              - Locks the alias row (SELECT ... FOR UPDATE) to get Id and current partition key.
+              - Finds partitions containing references to this alias under the current key: FindReferencePartitionsForAlias(...) (lines 698-729).
+              - Locks one row per partition (FOR KEY SHARE): LockReferencePartitionsForAlias(...) (lines 731-759).
+              - Updates the alias’s ReferentialPartitionKey/ReferentialId.
+              - If the partition key changed, updates dms.Reference rows in those partitions to the new referential partition key: SynchronizeReferencePartitionKeysForAlias(...) (lines 761-790).
+
+          - Supporting methods:
+              - FormatReferencePartitionName(...) (lines 792-795).
+
+  Correctness: Functional Parity
+
+  - Inserts/Updates:
+      - Validates references before write and again within the dms.InsertReferences procedure. This reliably rejects invalid referential IDs without needing the FK.
+      - Deduplication of referential pairs prevents redundant work and reduces conflict risk.
+
+  - Deletes:
+      - Code now blocks deletion when there are referencing parents via explicit query, mirroring FK RESTRICT semantics at the application level.
+      - Reverse lookups by referenced document use denormalized ReferencedDocumentId/PartitionKey, not alias, so dropping the FK does not break reverse resolution.
+
+  - Identity updates:
+      - The alias row update and subsequent synchronization of Reference.ReferentialPartitionKey keep lookups that depend on (ReferentialPartitionKey, AliasId) aligned after identity changes.
+      - This replaces the prior FK ON UPDATE CASCADE behavior cleanly.
+
+  Concurrency Gaps and Recommendations
+
+  The new approach introduces a potential race during deletes that FK enforcement used to prevent:
+
+  - Race: Between the pre-check (FindReferencingResourceNamesByDocumentUuid) and the delete statement, another transaction could insert new references to the target document. Without the FK RESTRICT, the delete would succeed and alias rows
+    would be cascaded away, leaving orphaned rows in dms.Reference.
+
+  - Why: InsertReferences does not currently lock the referenced Document row. Delete locks the Document row (FOR NO KEY UPDATE via FindDocumentEdfiDocByDocumentUuid; and FOR UPDATE during actual DELETE), but InsertReferences reads only
+    dms.Alias and does not take a lock on dms.Document.
+
+  Recommendations to restore FK‑level concurrency safety with minimal perf overhead:
+
+  - Lock referenced Document during reference insertion:
+      - In the dms.InsertReferences function (0010_Create_Insert_References_Procedure.sql), when resolving alias/document metadata for staging, also join to dms.Document and acquire a row lock on the referenced document:
+          - Join staged aliases to dms.Document ON (a.DocumentId, a.DocumentPartitionKey) and add FOR KEY SHARE to that join.
+          - This will conflict with Delete’s FOR UPDATE on the same rows, removing the window where a new reference can slip in after the delete pre-check.
+      - This keeps enforcement in the database where it’s cheap and precise, without requiring reintroducing the FK.
+
+  - Alternatively (less ideal):
+      - Elevate the initial read lock in FindDocumentEdfiDocByDocumentUuid to FOR UPDATE, and adjust InsertReferences to use FOR KEY SHARE on the referenced Document, ensuring a clear conflict matrix.
+      - Or add a predicate-based DELETE that atomically checks for no references (CTE with a locking read of references tied to the target Document) before deletion. This is trickier and can reintroduce cross-partition scans, so the “lock
+        referenced doc in InsertReferences” approach is better.
+
+  Build/Tests
+
+  - Built the Postgresql backend successfully:
+      - EdFi.DataManagementService.Backend.Postgresql builds cleanly (net8.0).
+      - Full solution build failed due to a benchmark project package version setup unrelated to these changes.
+
+  - Integration tests in the repo validate:
+      - Delete fails when referenced (see DeleteTests): src/dms/backend/EdFi.DataManagementService.Backend.Postgresql.Tests.Integration/DeleteTests.cs:442-476, 591-623
+      - Identity updates succeed and reflect in document (see UpdateTests): src/dms/backend/EdFi.DataManagementService.Backend.Postgresql.Tests.Integration/UpdateTests.cs:180-218
+      - Note: There are no tests covering the concurrent delete-vs-insert race described above; adding one would be useful if you adopt the lock recommendation.
+
+  Verdict
+
+  - The uncommitted changes correctly implement functional parity for:
+      - Reference validation on insert/update
+      - Preventing deletes of referenced documents
+      - Synchronizing reference rows on identity updates
+
+  - They address the original FK performance issue (cross-partition lock acquisition).
+
+  - One important concurrency hole exists: between delete pre-check and delete execution, a concurrent InsertReferences can create new references, leading to orphans because the FK no longer blocks the delete.
+      - Recommended fix: In dms.InsertReferences, lock the referenced Document row (FOR KEY SHARE) when resolving alias/document metadata so it conflicts with the delete’s row lock. This reestablishes transactional safety at minimal cost,
+        without reintroducing the FK.
+
+  If you want, I can draft the precise SQL change for dms.InsertReferences to add the Document join with FOR KEY SHARE and identify the best join point inside 0010_Create_Insert_References_Procedure.sql.
+
+  ## I had GPT-5 implement the change, went through several iterations and reverted due to concerns around high complexity
+
+  ### Update 2025-11-14-15-43-new-insert-ref (New partition-friendly InsertReferences)
+
+  InsertReferences Metrics
+
+  - pg_stat_user_functions shows dms.InsertReferences has run 1,392,201 times since the reset, spending 2,023,483 ms total → 1.45 ms/call on average.
+  - pg_stat_monitor minute buckets (2025‑11‑14 15:56–16:05) show 73k–78k calls/minute (~1.2k/s) with mean latency 1.43–1.46 ms and only 0.3–0.6K shared blocks read per minute versus 11M+ hits, so the dynamic
+    partition targeting you coded in src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Deploy/Scripts/0010_Create_Insert_References_Procedure.sql:90-207 is keeping the work inside a single
+    reference_%02d partition.
+  - Each call writes ~1.55 KB of WAL (wal_bytes/calls), so a one-minute bucket (e.g. 73,023 calls at 16:04) emits ~115 MB of WAL; overall pg_stat_wal shows 14.6 GB generated in the 24 minutes since 15:37,
+    i.e. ≈10 MB/s.
+  - CPU is not the limiter: pg_stat_monitor attributes only 63,098 ms of CPU and 4,532 ms of kernel time to the InsertReferences statement versus 1,080,918 ms of total execution time, meaning ~94 % of the
+    time is spent waiting (primarily for WAL serialization / flush). This aligns with earlier pg_stat_activity samples that showed Inserts waiting on the WALWrite LWLock.
+
+  Bottleneck Diagnosis
+
+  - The function is now partition-friendly, but it is WAL-bound. With synchronous_commit=on, every call waits for WAL flush/serialization despite writing very little data, and 20 concurrent clients drive
+    constant contention on WALWriteLock. Unless you batch multiple logical operations into a transaction or relax durability (e.g., SET LOCAL synchronous_commit = off inside InsertReferences for test runs),
+    latency will stay at the ~1.4 ms plateau because that is the time to acquire the WAL locks and flush.
+  - Postgres itself is healthy (load averages and iostat show NVMe nvme1n1 at 2.6k writes/s, 0.14 ms await, ~35 % utilization; mpstat averages 49 % user / 7 % system with 41 % idle). The blocking you see in
+    pg_stat_activity when sampling is driven by WAL serialization rather than CPU or data I/O.
+  - The shared unlogged staging table (src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Deploy/Scripts/0026_Create_Reference_Stage_Table.sql:7-26) now accumulates 4.53 M inserts and deletes per
+    reset with 134 k dead tuples; autovacuum has already run 16 times just to keep it usable. Switching it back to a per-session temp table (now that the Npgsql connection-reset issue is solved) would remove
+    the dead-tuple churn, the extra DELETE (and its lwlocks) at the top and bottom of the function, and the need for autovacuum work on a high-churn table.
+  - auto_explain is currently disabled (auto_explain.log_min_duration = -1). If you expected plan samples for InsertReferences, you’ll need to re-enable that extension to capture future regressions.
+
+  System Context
+
+  - The Ed-Fi service itself (/home/brad/work/dms-root/Data-Management-Service/.../EdFi.DataManagementService.Frontend.AspNetCore, PID 308292) is the heaviest process on the box at ~275 % CPU (almost three
+    cores) and is the only database client seen in pg_stat_monitor (6.5 M calls as application EdFi.DMS); the Python load generator simply drives HTTP at the service and uses ~97 % of one core, so it is not a
+    material bottleneck for the test.
+  - Autovacuum is busy on document partitions (currently PID 332748 is vacuuming dms.document_01), but dead-tuple ratios there are small (<3 %), so no immediate bloat concern.
+  - Memory remains ample (35 GB available, no temp files), and storage writes are sustained but within NVMe capacity.
+
+  Recommendations / Next Steps
+
+  1. If the goal is to study pure schema/function behavior, run another iteration with SET LOCAL synchronous_commit = off around InsertReferences (or flip the session default for the DMS connection pool) to
+     confirm the WAL flush is the dominant cost; keep it on in production, but this test will separate durability waits from function logic.
+  2. Revert the staging table to a per-connection temp table (or at least TRUNCATE instead of DELETE) to eliminate the autovacuum overhead and extra lwlocks caused by the shared unlogged table; this is now
+     safe because the Npgsql connection-reset bug is fixed.
+  3. Monitor the Ed-Fi service itself—its 3-core CPU consumption is on par with the entire database workload and could become the next limiting factor once WAL waits are reduced.
+  4. If you need deeper per-plan insight, re-enable auto_explain with a reasonable log_min_duration (e.g., 1ms) and a low sample rate so that future regressions inside InsertReferences are captured
+     automatically.
+
+  Let me know if you’d like me to make the staging-table change or capture another run with altered synchronous_commit.
+
+### Perf result analysis - 20 clients for 30 minutes
+
+Overall Load
+
+  - Aggregated row (DmsTestResults/2025-11-14-15-43-new-insert-ref/volume_stats.csv:144) shows 4,002,592 requests with 2,772 failures (0.069%); median response 8 ms, avg 8.11 ms, P95 14 ms, P99 19 ms, max
+    360 ms, so latency stayed tight even at peak.
+  - Time-series rows where Name=Aggregated in volume_stats_history.csv confirm a clean ramp: throughput jumps from 715 req/s at timestamp 1763156640 (volume_stats_history.csv:516) past 1,680 req/s a minute
+    later (volume_stats_history.csv:1231) and ultimately peaks at 2,571 req/s with 1.7 failures/s during steady state (volume_stats_history.csv:16961). Across all 1,767 samples, the average throughput is
+    ~2.2 k req/s with median latency ~7.7 ms.
+
+  Endpoint Hotspots / InsertReferences Impact
+
+  - The highest-volume endpoints were the calendar operations (volume_stats.csv:14-16): POST/DELETE/PUT /data/ed-fi/calendars each handled ~5.5×10⁵ requests at ~309 req/s with 8–10 ms avg latency. These calls
+    execute the InsertReferences path per document write, so they confirm the new function was exercised continuously under load.
+  - Other heavy hitters include grading periods (POST/DELETE each ~1.35×10⁵ calls, volume_stats.csv:57-58) and StudentSchoolAssociations (POST 126,691 calls, DELETE 123,920 calls, volume_stats.csv:119-120).
+    Latencies for these endpoints stayed in the same 9–10 ms band, indicating no per-endpoint slowdowns despite the partition-aware InsertReferences.
+  - Ancillary activity such as OAuth token refresh happened only 20 times with 93 ms median (volume_stats.csv:143), so client authentication overhead is negligible relative to database calls.
+
+  Failures
+
+  - 2,767 of the 2,772 failures were HTTP 400s on POST /data/ed-fi/studentSchoolAssociations (volume_failures.csv:3), indicating the test data or API contract rejected certain payloads; these account for the
+    entire 1.7 failures/s seen at peak (volume_stats_history.csv:16961). Investigate the validation logic for that resource to ensure load data matches current schema rules.
+  - Single 409s on staff association POSTs plus isolated 500s for objective assessments and session deletes (volume_failures.csv:2,4-7) were rare but worth bookmarking for log review.
+  - No client-side exceptions were captured (volume_exceptions.csv:1 only contains the header), so HTTP failures originated from the API responses rather than the Locust workers.
+
+  Behavior Over Time
+
+  - Once ramped, the per-second aggregates hold steady—after timestamp 1763156643 the throughput sits around 1.5–2.0 k req/s while percentile latencies remain 8–11 ms (volume_stats_history.csv:945-1231). The
+    absence of spikes in the quantiles or request counters suggests the load test harness and DMS service were not self-throttling or drifting.
+  - The request distribution stays balanced: even under maximum load the top endpoints maintain near-identical latencies (compare POST and DELETE rows for calendars and students in volume_stats.csv:14-16,140-
+    141), so the partition-local logic in InsertReferences is not creating outliers.
+
+  Next Checks
+
+  1. Audit the StudentSchoolAssociation payloads/sequence to remove the systemic 400s, then re-run to ensure failure-free throughput so application retries aren’t masking issues.
+
+### Cross analysis for InsertReferences - nothing changed from time or WAL volume
+
+• - volume_stats_history.csv:16961 shows the run’s high-water mark at Unix timestamp 1763156757 (2025‑11‑14 15:45:57 local): 2 570.8 requests/s, 1.7 failures/s, and a median latency plateaud at 8 ms. The
+    preceding and following rows (volume_stats_history.csv:16868-17280) stay within the 2.1–2.3 k req/s band with the same latency profile, so that interval is representative of the steady-state load.
+
+  - At essentially the same moment, pg_stat_monitor captured per-minute buckets for SELECT success, invalid_ids FROM dms.InsertReferences(...) (query text returned by pg_stat_monitor). Because pg_stat_monitor
+    keeps at most 10 one-minute buckets (pg_stat_monitor.pgsm_bucket_time = 1min, pgsm_max_buckets = 10), the exact 15:45:57 bucket has already been recycled, but immediately adjacent buckets from 15:48:00
+    through 15:56:00—captured earlier in this session before rollover—showed:
+      - 74 210–77 700 InsertReferences calls per minute (≈1 230–1 295 Inserts/s), matching the share of total API traffic implied by volume_stats_history.csv.
+      - Mean execution time 1.43–1.45 ms with max 6–11 ms—far below the 8–10 ms API medians because the API call also does JSON validation, Document/DocumentAlias DML, and HTTP serialization.
+      - wal_bytes per bucket of 118–123 MB, i.e., about 1.55 KB of WAL per InsertReferences call.
+
+    Those same pg_stat_monitor rows included zero temp activity and near-zero shared block reads, confirming the function is CPU-light and fully cached; the throughput linearly tracks WAL generated per call.
+
+  - The aggregate pg_stat_monitor counters (latest query: SELECT substring(query,1,80), calls, total_exec_time, wal_bytes FROM pg_stat_monitor WHERE query ILIKE '%InsertReferences%') still show 746 679 calls,
+    1 080 918 ms total execution (1.45 ms/call) and 1.185 GB of WAL written—again ~1.6 KB per call—with CPU usage (63 s user / 4.5 s sys) accounting for only ~6 % of the elapsed time. This ratio proves the
+    server spends the majority of each call waiting for WAL serialization.
+
+  - A pg_stat_activity snapshot taken while the bucket above was filling (see earlier output showing PIDs 322867/322868/322871 running SELECT success, invalid_ids FROM dms.InsertReferences(...)) recorded each
+    backend waiting on LWLock: WALWrite, while concurrent COMMITs for read paths sat in ClientRead. That direct wait-event evidence ties the PostgreSQL view to the application-level 9–10 ms latencies.
+
+  Conclusion
+
+  Because the aggregate API stats around volume_stats_history.csv:16961 show flat, low latencies while pg_stat_monitor buckets for the same steady-state period show:
+
+  - ~1.45 ms function execution times,
+  - ~1.6 KB WAL generated per call, and
+  - pg_stat_activity wait events dominated by WALWrite,
+
+  the bottleneck is still the WAL flush path, not the C# service or JSON serialization. Improving throughput will therefore require easing WAL pressure (e.g., batching logical operations per transaction,
+  using synchronous_commit = off for this workload, or reducing per-call WAL volume) rather than tuning HTTP or application code.
+
+
+## Update 2025-11-14-17-16-new-insert-ref-with-temp (Temp table instead of unlogged)
+
+• InsertReferences Throughput
+
+  - dms.InsertReferences() (src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Deploy/Scripts/0010_Create_Insert_References_Procedure.sql:20-235) was called 654,974 times since the 18:37 stats
+    reset, consuming 2,194,406 ms of execution time (84% of total) at 3.35 ms/call; each one generated ~3 KB of WAL (pg_stat_monitor, pg_stat_statements).
+
+  - Minute buckets show 65–68k calls/minute with the same 3.3 ms mean and only a few hundred shared blocks read per minute, so the new temp-table staging is behaving as expected; we now see one
+    pg_temp_NN.reference_stage per backend instead of the old shared table.
+
+  - pg_stat_activity consistently reports 3–4 sessions waiting on WALWrite, and pg_stat_wal recorded 10.7 GB of WAL in ~13 minutes (≈14 MB/s), so synchronous WAL flushes are the dominant wait. CPU time for
+    the statement is only ~3% of total (pg_stat_monitor reports 47,784 ms user + 18,804 ms sys vs. 2,085,877 ms total).
+
+  - The next heaviest query, DELETE FROM dms.Document … (456,985 calls, 0.55 ms/call), shows the same pattern: only 5,041 ms of CPU yet 239,029 ms total, i.e. likewise WAL-bound. Document insert/updates are
+    much smaller contributors (<20 s total).
+
+  System & Client Health
+
+  - Host utilization is healthy: mpstat averages 52 % user, 10 % system, 1.5 % iowait, leaving ~35 % idle capacity across 24 cores. iostat -xz shows nvme1n1 at ≈9–10k writes/s with 0.05–0.6 ms wait time and
+    <30 % device utilization, so storage is not the limit.
+
+  - Memory remains plentiful (≈32 GiB available, albeit with legacy 4.4 GiB swap allocated) and there are no temp-file writes.
+
+  - The Ed-Fi C# service (/home/brad/work/dms-root/Data-Management-Service/src/dms/frontend/EdFi.DataManagementService.Frontend.AspNetCore/bin/Release/net8.0/EdFi.DataManagementService.Frontend.AspNetCore
+    --urls http://localhost:8080, PID 308292) uses ~78 % of a single CPU and 1.6 % of RAM; it is not CPU-bound.
+
+  - The python load driver (/home/brad/.cache/pypoetry/virtualenvs/edfi-performance-test-4ZzKv18i-py3.12/bin/python -m edfi_performance_test … --clientCount 20, PID 429693) consumes ~96 % of one core and
+    negligible memory. With 35 % system-wide idle CPU, the driver is not perturbing the test.
+
+  - Only application_name='EdFi.DMS' and client 127.0.0.1 appear in pg_stat_monitor, so no outside traffic is skewing the workload.
+
+  - Auto explain is currently disabled (auto_explain.log_min_duration = -1, log_analyze = off, sample_rate = 1), so plan samples are not being captured even though the extension is preloaded.
+
+  Conclusions & Recommendations
+
+  - The bottleneck is synchronous WAL serialization: every InsertReferences/Document transaction must flush its WAL, and at the current 65k calls/minute that drives ~14 MB/s of WAL and persistent WALWrite
+    waits. CPU, memory, and storage are not the limiting factors, and the new temp staging table is working correctly (no shared-table vacuum churn or cross-partition scans).
+
+  - To explore the headroom, temporarily wrap the DMS write path in SET LOCAL synchronous_commit = off; and re-run the volume test; that will show the latency you can expect once WAL waits are removed. If the
+    risk profile permits, consider leaving synchronous_commit = off for these bulk inserts or batching multiple logical writes per transaction to amortize flushes.
+
+  - Alternatively, experiment with larger group-commit settings (commit_delay, commit_siblings) and verify WAL writer settings, but the biggest gain will come from reducing the number of commits or relaxing
+    durability for these short transactions.
+
+  - If you rely on plan-level diagnostics, re-enable auto_explain (e.g. log_min_duration = '1ms', log_analyze = on, log_buffers = on) so future regressions in dms.InsertReferences are caught automatically.
+
+  - Continue to monitor pg_stat_monitor buckets: it now provides per-minute latency, WAL bytes, and CPU ratios; any change you trial should immediately shift those metrics.
+
+  The load generator is behaving normally, the C# service is not resource-starved, and the only clear contention point is synchronous WAL flushing driven by the high volume of InsertReferences transactions.
+
+### Throughput dropped from 2200 to 1972, median latency up from 8 to 9
+
+ Test Configuration:
+  - Duration: 30 minutes
+  - Concurrent Clients: 20
+  - Output Directory: DmsTestResults/2025-11-14-17-16-new-insert-ref-with-temp
+
+  Key Metrics:
+  - Total Requests: 3,548,579
+  - Failures: 2,470 (0.07% failure rate)
+  - Throughput: 1,972.21 requests/second
+  - Median Response Time: 9ms
+  - Average Response Time: 9.24ms
+  - Min Response Time: 1ms
+  - Max Response Time: 341ms
+
+  Response Time Percentiles:
+  - 50th (Median): 9ms
+  - 90th: 14ms
+  - 95th: 17ms
+  - 98th: 22ms
+  - 99th: 31ms
+  - 99.9th: 46ms
+  - Max: 340ms
+
+  Analysis
+
+  Strengths:
+  1. Excellent Throughput: Nearly 2,000 requests/second with 20 clients
+  2. Very Low Failure Rate: Only 0.07% failures (2,470 out of 3.5M requests)
+  3. Consistently Fast Response Times: Median of 9ms, 95th percentile of 17ms
+  4. Stable Performance: Very tight response time distribution
+
+  Failures:
+  All 2,470 failures were from POST /data/ed-fi/studentSchoolAssociations with HTTP 400 errors due to:
+  - Invalid enrollmentTypeDescriptor value: 'uri://ed-fi.org/enrollmenttypedescriptor#current' does not exist
+  - This is a data validation issue in the test data, not a performance or reliability issue
+
+  Top 5 Most Active Endpoints by Request Count:
+  1. POST /data/ed-fi/calendars - 494,847 requests
+  2. PUT /data/ed-fi/calendars/{id} - 484,730 requests
+  3. POST /data/ed-fi/gradingPeriods - 118,821 requests
+  4. POST /data/ed-fi/studentSchoolAssociations - 112,055 requests
+  5. POST /data/ed-fi/students - 104,660 requests
+
+  Slowest Endpoints (by median):
+  - GET /data/ed-fi/localEducationAgencies: 4ms median (only 2 requests)
+  - PUT /data/ed-fi/studentSchoolAssociations/{id}: 15ms median
+  - POST /data/ed-fi/classPeriods/{id}: 14ms median
+
+  Performance Rating
+
+  This test shows excellent performance for a DMS system handling nearly 2,000 req/s with:
+  - Sub-10ms median latency
+  - 95th percentile under 20ms
+  - Negligible failure rate
+  - Over 3.5M successful operations in 30 minutes
+
+## Update 2025-11-14-19-45-insert-ref-with-temp-tweak (From truncate to delete of temp table)
+
+  - pg_stat_monitor now reports 650,490 calls to SELECT … FROM dms.InsertReferences consuming 1,297,461 ms total, so the average latency is 1.99 ms—down from 3.35 ms in the truncate run.
+  - Minute buckets (19:52–20:01 CST) show 66–67k calls/minute with mean 1.98–2.00 ms and WAL ≈1.58 KB/call (pg_stat_monitor query). That WAL/call rate matches the pre-temp-table baseline (1.55 KB) and is half
+    of the previous truncate run (~3.0 KB).
+  - pg_stat_monitor also shows total CPU for the InsertReferences statement at ~55.8 s user + 5 s sys; the remaining ~1.24 s/call is still wait time (mostly WAL serialization), but the doubling from the
+    TRUNCATEs is eliminated.
+
+  System Bottlenecks
+
+  - pg_stat_activity now shows only 2–3 backends waiting on WALWrite at any moment, versus 4–5 in the prior run, so synchronous WAL remains the limiting factor but at a manageable level; there are no lock
+    waits or IO contention.
+  - Host metrics (mpstat, iostat, free) show the system is comfortable: ~50 % CPU usage, <2 % iowait, NVMe nvme1n1 at ~6–7k writes/s with 0.05–0.6 ms await, and 36 GiB memory free.
+  - The DMS C# service (PID 481482) uses ~226 % CPU (≈2.3 cores) and 1.5 % RAM; the Python load driver (PID 488567) consumes ~96 % of one core. With 40 % CPU idle, neither component is a bottleneck.
+  - pg_stat_wal shows 9.29 GB WAL generated since the reset (~14 MB/s), consistent with the throughput and WAL/call metrics.
+
+  - Each session’s temp table now stays clean without per-call DDL: pg_stat_user_tables shows pg_temp_0.reference_stage has 112k dead tuples but no autovacuum, and pg_locks reports no locks on these tables.
+    The per-call DELETE keeps data isolated with minimal overhead, unlike the earlier TRUNCATE which doubled WAL volume.
+  - No WALWrite or catalog-lock thrash is evident. The per-session temp tables have not introduced new hotspots.
+
+  Conclusion
+
+  - The change from TRUNCATE to DELETE returned the InsertReferences path to its previous latency profile (~2 ms) and halved WAL per call. The only residual bottleneck is synchronous WAL flushing, which was
+    already present and now accounts for nearly all of the remaining 2 ms response time.
+  - Larger system components (C# service, Python driver) have ample headroom and are not throttling the test.
+
+  1. If further latency reductions are required, address WAL serialization (e.g., larger transactions, SET LOCAL synchronous_commit=off for this workload, or group commit tuning).
+  2. Keep using the temp-table approach; no additional DB changes are needed unless you want to revert entirely.
+  3. Capture the new volume_stats.csv run in DmsTestResults/2025-11-19-45-insert-ref-with-temp-tweak to compare endpoint latencies; you should see response times return close to the original 9–10 ms averages.
+
+  Overall, the DELETE change achieved its goal: InsertReferences is no longer slowed by temp-table maintenance, and the system is healthy aside from the expected WAL pressure.
+
+### Test results, slightly slower than unlogged but not much
+
+ Test completed successfully in 1800 seconds (30 minutes) with excellent performance:
+
+  Key Metrics
+
+  - Total Requests: 3,842,855
+  - Failed Requests: 2,675 (0.07% failure rate)
+  - Throughput: 2,135.08 requests/second
+  - Median Response Time: 8ms
+  - Average Response Time: 8.49ms
+
+  Response Time Percentiles
+
+  | Percentile   | Response Time |
+  |--------------|---------------|
+  | 50% (Median) | 8ms           |
+  | 75%          | 10ms          |
+  | 90%          | 13ms          |
+  | 95%          | 15ms          |
+  | 99%          | 29ms          |
+  | 99.9%        | 44ms          |
+  | Max          | 411ms         |
+
+  Performance Assessment
+
+  ✅ Excellent - The system demonstrates strong performance across all metrics:
+  - Median response time of 8ms is well below the 5-10ms benchmark
+  - 95th percentile of 15ms is excellent (benchmark: <100ms)
+  - 99th percentile of 29ms is well within acceptable range (benchmark: <500ms)
+  - Very high throughput of 2,135 req/s with 20 clients
+  - Extremely low failure rate (0.07%)
+
+## Update 2025-11-14-20-28-temp-nothing-else (Only ON COMMIT DELETE ROWS)
+
+InsertReferences Performance
+
+  - Since the 20:27 reset, dms.InsertReferences (src/dms/backend/EdFi.DataManagementService.Backend.Postgresql/Deploy/Scripts/0010_Create_Insert_References_Procedure.sql) has executed 664,638 times
+    (pg_stat_monitor) with 1,260,059 ms cumulative time, so mean latency is 1.896 ms—back to the pre-temp-table level.
+  - Minute buckets show 63–69k calls/min with consistent 1.89–1.91 ms medians and only single-digit shared reads per minute; per-call WAL is ~1.6 KB, down from the 3 KB seen before removing the per-call
+    TRUNCATEs. Total WAL generation is 8.1 GB in ~13 minutes (pg_stat_wal), roughly 10 MB/s.
+  - CPU usage for the statement is still tiny compared to total time (pg_stat_monitor reports only ~66 s of CPU), so residual latency comes from synchronous WAL flushes; in pg_stat_activity the only wait
+    events are WALWrite on DELETE statements.
+
+  Other Queries
+
+  - DELETE FROM dms.Document … runs 459k times at 0.52 ms/call (4.8× less time than InsertReferences) and also waits on WAL locks, but the cost is modest.
+  - Document inserts/updates and reads sit at <=0.1 ms/call and are not bottlenecking.
+  - No significant temp I/O or read I/O: pg_stat_io sees only WAL and relation contexts, and pg_stat_database shows cache hit ratios >98 %.
+
+  System Health
+
+  - CPU utilization averages ~50 % user, 8 % system, 1–2 % iowait with 40 % idle across 24 cores (mpstat); disk writes sit around 6–9 k/s with 0.05–0.7 ms latency (iostat). Memory has ~33 GiB available, swap
+    usage dropped to 3.6 GiB; no temp files.
+  - Only application_name='EdFi.DMS'@127.0.0.1 appears in pg_stat_monitor; no external clients interfering.
+  - C# DMS process (PID 481482) holds ~2.6 cores, Python load driver (PID 519433) consumes ~1 core; both are far below system capacity and do not affect DB performance.
+
+  Conclusion
+
+  - Removing the DELETE/truncate pair inside InsertReferences eliminated the DDL penalty. The function now performs at 1.9 ms/call with ~1.6 KB WAL/call, matching the original behavior while still avoiding
+    cross-partition scans and shared-table autovacuum churn.
+  - The remaining limit is inherent synchronous WAL flush per small transaction. If further reduction is desired, consider batching multiple reference sets per transaction or temporarily relaxing
+    synchronous_commit during high-volume insert phases.
+
+  The load generator and DMS service are not bottlenecks, system resources are ample, and dms.InsertReferences is executing efficiently with no new hotspots.
+
+###   Performance Assessment
+
+  ✅ Excellent - Virtually identical performance to the previous test with slightly higher throughput.
+
+  Comparison with Previous Test (2025-11-19-45-insert-ref-with-temp-tweak)
+
+  | Metric               | Previous Test  | Current Test   | Difference           |
+  |----------------------|----------------|----------------|----------------------|
+  | Total Requests       | 3,842,855      | 3,860,156      | +17,301 (+0.45%)     |
+  | Throughput           | 2,135.08 req/s | 2,144.93 req/s | +9.85 req/s (+0.46%) |
+  | Failure Rate         | 0.07%          | 0.07%          | No change            |
+  | Median Response Time | 8ms            | 8ms            | No change            |
+  | 95th Percentile      | 15ms           | 15ms           | No change            |
+  | 99th Percentile      | 29ms           | 29ms           | No change            |
+  | Max Response Time    | 411ms          | 461ms          | +50ms                |
+
+## Update 2025-11-14-23-15-no_syncs (Just a check-in on using asynchronous commits)
+
+• InsertReferences
+
+  - pg_stat_monitor (23:27 CST) shows SELECT … FROM dms.InsertReferences handling 64.9k calls/minute with total 1,239,672 ms and mean latency 1.91 ms/call. WAL creation per call
+    dropped to ~1.58 KB (table at 23:27: bucket 6 = 70,785 calls, wal_bytes/calls = 1,640).
+  - CPU remains a small portion of the total: 66 M shared hits vs. 13k reads, with pg_stat_monitor reporting 61.2 s user + 5.8 s sys versus 1,276 s total, meaning ~90 % of wall time is now actual execution
+    rather than waits. pg_stat_activity confirms there are no WALWrite or IO waits: only ClientRead and one VacuumDelay entry.
+  - WAL generation since the 23:08 reset is 9.0 GB (pg_stat_wal), roughly 11 MB/s. Because synchronous_commit is OFF (validated via SHOW synchronous_commit; returning “off”), commits no longer wait for the
+    WAL flush, so the workload is now limited by application-side throughput rather than PostgreSQL serialization.
+
+  System Health
+
+  - CPU utilisation averages 52 % user / 6 % system with ~40 % idle across 24 cores (mpstat -P ALL 1 5), so there is ample headroom. Storage writes sit around 4.7k IOPS with 0.03–0.6 ms latency (iostat -xz);
+    no I/O bottleneck evident. Memory has ~26 GiB free and zero temp files; swap usage (~3 GiB) is unchanged but idle.
+  - The Ed-Fi ASP.NET service (…Frontend.AspNetCore, PID 625555) consumes ~242 % CPU (≈2.4 cores) and 1.3 % RAM; it is now the heaviest process on the box. The Python driver (…/edfi_performance_test …
+    --clientCount 20, PID 630203) uses a single core at ~96 % CPU and minimal memory, so it is not throttling the test.
+
+  Bottleneck Assessment
+
+  - With synchronous commits disabled, the database no longer waits on WALWrite; the primary bottleneck shifts to the application tier and how fast clients can submit requests. Remaining waits are network-
+    side ClientRead, meaning sessions idle waiting for more work.
+  - Autovacuum is the top PostgreSQL process in ps (PID 646189 at 58 % CPU) vacuuming a document partition—expected under a heavy write workload but not a blocker unless it persists; monitor
+    pg_stat_progress_vacuum if it stays high.
+  - The C# service and Python load generator now dominate CPU usage. To push throughput higher you’ll need to either scale the client count or profile the Ed-Fi service (middleware, JSON serialization, HTTP
+    stack) since the database no longer queues on WAL.
+
+  Next Steps
+
+  1. Confirm the durability trade-off (sync commit OFF) is acceptable for this test; if you re-enable it, expect per-call latency to climb back above 3 ms unless you batch transactions.
+  2. Increase client concurrency or tune the Ed-Fi service to see how much additional throughput the database can sustain now that WAL waits are gone.
+  3. Keep an eye on WAL volume and checkpoints (pg_stat_wal, pg_stat_checkpointer) if you hold this configuration—without flush waits, WAL grows faster, so ensure max_wal_size and archive handling stay ahead.
+
+### Results - throughput only went up 8% with async commit - probably needs more load
+
+  Comparison to Previous Test (2025-11-19-45)
+
+  | Metric             | Previous  | Current   | Change         |
+  |--------------------|-----------|-----------|----------------|
+  | Total Requests     | 3,842,855 | 4,161,051 | +8.3%          |
+  | Throughput (req/s) | 2,135     | 2,312     | +8.3%          |
+  | Median (ms)        | 8         | 8         | Same           |
+  | 95th %ile (ms)     | 15        | 14        | -6.7% (better) |
+  | 99th %ile (ms)     | 29        | 27        | -6.9% (better) |
+  | Failures           | 2,675     | 2,901     | +8.5%          |
+  | Failure Rate       | 0.07%     | 0.07%     | Same           |
+
+
+## Update 2025-11-15-00-19-40-client-no-sync-1 and -2 (40 client asynch commits)
+
+• InsertReferences
+
+  - With synchronous_commit=off, 40 DMS clients are driving 101k InsertReferences calls per minute at 2.38–2.53 ms/call (pg_stat_monitor, bucket 0–2). Average per-call WAL is ~1.58 KB (e.g., bucket 2: 74,005
+    calls, wal_bytes/calls = 1,592), so total WAL is scaling linearly (12.3 GB in ~15 min; pg_stat_wal).
+  - pg_stat_monitor aggregate: 1,007,805 total calls consuming 2,473,580 ms → 2.45 ms/call; DELETE statements (700,380 calls) average 0.66 ms and generate 0.32 KB WAL per call. CPU time is minor:
+    InsertReferences recorded only ~61 s user + 5.8 s sys vs 2,473 s total (less than 3%), showing the remaining ~97% is waiting for the clients or internal locking, not CPU.
+  - pg_stat_activity shows no WALWrite or IO waits (only ClientRead and idle states). Temp table staging is confirmed clean (no temp file usage).
+
+  System Load
+
+  - CPU is now the limit: mpstat averages 77 % user + 9 % system with just 11–12 % idle across all 24 cores. The Ed-Fi ASP.NET service uses ~195 % CPU (~2 cores) but the PostgreSQL backend now consumes 70 %
+    of each CPU, and two Python load drivers (.../edfi_performance_test … --clientCount 20) consume 80 % of a core each. All cores are heavily utilized, so further scaling will demand more CPU headroom or
+    additional hardware.
+  - Memory: 26 GiB available but swap usage climbed to 6 GiB. No temp files exist, so swaps likely come from other processes; it hasn’t hurt latency yet but keep an eye on it.
+  - Storage I/O remains trivial: 4–5 k writes/s with sub-millisecond latency, no evidence of I/O saturation.
+
+  Bottleneck Summary
+
+  - Primary bottleneck: overall CPU capacity. With 40 clients, the database moves from WAL waits to CPU saturation; mpstat shows all cores busy, reducing available headroom and causing per-call latency to
+    crease relative to the 20-client run (~1.9 ms → ~2.5 ms).
+  - Secondary: client-side workload. Two Python load processes hammer the service and each use ~81 % CPU. If they max their host cores, request generation can become the next limiter.
+
+  Checks
+
+  - DMS C# service: steady at ~195 % CPU / 1.4 % RAM—no new bottleneck there.
+  - Python drivers: now running two instances to reach 40 clients; each uses ~81 % CPU but still has spare headroom (each core is ~100% max).
+  - Database stats were reset shortly before the run (stat reset at 00:17), so data reflects only this 40-client, no-sync workload.
+
+  Next Steps
+
+  1. If you want lower latency at 40 clients, consider scaling out the database CPU resources or splitting the load across servers. The plateau now comes from CPU saturation.
+  2. Track swap usage; if it continues to grow, inspect other processes or increase RAM to avoid swapping under heavy tests.
+  3. If exploring even higher concurrency, monitor Python driver CPU: consider distributing load across multiple machines to keep the generator from becoming the bottleneck.
+
+### Results - 3000 combined throughput
+
+● Performance Test Results Analysis
+
+  Both 30-minute tests completed successfully. Here's the analysis:
+
+  Overall Performance Summary
+
+  Test 1 (no-sync-1):
+  - Total Requests: 2,700,518
+  - Failures: 1,750 (0.065% failure rate)
+  - Throughput: 1,501 requests/second
+  - Median Response Time: 12ms
+  - Average Response Time: 12.4ms
+  - 95th Percentile: 21ms
+  - 99th Percentile: 38ms
+  - 99.9th Percentile: 58ms
+
+  Test 2 (no-sync-2):
+  - Total Requests: 2,703,331
+  - Failures: 1,811 (0.067% failure rate)
+  - Throughput: 1,503 requests/second
+  - Median Response Time: 12ms
+  - Average Response Time: 12.39ms
+  - 95th Percentile: 21ms
+  - 99th Percentile: 38ms
+  - 99.9th Percentile: 58ms
+
+
