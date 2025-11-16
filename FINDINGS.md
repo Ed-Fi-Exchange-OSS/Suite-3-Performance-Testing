@@ -3913,4 +3913,156 @@ InsertReferences Performance
   - 99th Percentile: 38ms
   - 99.9th Percentile: 58ms
 
+## Update 2025-11-15-13-28-jsonb-patch (Added JSON Patch for document updates) ******* WRONG WAS NOT SET
+
+• - InsertReferences still dominates: 641,707 calls in the last 10‑minute window consumed 1,208,902 ms total (~1.88 ms/call) and generated ~1.6 KB WAL per execution (pg_stat_monitor). The bulk of that time
+    is WAL-bound: CPU attributed to the query is only ~61 s user + 5 s sys, while the rest is commit waits and WAL serialization. Minute buckets stay at ~65k calls/minute with consistent latency, so the temp
+    staging table continues to keep all work partition-local.
+
+  - Document INSERTs via the WITH Documents AS (…) INSERT INTO dms.Alias … statement ran 642,561 times at 0.051 ms/call and wrote only ~645 KB total WAL (“Documents” now falls out of the top 15 by wall-clock
+    time). Partial updates helped: UPDATE dms.Document SET … averages 0.095 ms/call (193,254 invocations; 18,455 ms total) with 238 MB of WAL, roughly a 20 % buffer compared to yesterday’s 0.098 ms/ call and
+    294 MB WAL. Since these statements are still a small fraction of total time, their optimization shift is noticeable mainly in WAL volume.
+
+  - Deletes (DELETE FROM dms.Document…) remain the second-largest contributor (449,302 calls, 231,738 ms total). Like InsertReferences they spent only ~5 s CPU yet 232 s wall time, so they are likewise
+    waiting for commits/WAL flushes. Together InsertReferences + Delete account for >70 % of total elapsed SQL time and ~1.2 GB of WAL in 10 minutes.
+
+  - WAL is the bottleneck overall: pg_stat_wal shows 12.0 GB generated since the 13:26 reset (≈20 MB/s). pg_stat_activity at 13:44 shows sessions waiting on WalSync rather than locks or data I/O, and
+    pg_stat_monitor still reports WALWrite waits (4–5 backends each sample). CPU and storage are not saturated (mpstat ~48 % user & 6 % sys with 42 % idle; iostat shows nvme1n1 at 6k writes/s, 0.05–0.6 ms
+    await, 30 % util). Memory pressure is rising due to the DMS front-end (swap now fully used), so consider restarting that process after the test.
+
+  - Client-side load is healthy: the Ed-Fi ASP.NET Core service (PID 793093) uses ~2.5 cores and 1.3 % RAM; the Python driver (PID 795720) uses <1 core. Neither saturates CPU, so they aren’t skewing the
+    workload.
+
+  - Autovacuum is busy (PID 812733) but keeping up: document partitions show <1.5 % dead tuples and reference partitions <1 %. Each backend now has its own pg_temp_N.reference_stage, so no shared table
+    remains.
+
+  - Auto Explain is still disabled (auto_explain.log_min_duration = -1), meaning new plans aren’t being logged; re-enable if you need per-query plan telemetry.
+
+  Next Steps
+
+  1. If you want InsertReferences latency lower, you must reduce per-transaction WAL syncs: batch logical writes into fewer transactions, or temporarily SET LOCAL synchronous_commit = off for the DMS write
+     sessions during these bulk tests.
+  2. Consider trimming the shared-EF workload to free swap and memory before the next run; the system is now fully swapped out (8 GiB used, 13 MiB free).
+  3. Re-enable auto_explain (e.g., log_min_duration = '1ms', log_analyze = on, sample_rate = 0.1) to capture plan regressions for InsertReferences/Document statements going forward.
+
+  The new partial updates are working (Document UPDATE costs dropped), but WAL serialization remains the dominant bottleneck for your three focus statements.
+
+  ### Asked for review of postgresql.conf settings
+
+  > Check that synchronous_commit is ON, and scan the current PostgreSQL settings for anything that is problematic for a production workload that requires both full durablility and performance.
+
+  • - SHOW synchronous_commit; returned on, so every commit waits for WAL flush and full durability is preserved. fsync and full_page_writes are also on, wal_level=replica, so the durability pipeline is intact.
+  - WAL archiving is disabled (archive_mode=off, archive_command=(disabled), wal_keep_size=0). For a production system that “requires full durability and performance”, you usually want WAL archiving or at
+    least wal_keep_size tuned so that you can do PITR or rebuild standbys; right now a media failure or cascading replication break would leave you without WAL to recover from.
+
+  - wal_log_hints=off prevents pg_rewind and some online backup tooling even though data_checksums=on. If you plan to use pg_rewind/recovery in production, flip it to on (requires restart).
+
+  - random_page_cost=4 is still the spinning-disk default and will make the planner avoid index scans even though you’re on NVMe; setting it closer to 1.1–1.5 reflects SSD behavior and improves plan quality
+    (especially with the heavy partitioning you’re using).
+
+  - backend_flush_after=0 disables kernel writeback hints. On NVMe this isn’t catastrophic, but allowing a modest value (e.g., 2–4 8‑kB pages) smooths checkpoint I/O without hurting latency.
+
+  - commit_delay=100 μs with commit_siblings=5 means each transaction waits up to 0.1 ms hoping to group commits, but because synchronous_commit=on you still have to flush per transaction; the delay just adds
+    jitter. Consider returning commit_delay to 0 unless you also change the workload to batch commits.
+
+  - jit=on while work_mem=64 MB and most queries are millisecond-scale OLTP isn’t ideal; Postgres will repeatedly check JIT thresholds and may invoke LLVM for plans that never amortize the setup time. For
+    this kind of workload I’d normally set jit=off or raise the jit_above_cost thresholds dramatically.
+
+  - Logging/diagnostics are minimal: log_min_duration_statement=-1 (no slow-query log), log_lock_waits=off, log_autovacuum_min_duration=600000 (10 minutes) – you won’t capture problematic events until they’re
+    severe. Enabling at least slow-query logging and autovacuum logging in production gives you breadcrumbs before a crisis.
+
+  - auto_explain is preloaded but fully disabled (log_min_duration=-1, log_analyze=off). Either remove it from shared_preload_libraries or enable it with a sane threshold so it earns its keep.
+
+  - Memory settings (shared_buffers=16 GB, work_mem=64 MB, maintenance_work_mem=2 GB, effective_cache_size=48 GB) are reasonable, but note the host is currently swapping heavily (swap fully consumed). Swap
+    kills write latency when the OS reclaims buffers, so keep the OS free list healthy (reduce other processes or lower shared_buffers if necessary).
+
+  Overall, durability knobs are correctly “on”, but for a production-grade deployment you should (1) enable WAL archiving or at least set wal_keep_size to retain enough WAL for standby re-sync, (2) lower
+  random_page_cost for SSD, (3) remove the pointless commit_delay, (4) disable JIT for this OLTP workload, and (5) improve operational observability (slow-query / autovacuum logging and auto_explain).
+  Addressing those will give you both the durability guarantees you want and the visibility to keep performance steady under load.
+
+### Results
+
+● Performance Test Results - 2025-11-15-13-28-jsonb-patch
+
+  The 30-minute test with 20 clients has completed. Here's the analysis:
+
+  Overall Performance Summary
+
+  Test Results:
+  - Total Requests: 3,756,016
+  - Failures: 2,698 (0.072% failure rate)
+  - Throughput: 2,087 requests/second
+  - Median Response Time: 8ms
+  - Average Response Time: 8.69ms
+  - 95th Percentile: 15ms
+  - 99th Percentile: 29ms
+  - 99.9th Percentile: 43ms
+
+## Update 2025-11-15-14-36-jsonb-patch-2 (A re-run mostly for a logging test, but also turned off commit grouping) ******* WRONG WAS NOT SET
+
+● Performance Test Results - 2025-11-15-14-36-jsonb-patch-2 (Full 30-minute run)
+
+  The test completed successfully with a full 30-minute run. Here's the comprehensive analysis:
+
+  Overall Performance Summary
+
+  Test Results:
+  - Total Requests: 4,243,358
+  - Failures: 3,018 (0.071% failure rate)
+  - Throughput: 2,358 requests/second
+  - Median Response Time: 7ms
+  - Average Response Time: 7.63ms
+  - 95th Percentile: 13ms
+  - 99th Percentile: 27ms
+  - 99.9th Percentile: 41ms
+
+
+## Update 2025-11-15-15-21-jsonb-patch-really (Actually using PATCH)
+
+• Current Load Test Findings (Post Partial-Update Change)
+
+  - dms.InsertReferences (…/0010_Create_Insert_References_Procedure.sql:20-235) remains the dominant DB task: 631k calls in 10 min at 1.92 ms/call; each consumes ~1.58 KB of WAL, yielding ~100 MB/min (still
+    WAL-bound but 45% faster than the previous 3.3 ms median thanks to the temp staging table).
+  - Document INSERT path (WITH Documents AS (…) INSERT INTO dms.Document …) runs 440k times at 0.25 ms/exec and writes 0.77 GB WAL overall. The Document DELETE cleanup (440k calls at 0.50 ms) plus INSERT
+    explain most of the doc-table load; neither is CPU-limited (pg_stat_monitor shows <5 s CPU vs. >200 s runtime).
+  - The new partial UPDATE (UPDATE dms.Document SET EdfiDoc = dms.jsonb_patch(…) in src/dms/frontend/…/DocumentRepository, not shown here) now averages 0.24 ms instead of ~0.54 ms previously, yet still
+    generates 237 MB of WAL; overall updates no longer saturate CPU (20.9 s CPU vs. 45.4 s runtime).
+  - Checkpoints/WAL are the bottleneck (single waiters on WALWrite/WalWrite every sample; pg_stat_wal since reset: 10.7 GB in 13 minutes). CPU (mpstat ~52 % user, 13 % sys), storage (NVMe writes 9–10k/s @
+    0.05 ms) and memory (32 GiB free; swap usage ~4.4 GiB but swappiness=60 so little pressure) are fine. No auto_explain data (log_min_duration = -1).
+  - DMS service (…Frontend.AspNetCore, PID 880927) uses ~241 % CPU (≈2.4 cores), Python driver uses one core; both are stable and far from saturating the 24-core host. pg_stat_monitor shows only
+    application_name='EdFi.DMS'/127.0.0.1, so no other clients interfere.
+
+  Recommendations
+
+  1. WAL waits dominate response time for InsertReferences/Doc INSERT/UPDATE: experiment with SET LOCAL synchronous_commit = off or batch multiple logical operations per transaction to reduce fsync frequency;
+     expect further latency drops (~1 ms target).
+  2. Partial updates helped; consider reducing JSON patch payload size (trim unchanged keys, compress arrays) to lower WAL volume per update (currently ~1.2 KB per call).
+  3. Re-enable auto_explain with log_min_duration='1ms', log_analyze=on, sample_rate=0.1 to catch plan regressions automatically.
+  4. Monitor swap usage; swappiness=60 plus 4.4 GB active swap is acceptable but you can reduce to 10 to favor RAM (optional).
+
+  ### Results:
+
+● Perfect! The test completed successfully. Here's the analysis:
+
+  Performance Test Results: 2025-11-15-15-21-jsonb-patch-really
+
+  Overall Performance Summary
+
+  Test Duration: 30 minutes with 20 clients
+  Total Requests: 3,382,807
+  Failures: 2,500 (0.074% failure rate)
+  Throughput: 1,880 requests/second
+
+  Response Time Metrics
+
+  | Metric            | Time (ms) |
+  |-------------------|-----------|
+  | Median (50th %)   | 9         |
+  | Average           | 9.71      |
+  | 95th Percentile   | 16        |
+  | 99th Percentile   | 31        |
+  | 99.9th Percentile | 46        |
+  | Max               | 534       |
+
+  Key Performance Observations
 
