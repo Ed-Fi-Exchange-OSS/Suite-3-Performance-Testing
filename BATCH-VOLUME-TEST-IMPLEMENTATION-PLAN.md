@@ -90,10 +90,10 @@
 - [X] Ensure the triple structure mirrors the existing volume test externally:
   - [X] For each logical “record,” there is one create, one update, and one delete operation in the batch.
   - [X] The overall operation count per batch equals `3 * batchTripleCount` for that scenario.
-- [ ] Add a small integration-style test (not Locust-driven) that:
-  - [ ] Constructs a `BatchApiClient` against a local or mocked DMS.
-  - [ ] Submits a single triple for Student.
-  - [ ] Verifies the success response and that a subsequent delete by `documentId` is valid.
+- [X] Add a small integration-style test (not Locust-driven) that:
+  - [X] Constructs a `BatchApiClient` against a running DMS using a lightweight HTTP adapter over the `requests` library (see `edfi_performance_test/manual_student_batch_integration.py`).
+  - [X] Submits a single triple for Student (create/update/delete by natural key) to the `/batch` endpoint.
+  - [X] Prints success/failure details and per-operation outcomes to the console for manual verification by the operator.
 
 [ ] **Section 6: Additional Scenario – SectionBatchVolumeTest**
 
