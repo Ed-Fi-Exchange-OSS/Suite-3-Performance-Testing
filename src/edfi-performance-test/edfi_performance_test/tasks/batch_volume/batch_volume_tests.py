@@ -14,6 +14,8 @@ from edfi_performance_test.tasks.batch_volume.batch_volume_test_base import (
 from edfi_performance_test.tasks.batch_volume.batch_volume_fixtures import (
     get_or_create_shared_school,
     get_or_create_shared_course_offering,
+    get_or_create_shared_class_period,
+    get_or_create_shared_location,
 )
 from edfi_performance_test.helpers.api_metadata import get_model_version
 from edfi_performance_test.helpers.module_helper import get_dir_modules
@@ -33,14 +35,22 @@ class BatchVolumeTestUser(FastHttpUser):
         from edfi_performance_test.api.client.ed_fi_basic_api_client import (
             EdFiBasicAPIClient,
         )
+        from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
 
         auth_client = EdFiBasicAPIClient(self.client)
         self.token = auth_client.token
+
+        # Propagate the Locust HTTP client and token to EdFiAPIClient so that
+        # existing clients can be used by fixture helpers.
+        EdFiAPIClient.client = self.client
+        EdFiAPIClient.token = self.token
 
         # Initialize shared fixtures once per test run so they can be
         # referenced by batch volume scenarios via their natural keys.
         get_or_create_shared_school()
         get_or_create_shared_course_offering()
+        get_or_create_shared_class_period()
+        get_or_create_shared_location()
 
         batch_volume_tests_dir = os.path.dirname(__file__)
         tasks_submodules = get_dir_modules(

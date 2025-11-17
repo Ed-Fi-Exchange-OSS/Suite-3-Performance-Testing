@@ -95,16 +95,17 @@
   - [X] Submits a single triple for Student (create/update/delete by natural key) to the `/batch` endpoint.
   - [X] Prints success/failure details and per-operation outcomes to the console for manual verification by the operator.
 
-[ ] **Section 6: Additional Scenario – SectionBatchVolumeTest**
+[X] **Section 6: Additional Scenario – SectionBatchVolumeTest**
 
-- [ ] Create `tasks/batch_volume/section_batch_volume.py`.
-- [ ] Implement `SectionBatchVolumeTest(BatchVolumeTestBase)`:
-  - [ ] Reference `SectionFactory` for documents.
-  - [ ] Use fixtures for `School` and `CourseOffering` to avoid unresolved references.
-  - [ ] Build triples where:
-    - [ ] The create references existing School and CourseOffering via natural keys.
-    - [ ] The update modifies a non-identity attribute (e.g., `sequenceOfCourse`).
-    - [ ] The delete removes the created Section by matching natural key.
+- [X] Create `tasks/batch_volume/section_batch_volume.py`.
+- [X] Implement `SectionBatchVolumeTest(BatchVolumeTestBase)`:
+  - [X] Reference `SectionFactory` for documents.
+  - [X] Use fixtures for `School`, `CourseOffering`, `ClassPeriod`, and `Location` to avoid unresolved references in section dependencies.
+  - [X] Build triples where:
+    - [X] The create references existing School and CourseOffering via natural keys (using `courseOfferingReference` fields).
+    - [X] The create also references shared ClassPeriod and Location fixtures via their natural keys.
+    - [X] The update modifies a non-identity attribute (e.g., `sequenceOfCourse`).
+    - [X] The delete removes the created Section by matching natural key.
 - [ ] Exercise at least one scenario with mixed-resource batches:
   - [ ] Example: include both `CourseOffering` and `Section` operations in the same batch.
   - [ ] Ensure correct ordering in the operations array (dependencies before dependents).

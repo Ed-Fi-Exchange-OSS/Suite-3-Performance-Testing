@@ -7,11 +7,15 @@ from typing import Any, Dict
 
 from edfi_performance_test.api.client.school import SchoolClient
 from edfi_performance_test.api.client.course_offering import CourseOfferingClient
+from edfi_performance_test.api.client.class_period import ClassPeriodClient
+from edfi_performance_test.api.client.location import LocationClient
 
 
 _fixtures_lock = threading.Lock()
 _shared_school_natural_key: Dict[str, Any] | None = None
 _shared_course_offering_natural_key: Dict[str, Any] | None = None
+_shared_class_period_natural_key: Dict[str, Any] | None = None
+_shared_location_natural_key: Dict[str, Any] | None = None
 
 
 def _ensure_edfi_client_initialized() -> None:
@@ -95,3 +99,64 @@ def get_or_create_shared_course_offering() -> Dict[str, Any]:
 
         return _shared_course_offering_natural_key
 
+
+def get_or_create_shared_class_period() -> Dict[str, Any]:
+    """
+    Create (once) and return the natural key for a shared ClassPeriod fixture.
+
+    The Section resource references classPeriods via:
+    - classPeriodReference__classPeriodName
+    - classPeriodReference__schoolId
+    """
+    global _shared_class_period_natural_key
+
+    if _shared_class_period_natural_key is not None:
+        return _shared_class_period_natural_key
+
+    with _fixtures_lock:
+        if _shared_class_period_natural_key is not None:
+            return _shared_class_period_natural_key
+
+        _ensure_edfi_client_initialized()
+
+        client = ClassPeriodClient(ClassPeriodClient.client, token=ClassPeriodClient.token)
+        reference = client.create_with_dependencies()
+        attrs = reference["attributes"]
+
+        _shared_class_period_natural_key = {
+            "classPeriodName": attrs["classPeriodName"],
+            "schoolId": attrs["schoolReference"]["schoolId"],
+        }
+
+        return _shared_class_period_natural_key
+
+
+def get_or_create_shared_location() -> Dict[str, Any]:
+    """
+    Create (once) and return the natural key for a shared Location fixture.
+
+    The Section resource references location via:
+    - classroomIdentificationCode
+    - schoolId
+    """
+    global _shared_location_natural_key
+
+    if _shared_location_natural_key is not None:
+        return _shared_location_natural_key
+
+    with _fixtures_lock:
+        if _shared_location_natural_key is not None:
+            return _shared_location_natural_key
+
+        _ensure_edfi_client_initialized()
+
+        client = LocationClient(LocationClient.client, token=LocationClient.token)
+        reference = client.create_with_dependencies()
+        attrs = reference["attributes"]
+
+        _shared_location_natural_key = {
+            "classroomIdentificationCode": attrs["classroomIdentificationCode"],
+            "schoolId": attrs["schoolReference"]["schoolId"],
+        }
+
+        return _shared_location_natural_key
