@@ -25,9 +25,9 @@ import os
 from typing import Any, Dict, Optional
 
 import requests
+from dotenv import load_dotenv, find_dotenv
 
 from edfi_performance_test.api.client.batch_api_client import BatchApiClient
-from edfi_performance_test.factories.resources.student import StudentFactory
 
 
 class RequestsResponseContext:
@@ -60,9 +60,62 @@ class RequestsHttpSessionAdapter:
     `requests.Session`.
     """
 
-    def __init__(self, verify: bool = True) -> None:
+    def __init__(self, base_url: str, verify: bool = True) -> None:
         self._session = requests.Session()
         self._session.verify = verify
+        self._base_url = base_url.rstrip("/")
+
+    def post(
+        self,
+        url: str,
+        data: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        catch_response: bool = False,  # noqa: ARG002
+        name: Optional[str] = None,  # noqa: ARG002
+        **kwargs: Any,
+    ) -> RequestsResponseContext:
+        return self.request(
+            "post", url, data=data, headers=headers, catch_response=catch_response, name=name, **kwargs
+        )
+
+    def get(
+        self,
+        url: str,
+        data: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        catch_response: bool = False,  # noqa: ARG002
+        name: Optional[str] = None,  # noqa: ARG002
+        **kwargs: Any,
+    ) -> RequestsResponseContext:
+        return self.request(
+            "get", url, data=data, headers=headers, catch_response=catch_response, name=name, **kwargs
+        )
+
+    def put(
+        self,
+        url: str,
+        data: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        catch_response: bool = False,  # noqa: ARG002
+        name: Optional[str] = None,  # noqa: ARG002
+        **kwargs: Any,
+    ) -> RequestsResponseContext:
+        return self.request(
+            "put", url, data=data, headers=headers, catch_response=catch_response, name=name, **kwargs
+        )
+
+    def delete(
+        self,
+        url: str,
+        data: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        catch_response: bool = False,  # noqa: ARG002
+        name: Optional[str] = None,  # noqa: ARG002
+        **kwargs: Any,
+    ) -> RequestsResponseContext:
+        return self.request(
+            "delete", url, data=data, headers=headers, catch_response=catch_response, name=name, **kwargs
+        )
 
     def request(
         self,
@@ -74,20 +127,31 @@ class RequestsHttpSessionAdapter:
         name: Optional[str] = None,  # noqa: ARG002 - kept for compatibility
         **kwargs: Any,
     ) -> RequestsResponseContext:
-        response = self._session.request(method, url, data=data, headers=headers, **kwargs)
+        if url.startswith("http://") or url.startswith("https://"):
+            full_url = url
+        else:
+            full_url = f"{self._base_url}{url}"
+
+        response = self._session.request(method, full_url, data=data, headers=headers, **kwargs)
         return RequestsResponseContext(response)
 
 
 def _bool_from_env(name: str, default: str = "False") -> bool:
     value = os.environ.get(name, default)
-    try:
-        return bool(eval(value))  # noqa: S307 - controlled use to match existing config pattern
-    except Exception:
-        return False
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in ("true", "1", "yes", "y"):
+            return True
+        if lowered in ("false", "0", "no", "n"):
+            return False
+    return False
 
 
 def obtain_token(base_url: str, key: str, secret: str, oauth_endpoint: str, verify: bool) -> str:
-    token_url = f"{base_url.rstrip('/')}{oauth_endpoint}"
+    if oauth_endpoint.startswith("http://") or oauth_endpoint.startswith("https://"):
+        token_url = oauth_endpoint
+    else:
+        token_url = f"{base_url.rstrip('/')}{oauth_endpoint}"
     payload = {
         "client_id": key,
         "client_secret": secret,
@@ -105,6 +169,19 @@ def obtain_token(base_url: str, key: str, secret: str, oauth_endpoint: str, veri
 
 
 def main() -> None:
+    # Load environment variables from a .env file if present (e.g., at the
+    # solution root), falling back to the process environment if not.
+    load_dotenv(find_dotenv())
+
+    # Normalize IGNORE_TLS_CERTIFICATE so that code paths using eval() on this
+    # value (e.g., EdFiBasicAPIClient) receive a capitalized boolean token.
+    raw_ignore = os.environ.get("IGNORE_TLS_CERTIFICATE")
+    if raw_ignore is not None:
+        if str(raw_ignore).strip().lower() in ("true", "1", "yes", "y"):
+            os.environ["IGNORE_TLS_CERTIFICATE"] = "True"
+        elif str(raw_ignore).strip().lower() in ("false", "0", "no", "n"):
+            os.environ["IGNORE_TLS_CERTIFICATE"] = "False"
+
     base_url = os.environ.get("PERF_API_BASEURL")
     key = os.environ.get("PERF_API_KEY")
     secret = os.environ.get("PERF_API_SECRET")
@@ -121,7 +198,20 @@ def main() -> None:
 
     token = obtain_token(base_url, key, secret, oauth_endpoint, verify)
 
-    http_adapter = RequestsHttpSessionAdapter(verify=verify)
+    http_adapter = RequestsHttpSessionAdapter(base_url=base_url, verify=verify)
+
+    # Make the generic EdFiAPIClient base aware of this HTTP client and token so
+    # that any shared-resource helpers used by factories (e.g., SchoolClient)
+    # can function correctly.
+    from edfi_performance_test.api.client.ed_fi_api_client import EdFiAPIClient
+
+    EdFiAPIClient.client = http_adapter
+    EdFiAPIClient.token = token
+
+    # Import the factory only after EdFiAPIClient is initialized, to avoid
+    # errors from shared-resource helpers that run at import time.
+    from edfi_performance_test.factories.resources.student import StudentFactory
+
     batch_client = BatchApiClient(client=http_adapter, base_url=base_url, token=token)
 
     # Build a single logical student record and corresponding triple.
@@ -173,4 +263,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
