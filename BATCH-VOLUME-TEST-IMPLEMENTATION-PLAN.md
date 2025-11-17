@@ -76,18 +76,20 @@
 
 [ ] **Section 5: First Scenario – StudentBatchVolumeTest**
 
-- [ ] Create `tasks/batch_volume/student_batch_volume.py`.
-- [ ] Implement `StudentBatchVolumeTest(BatchVolumeTestBase)`:
-  - [ ] Reference `StudentFactory` to build documents.
-  - [ ] Use `get_or_create_shared_school()` to embed a valid `schoolReference` / `educationOrganizationReference` where required.
-  - [ ] Expose a `@task` method (e.g., `run_student_batch`) that:
-    - [ ] Builds `N` student payloads using `StudentFactory.build_dict`.
-    - [ ] For each payload, clones and modifies one attribute for the update step.
-    - [ ] Derives the natural key structure required by the DMS batch API from each payload.
-    - [ ] Calls `run_triple_batch("Student", documents)`.
-- [ ] Ensure the triple structure mirrors the existing volume test externally:
-  - [ ] For each logical “record,” there is one create, one update, and one delete operation in the batch.
-  - [ ] The overall operation count per batch equals `3 * batchTripleCount` for that scenario.
+[X] **Section 5: First Scenario – StudentBatchVolumeTest**
+
+- [X] Create `tasks/batch_volume/student_batch_volume.py`.
+- [X] Implement `StudentBatchVolumeTest(BatchVolumeTestBase)`:
+  - [X] Reference `StudentFactory` to build documents.
+  - [X] Use `get_or_create_shared_school()` to obtain a valid shared school natural key (for now, the natural key is available to scenarios; embedded references can be expanded as needed).
+  - [X] Expose a `@task` method (`run_student_batch`) that:
+    - [X] Builds `N` student payloads using `StudentFactory.build_dict` (`N` is `_batch_triple_count`).
+    - [X] For each payload, clones and modifies one attribute for the update step via `build_update_document`.
+    - [X] Derives the natural key structure required by the DMS batch API from each payload using `get_natural_key` (studentUniqueId).
+    - [X] Calls `run_triple_batch("students", documents)`.
+- [X] Ensure the triple structure mirrors the existing volume test externally:
+  - [X] For each logical “record,” there is one create, one update, and one delete operation in the batch.
+  - [X] The overall operation count per batch equals `3 * batchTripleCount` for that scenario.
 - [ ] Add a small integration-style test (not Locust-driven) that:
   - [ ] Constructs a `BatchApiClient` against a local or mocked DMS.
   - [ ] Submits a single triple for Student.
