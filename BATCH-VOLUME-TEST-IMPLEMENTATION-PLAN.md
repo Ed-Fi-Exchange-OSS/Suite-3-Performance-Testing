@@ -5,6 +5,7 @@
 - [ ] Update `helpers/main_arguments.py` and any consumers to ensure `TestType.BATCH_VOLUME` flows through without special casing.
 - [ ] Add a new `run_batch_volume_tests(args: MainArguments)` function in `performance_tester.py` modeled after `run_volume_tests`.
 - [ ] Wire `run(args)` in `performance_tester.py` to dispatch to `run_batch_volume_tests` when `args.testType == TestType.BATCH_VOLUME`.
+- [ ] Confirm that batch behavior is only enabled via `--testType BATCH_VOLUME` (no generic `--useBatchEndpoint` toggle on other test types).
 
 [ ] **Section 2: Batch API Client**
 
@@ -33,13 +34,22 @@
 - [ ] Create a new package `edfi_performance_test/tasks/batch_volume/`.
 - [ ] Implement `BatchVolumeTestBase(TaskSet)`:
   - [ ] Initialize a `BatchApiClient` instance using the Locust user’s HTTP client and the current OAuth token.
+  - [ ] Define or reuse a convention so that each batch scenario provides the correct `resource` name for operations:
+    - [ ] `resource` must match the existing endpoint URL segment (e.g., `"students"`, `"sections"`, `"courses"`), aligned with `/data/{resource}` used by the single-resource APIs.
   - [ ] Provide helper methods:
     - [ ] `build_create_op(resource: str, document: Dict[str, Any]) -> Dict`.
-    - [ ] `build_update_op(resource: str, document_id: str, document: Dict[str, Any]) -> Dict`.
-    - [ ] `build_delete_op(resource: str, document_id: str) -> Dict`.
+    - [ ] `build_update_op(resource: str, natural_key: Dict[str, Any], document: Dict[str, Any]) -> Dict`.
+    - [ ] `build_delete_op(resource: str, natural_key: Dict[str, Any]) -> Dict`.
   - [ ] Implement a template method `run_triple_batch(self, resource: str, documents: List[Dict[str, Any]])` that:
     - [ ] Accepts a list of factory-generated documents (one per triple).
-    - [ ] Builds the corresponding create/update/delete operations.
+    - [ ] Derives the appropriate **natural key** structures from those documents.
+    - [ ] Builds the corresponding create/update/delete operations:
+      - [ ] `create` with full document.
+      - [ ] `update` using the same natural key as the `create` to identify the record.
+      - [ ] `delete` using the same natural key.
+    - [ ] Treats these create+update+delete triples as a **no-concurrency scenario**:
+      - [ ] Does not attempt to fetch or manage per-operation ETags for in-batch updates.
+      - [ ] Relies on the backend’s batch implementation supporting this pattern.
     - [ ] Submits them via `BatchApiClient.post_batch`.
     - [ ] Marks the Locust request as success/failure based on `BatchResult`.
 - [ ] Implement `BatchVolumeTestUser(FastHttpUser)`:
@@ -51,6 +61,7 @@
 - [ ] Wire `run_batch_volume_tests(args)` in `performance_tester.py` to:
   - [ ] Configure Locust `Environment` with `BatchVolumeTestUser`.
   - [ ] Use `clientCount`, `spawnRate`, and `runTimeInMinutes` from `args`.
+  - [ ] Ensure that existing flags like `deleteResources` are **ignored** by `BATCH_VOLUME` tests (triples always include delete) and only respected by legacy test types.
 
 [ ] **Section 4: Fixtures and Shared Dependencies**
 
@@ -74,6 +85,7 @@
   - [ ] Expose a `@task` method (e.g., `run_student_batch`) that:
     - [ ] Builds `N` student payloads using `StudentFactory.build_dict`.
     - [ ] For each payload, clones and modifies one attribute for the update step.
+    - [ ] Derives the natural key structure required by the DMS batch API from each payload.
     - [ ] Calls `run_triple_batch("Student", documents)`.
 - [ ] Ensure the triple structure mirrors the existing volume test externally:
   - [ ] For each logical “record,” there is one create, one update, and one delete operation in the batch.
@@ -92,7 +104,7 @@
   - [ ] Build triples where:
     - [ ] The create references existing School and CourseOffering via natural keys.
     - [ ] The update modifies a non-identity attribute (e.g., `sequenceOfCourse`).
-    - [ ] The delete removes the created Section by `documentId`.
+    - [ ] The delete removes the created Section by matching natural key.
 - [ ] Exercise at least one scenario with mixed-resource batches:
   - [ ] Example: include both `CourseOffering` and `Section` operations in the same batch.
   - [ ] Ensure correct ordering in the operations array (dependencies before dependents).
@@ -100,6 +112,10 @@
 [ ] **Section 7: Configuration, Metrics, and Tuning**
 
 - [ ] Add a `--batchTripleCount` CLI option to control triples per batch if not already present, and reuse it in batch volume scenarios.
+  - [ ] Default this option to 10.
+  - [ ] Make it effective only when `--testType BATCH_VOLUME`; ignore it for other test types.
+  - [ ] Document that `3 * batchTripleCount` must not exceed the configured DMS `MAX_BATCH_SIZE` for the `/batch` endpoint (and optionally add a guard if that limit is discoverable at runtime).
+  - [ ] Wire `--batchTripleCount` to the `PERF_BATCH_TRIPLE_COUNT` environment variable in `argparser.py` so it can be configured via env like other harness settings.
 - [ ] Expose per-scenario configuration for batch size (e.g., allow overriding `batchTripleCount` per test via environment variable or class attribute).
 - [ ] Ensure Locust request names clearly identify:
   - [ ] The resource (e.g., `students` vs. `sections`).
@@ -108,8 +124,10 @@
 - [ ] Confirm CSV output and Locust web UI show:
   - [ ] Request counts in batches.
   - [ ] Latencies for the full batch.
-- [ ] Document how to interpret operations/sec:
-  - [ ] `ops/sec ≈ (requests/sec) * (triples per batch) * 3`.
+- [ ] Implement a small reporting helper (e.g., in the existing metrics extraction or reporting scripts) to compute and report an **operations/sec** metric for batch tests:
+  - [ ] Implement this in `extract-metrics.js`, extending the existing reporting for Locust CSVs.
+  - [ ] Use the formula `ops/sec ≈ (requests/sec) * (triples per batch) * 3`.
+  - [ ] Ensure the helper is clearly labeled as applicable to `BATCH_VOLUME` runs and can be used to compare batch vs. non-batch results (e.g., by documenting expectations for the request naming convention like `students-batch-10`).
 
 [ ] **Section 8: Validation and Rollout**
 
@@ -127,4 +145,3 @@
   - [ ] CLI invocation examples for `BATCH_VOLUME`.
   - [ ] Notes on differences vs. legacy VOLUME tests.
   - [ ] Caveats (e.g., fixtures are not automatically cleaned up).
-

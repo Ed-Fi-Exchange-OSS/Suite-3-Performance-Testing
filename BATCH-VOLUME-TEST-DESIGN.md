@@ -13,6 +13,7 @@ These assumptions conflict with the transactional, deferred nature of the DMS `/
 - New Locust users and tasks that treat `/batch` as the primary operation.
 - Explicit control over which resources and dependencies participate in each batch.
 - Simple, local error handling per batch request.
+- Batching is exposed as a **separate test type** (`BATCH_VOLUME`), not as a flag on existing volume tests, so that current volume semantics remain unchanged.
 
 Existing PIPECLEAN, VOLUME, and CHANGE_QUERY tests remain unchanged and continue to use single-resource endpoints.
 
@@ -49,6 +50,8 @@ Existing PIPECLEAN, VOLUME, and CHANGE_QUERY tests remain unchanged and continue
   }
   ```
 
+- In the actual DMS implementation used by these tests, the `resource` value is identical to the endpoint URL segment used by the single-resource API, e.g., `"students"`, `"sections"`, `"courses"`, matching `/data/students`, `/data/sections`, etc.
+
 - On success: HTTP 200 with per-operation results (including `documentId`).
 - On failure: single 4xx/409/412 response with a `failedOperation` descriptor; entire transaction rolled back.
 
@@ -56,6 +59,7 @@ The batch tests will **not** attempt to cover the full flexibility of the API. T
 
 - `create` + `update` + `delete` flows for a small set of resources.
 - Batches containing homogeneous operations (one primary resource type + optional supporting resources).
+- Batch triples are treated as a **no-concurrency scenario**: when a `create` and `update` for the same logical record appear in the same batch, the client will not attempt to manage per-operation ETags and will rely on the backend’s batch implementation to allow that pattern.
 
 ## 4. High‑Level Test Architecture
 
@@ -65,6 +69,8 @@ The batch tests will **not** attempt to cover the full flexibility of the API. T
 - Extend the CLI (`helpers/argparser.py`) to accept `--testType BATCH_VOLUME`.
 - Add a new `run_batch_volume_tests` entry point in `performance_tester.py`:
   - Mirrors `run_volume_tests`, but wires a new Locust user class.
+
+`BATCH_VOLUME` is the only way to enable batch behavior; there is **no generic “use batch endpoint” boolean** on other test types, which keeps the existing tests stable and avoids changing their request shapes.
 
 ### 4.2 New Locust User and Task Base
 
@@ -150,16 +156,19 @@ Each scenario:
      - `update` operation:
        - `op: "update"`
        - `resource: "Student"`
-       - `naturalKey` or `documentId` from the create.
-       - `document` with a modified attribute.
-     - `delete` operation:
+       - Uses the same **natural key** fields as the `create` document to identify the record.
+       - `document` with a modified attribute for update.
+       - The client does **not** attempt to manage per-operation ETags for these in-batch updates; a `create` + `update` for the same logical record within a single batch is treated as a no-concurrency pattern that the backend’s batch implementation is expected to support.
+      - `delete` operation:
        - `op: "delete"`
-       - `documentId` or `naturalKey` matching the created student.
+       - `naturalKey` (or `documentId` if available from a prior run) matching the created student.
 2. Optionally inject supporting operations (e.g., create a `StudentSchoolAssociation` and later delete it) in the same batch.
 3. Submits all operations in a single `/batch` request using `BatchApiClient`.
 4. Marks the Locust HTTP request as success if:
    - HTTP 200 AND all operation outcomes indicate success.
 5. Marks as failure otherwise, logging the `failedOperation` details for analysis.
+
+For batch volume tests, each triple **always** includes a delete operation so that the external effect mirrors the existing volume tests. The existing `deleteResources` / `PERF_DELETE_RESOURCES` flag is **ignored** for `BATCH_VOLUME`.
 
 ### 5.2 Dependency Management Strategy
 
@@ -207,6 +216,11 @@ Because each `/batch` request represents many operations, throughput metrics mus
 - Requests/sec (batches) vs.
 - Operations/sec (batches * operations per batch).
 
+A small reporting helper (used by the existing metrics extraction/reporting scripts) will compute a derived **operations/sec** metric:
+
+- `operationsPerSecond ≈ requestsPerSecond * batchTripleCount * 3`.
+- This helper will be used only for `BATCH_VOLUME` runs and will be documented alongside the batch scenarios so that batch and non-batch results can be compared consistently.
+
 ### 6.2 Naming and Stats
 
 To keep Locust statistics readable:
@@ -240,7 +254,11 @@ No retry logic is attempted for semantic errors (validation, unresolved referenc
 - CLI:
   - `--testType BATCH_VOLUME` dispatches to `run_batch_volume_tests`.
   - Reuse existing flags for runtime, client count, logging, etc.
-  - Batch-size per request is controlled by a new `--batchTripleCount` (or reusing the existing flag name if already present).
+  - Batch-size per request is controlled by a new `--batchTripleCount`:
+    - Default: 10.
+    - Only meaningful when `--testType BATCH_VOLUME`; ignored for other test types.
+    - Should be chosen so that `3 * batchTripleCount` does not exceed the DMS `MAX_BATCH_SIZE` configuration for the `/batch` endpoint.
+  - `--batchTripleCount` is also configurable via the `PERF_BATCH_TRIPLE_COUNT` environment variable for consistency with other harness settings.
 - Config:
   - DMS discovery (base metadata + OpenAPI) is used *only* if needed to derive identity/natural key fields.
   - Otherwise, batch scenarios rely on known natural keys from the factories.
