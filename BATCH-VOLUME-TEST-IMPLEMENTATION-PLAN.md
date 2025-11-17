@@ -62,18 +62,17 @@
   - [X] Use `clientCount`, `spawnRate`, and `runTimeInMinutes` from `args`.
   - [X] Ensure that existing flags like `deleteResources` are effectively **ignored** by `BATCH_VOLUME` tests (which do not call single-resource delete methods) and only respected by legacy test types.
 
-[ ] **Section 4: Fixtures and Shared Dependencies**
+[X] **Section 4: Fixtures and Shared Dependencies**
 
-- [ ] Decide on the fixture-first strategy for dependencies (Option A from the design).
-- [ ] Implement a `batch_volume_fixtures.py` module:
-  - [ ] Provide `get_or_create_shared_school() -> Dict` returning natural key(s) usable in batch documents.
-  - [ ] Provide additional helpers as needed (e.g., `get_or_create_shared_course_offering()`).
-- [ ] Use existing non-batch `EdFiAPIClient` subclasses inside the fixture module to:
-  - [ ] Create the fixture resources once at startup if they do not exist.
-  - [ ] Cache their natural keys (not just `id`) for reuse.
-- [ ] Ensure fixture creation runs:
-  - [ ] Either in `BatchVolumeTestUser.on_start` for the first user only (use a class-level flag for one-time initialization).
-  - [ ] Or in a dedicated test harness step before starting Locust.
+- [X] Decide on the fixture-first strategy for dependencies (Option A from the design).
+- [X] Implement a `batch_volume_fixtures.py` module:
+  - [X] Provide `get_or_create_shared_school() -> Dict` returning natural key(s) usable in batch documents (e.g., `{"schoolId": <id>}`).
+  - [X] Provide additional helpers as needed (e.g., `get_or_create_shared_course_offering()` returning course offering natural key fields).
+- [X] Use existing non-batch `EdFiAPIClient` subclasses inside the fixture module to:
+  - [X] Create the fixture resources once at startup if they do not exist (using `SchoolClient` and `CourseOfferingClient`).
+  - [X] Cache their natural keys (not just `id`) for reuse via module-level variables and a threading lock.
+- [X] Ensure fixture creation runs:
+  - [X] In `BatchVolumeTestUser.on_start` so that shared fixtures are initialized once per test run and available to all batch volume scenarios.
 
 [ ] **Section 5: First Scenario – StudentBatchVolumeTest**
 
