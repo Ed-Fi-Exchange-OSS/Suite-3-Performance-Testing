@@ -10,3 +10,4 @@ class TestType(CaseInsensitiveEnum):
     PIPECLEAN = "pipeclean"
     VOLUME = "volume"
     CHANGE_QUERY = "change_query"
+    BATCH_VOLUME = "batch_volume"

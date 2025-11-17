@@ -1,11 +1,11 @@
-[ ] **Section 1: Core Plumbing and Test Type**
+[X] **Section 1: Core Plumbing and Test Type**
 
-- [ ] Define new `BATCH_VOLUME` enum value in `helpers/test_type.py`.
-- [ ] Extend CLI parsing in `helpers/argparser.py` to accept `--testType BATCH_VOLUME`.
-- [ ] Update `helpers/main_arguments.py` and any consumers to ensure `TestType.BATCH_VOLUME` flows through without special casing.
-- [ ] Add a new `run_batch_volume_tests(args: MainArguments)` function in `performance_tester.py` modeled after `run_volume_tests`.
-- [ ] Wire `run(args)` in `performance_tester.py` to dispatch to `run_batch_volume_tests` when `args.testType == TestType.BATCH_VOLUME`.
-- [ ] Confirm that batch behavior is only enabled via `--testType BATCH_VOLUME` (no generic `--useBatchEndpoint` toggle on other test types).
+- [X] Define new `BATCH_VOLUME` enum value in `helpers/test_type.py`.
+- [X] Extend CLI parsing in `helpers/argparser.py` to accept `--testType BATCH_VOLUME`.
+- [X] Update `helpers/main_arguments.py` and any consumers to ensure `TestType.BATCH_VOLUME` flows through without special casing.
+- [X] Add a new `run_batch_volume_tests(args: MainArguments)` function in `performance_tester.py` modeled after `run_volume_tests`.
+- [X] Wire `run(args)` in `performance_tester.py` to dispatch to `run_batch_volume_tests` when `args.testType == TestType.BATCH_VOLUME`.
+- [X] Confirm that batch behavior is only enabled via `--testType BATCH_VOLUME` (no generic `--useBatchEndpoint` toggle on other test types).
 
 [ ] **Section 2: Batch API Client**
 

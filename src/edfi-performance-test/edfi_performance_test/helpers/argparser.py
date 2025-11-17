@@ -64,7 +64,7 @@ def parse_main_arguments() -> MainArguments:
     parser.add(  # type: ignore
         "-t",
         "--testType",
-        help="Type of the performance tests to run: VOLUME, PIPECLEAN, CHANGE_QUERY",
+        help="Type of the performance tests to run: VOLUME, PIPECLEAN, CHANGE_QUERY, BATCH_VOLUME",
         type=TestType,
         choices=list(TestType),
         default=TestType.PIPECLEAN,

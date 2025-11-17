@@ -23,6 +23,9 @@ from edfi_performance_test.tasks.volume.volume_tests import VolumeTestUser
 from edfi_performance_test.tasks.change_query.change_query_tests import (
     ChangeQueryTestUser,
 )
+from edfi_performance_test.tasks.batch_volume.batch_volume_tests import (
+    BatchVolumeTestUser,
+)
 from edfi_performance_test.helpers.test_type import TestType
 
 
@@ -118,6 +121,18 @@ def run_change_query_tests(args: MainArguments) -> None:
         spawn_pref_tests(args, ChangeQueryTestUser)
 
 
+def run_batch_volume_tests(args: MainArguments) -> None:
+    BatchVolumeTestUser.test_list = args.testList
+
+    if args.runInDebugMode:
+        # for running tests in a debugger
+        BatchVolumeTestUser.host = args.baseUrl
+        sys.argv = sys.argv[:1]
+        run_single_user(BatchVolumeTestUser)
+    else:
+        spawn_pref_tests(args, BatchVolumeTestUser)
+
+
 async def run(args: MainArguments) -> None:
     try:
         logger.info("Starting performance test...")
@@ -131,6 +146,8 @@ async def run(args: MainArguments) -> None:
             run_pipe_clean_tests(args)
         elif args.testType == TestType.CHANGE_QUERY:
             run_change_query_tests(args)
+        elif args.testType == TestType.BATCH_VOLUME:
+            run_batch_volume_tests(args)
 
         logger.info(
             f"Finished running performance tests in {time.time() - start} seconds."
