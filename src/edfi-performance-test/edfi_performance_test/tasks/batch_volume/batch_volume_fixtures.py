@@ -90,11 +90,12 @@ def get_or_create_shared_course_offering() -> Dict[str, Any]:
         reference = client.create_with_dependencies()
         attrs = reference["attributes"]
 
+        session_ref = attrs.get("sessionReference", {})
         _shared_course_offering_natural_key = {
             "localCourseCode": attrs["localCourseCode"],
-            "schoolId": attrs["schoolId"],
-            "schoolYear": attrs["schoolYear"],
-            "sessionName": attrs["sessionReference"]["sessionName"],
+            "schoolId": session_ref.get("schoolId"),
+            "schoolYear": session_ref.get("schoolYear"),
+            "sessionName": session_ref.get("sessionName"),
         }
 
         return _shared_course_offering_natural_key

@@ -145,6 +145,16 @@ class BatchApiClient:
         if not isinstance(problem, dict):
             problem = {}
 
+        logger.error(
+            "Batch operation failed: index=%s op=%s resource=%s status=%s type=%s detail=%s",
+            failed.get("index"),
+            failed.get("op"),
+            failed.get("resource"),
+            problem.get("status"),
+            problem.get("type"),
+            problem.get("detail"),
+        )
+
         return FailedOperation(
             index=failed.get("index", -1),
             op=failed.get("op", ""),
@@ -188,4 +198,3 @@ class BatchApiClient:
         except Exception:
             pass
         return BatchResult(success=False, operations=[], failed_operation=None)
-
