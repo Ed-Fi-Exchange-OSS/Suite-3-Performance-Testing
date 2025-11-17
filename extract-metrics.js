@@ -113,6 +113,27 @@ function calculateWeightedMetrics(operations) {
   };
 }
 
+// Compute derived operations/sec for batch volume tests
+function computeBatchOpsPerSecond(writeMetrics, batchTripleCount) {
+  if (!writeMetrics || !writeMetrics.requestCount || !batchTripleCount) {
+    return null;
+  }
+
+  const runTimeMinutes = parseFloat(process.env.RUN_TIME_IN_MINUTES || '0');
+  if (!runTimeMinutes || runTimeMinutes <= 0) {
+    return null;
+  }
+
+  const requestsPerSecond = writeMetrics.requestCount / (runTimeMinutes * 60);
+  const opsPerSecond = requestsPerSecond * batchTripleCount * 3;
+
+  return {
+    requestsPerSecond: requestsPerSecond,
+    operationsPerSecond: opsPerSecond,
+    batchTripleCount: batchTripleCount
+  };
+}
+
 // Extract metrics from a single test run
 function extractMetrics(filePath) {
   const data = parseVolumeStats(filePath);
@@ -133,10 +154,20 @@ function extractMetrics(filePath) {
   const writeMetrics = calculateWeightedMetrics(writeOps);
   const readMetrics = calculateWeightedMetrics(readOps);
 
+  let batchOpsPerSecond = null;
+  const isBatchVolume = (process.env.PERF_TEST_TYPE || '').toLowerCase() === 'batch_volume';
+  const batchTripleCountEnv = process.env.PERF_BATCH_TRIPLE_COUNT || process.env.BATCH_TRIPLE_COUNT;
+  const batchTripleCount = batchTripleCountEnv ? parseInt(batchTripleCountEnv, 10) : NaN;
+
+  if (isBatchVolume && !isNaN(batchTripleCount) && batchTripleCount > 0) {
+    batchOpsPerSecond = computeBatchOpsPerSecond(writeMetrics, batchTripleCount);
+  }
+
   return {
     fileName: path.basename(path.dirname(filePath)) + '/' + path.basename(filePath),
     write: writeMetrics,
     read: readMetrics,
+    batch: batchOpsPerSecond,
     timestamp: new Date().toISOString()
   };
 }
@@ -155,6 +186,13 @@ function formatMetrics(metrics) {
     console.log(`   Operations Tested:    ${metrics.write.operationCount}`);
   } else {
     console.log('\n📝 WRITE OPERATIONS: No data found');
+  }
+
+  if (metrics.batch) {
+    console.log('\n🔀 BATCH VOLUME (BATCH_VOLUME test type)');
+    console.log(`   Triples per batch:    ${metrics.batch.batchTripleCount}`);
+    console.log(`   Requests per second:  ${metrics.batch.requestsPerSecond.toFixed(2)}`);
+    console.log(`   Operations per second:${metrics.batch.operationsPerSecond.toFixed(2)}`);
   }
 
   if (metrics.read) {

@@ -114,26 +114,48 @@ class BatchVolumeTestBase(TaskSet):
         """
         return dict(document)
 
+    def build_triple_operations(
+        self,
+        resource: str,
+        documents: List[Dict[str, Any]],
+        get_natural_key=None,
+        build_update_document=None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Build create/update/delete operations for one or more logical records
+        of the given resource. This does not send the batch; callers are
+        responsible for invoking BatchApiClient.
+        """
+        if not documents:
+            return []
+
+        if get_natural_key is None:
+            get_natural_key = self.get_natural_key
+        if build_update_document is None:
+            build_update_document = self.build_update_document
+
+        operations: List[Dict[str, Any]] = []
+
+        for document in documents:
+            natural_key = get_natural_key(document)
+            create_document = document
+            update_document = build_update_document(document)
+
+            operations.append(self.build_create_op(resource, create_document))
+            operations.append(self.build_update_op(resource, natural_key, update_document))
+            operations.append(self.build_delete_op(resource, natural_key))
+
+        return operations
+
     def run_triple_batch(self, resource: str, documents: List[Dict[str, Any]]) -> None:
         """
         Build and submit a batch consisting of create/update/delete triples
         for the given resource. The number of triples is controlled by the
         length of `documents`.
         """
-        if not documents:
+        operations = self.build_triple_operations(resource, documents)
+        if not operations:
             return
-
-        operations: List[Dict[str, Any]] = []
-
-        for document in documents:
-            natural_key = self.get_natural_key(document)
-            create_document = document
-            update_document = self.build_update_document(document)
-
-            operations.append(self.build_create_op(resource, create_document))
-            operations.append(self.build_update_op(resource, natural_key, update_document))
-            operations.append(self.build_delete_op(resource, natural_key))
 
         request_name = f"{resource}-batch-{len(documents)}"
         self._batch_client.post_batch(operations, name=request_name)
-

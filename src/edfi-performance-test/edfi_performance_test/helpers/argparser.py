@@ -172,6 +172,14 @@ def parse_main_arguments() -> MainArguments:
         env_var="PERF_DISABLE_COMPOSITES",
         default=False
     )
+    parser.add(  # type: ignore
+        "-bt",
+        "--batchTripleCount",
+        help="Triples (create/update/delete) per batch request when using BATCH_VOLUME tests",
+        type=int,
+        default=10,
+        env_var="PERF_BATCH_TRIPLE_COUNT",
+    )
     args_parsed = parser.parse_args()
 
     arguments = MainArguments(

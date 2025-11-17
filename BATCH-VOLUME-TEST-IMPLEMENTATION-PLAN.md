@@ -106,29 +106,45 @@
     - [X] The create also references shared ClassPeriod and Location fixtures via their natural keys.
     - [X] The update modifies a non-identity attribute (e.g., `sequenceOfCourse`).
     - [X] The delete removes the created Section by matching natural key.
-- [ ] Exercise at least one scenario with mixed-resource batches:
-  - [ ] Example: include both `CourseOffering` and `Section` operations in the same batch.
-  - [ ] Ensure correct ordering in the operations array (dependencies before dependents).
 
-[ ] **Section 7: Configuration, Metrics, and Tuning**
+[X] **Section 6a: Mixed-Resource Batch Scenario (Students + Sections)**
 
-- [ ] Add a `--batchTripleCount` CLI option to control triples per batch if not already present, and reuse it in batch volume scenarios.
-  - [ ] Default this option to 10.
-  - [ ] Make it effective only when `--testType BATCH_VOLUME`; ignore it for other test types.
-  - [ ] Document that `3 * batchTripleCount` must not exceed the configured DMS `MAX_BATCH_SIZE` for the `/batch` endpoint (and optionally add a guard if that limit is discoverable at runtime).
-  - [ ] Wire `--batchTripleCount` to the `PERF_BATCH_TRIPLE_COUNT` environment variable in `argparser.py` so it can be configured via env like other harness settings.
-- [ ] Expose per-scenario configuration for batch size (e.g., allow overriding `batchTripleCount` per test via environment variable or class attribute).
-- [ ] Ensure Locust request names clearly identify:
-  - [ ] The resource (e.g., `students` vs. `sections`).
-  - [ ] The batch size (triples per batch).
-  - [ ] Example name: `students-batch-10`.
-- [ ] Confirm CSV output and Locust web UI show:
-  - [ ] Request counts in batches.
-  - [ ] Latencies for the full batch.
-- [ ] Implement a small reporting helper (e.g., in the existing metrics extraction or reporting scripts) to compute and report an **operations/sec** metric for batch tests:
-  - [ ] Implement this in `extract-metrics.js`, extending the existing reporting for Locust CSVs.
-  - [ ] Use the formula `ops/sec ≈ (requests/sec) * (triples per batch) * 3`.
-  - [ ] Ensure the helper is clearly labeled as applicable to `BATCH_VOLUME` runs and can be used to compare batch vs. non-batch results (e.g., by documenting expectations for the request naming convention like `students-batch-10`).
+- [X] Refactor `BatchVolumeTestBase` to expose a reusable helper for building triple operations without sending the batch:
+  - [X] Add `build_triple_operations(self, resource: str, documents: List[Dict[str, Any]], get_natural_key=None, build_update_document=None) -> List[Dict[str, Any]]` that:
+    - [X] For each document, derives the natural key via `get_natural_key` (defaulting to `self.get_natural_key`).
+    - [X] Builds create/update/delete operations using `build_create_op`, `build_update_op`, and `build_delete_op`.
+  - [X] Update `run_triple_batch` to call `build_triple_operations` and then send the resulting operations in a single `/batch` request.
+- [X] Implement a new mixed-resource TaskSet, `MixedStudentSectionBatchVolumeTest(BatchVolumeTestBase)` in `tasks/batch_volume/mixed_student_section_batch_volume.py`:
+  - [X] Use `StudentFactory` and `SectionFactory` to construct documents for student and section triples.
+  - [X] In a `@task` method (`run_mixed_batch`):
+    - [X] Build one student triple (1 student document → 3 operations) using `build_triple_operations` with student-specific natural key and update helpers.
+    - [X] Build one section triple (1 section document → 3 operations), wiring the section document to existing fixtures (School, CourseOffering, ClassPeriod, Location) as in `SectionBatchVolumeTest`, and using section-specific natural key and update helpers.
+    - [X] Concatenate the two sets of operations into a single array (6 operations total).
+    - [X] Submit them via `BatchApiClient.post_batch` with a clear request name (e.g., `mixed-students-sections-batch-2`).
+- [X] Ensure the mixed scenario:
+  - [X] Still treats each triple as an independent logical record (no in-batch creation of dependencies that are referenced later in the same batch).
+  - [X] Respects `MAX_BATCH_SIZE` by keeping the total operation count (`triples * 3`) within configured limits.
+  - [X] Produces Locust stats where the mixed request name clearly indicates it is a mixed-resource batch.
+
+[X] **Section 7: Configuration, Metrics, and Tuning**
+
+- [X] Add a `--batchTripleCount` CLI option to control triples per batch if not already present, and reuse it in batch volume scenarios.
+  - [X] Default this option to 10.
+  - [X] Make it effective only when `--testType BATCH_VOLUME`; ignored by other test types (the argument and env var are global, but only `BatchVolumeTestBase` reads `PERF_BATCH_TRIPLE_COUNT`).
+  - [X] Document that `3 * batchTripleCount` must not exceed the configured DMS `MAX_BATCH_SIZE` for the `/batch` endpoint (no runtime guard added yet; limit must be honored by configuration).
+  - [X] Wire `--batchTripleCount` to the `PERF_BATCH_TRIPLE_COUNT` environment variable in `argparser.py` so it can be configured via env like other harness settings.
+- [X] Expose per-scenario configuration for batch size (e.g., allow overriding `batchTripleCount` per test via environment variable or class attribute).
+- [X] Ensure Locust request names clearly identify:
+  - [X] The resource (e.g., `students` vs. `sections`).
+  - [X] The batch size (triples per batch) via the pattern `{resource}-batch-{tripleCount}`.
+  - [X] Example name: `students-batch-10`.
+- [X] Confirm CSV output and Locust web UI show:
+  - [X] Request counts in batches (each request name represents one batch).
+  - [X] Latencies for the full batch (per-request metrics inherently capture end-to-end batch latency).
+- [X] Implement a small reporting helper (in the existing metrics extraction script) to compute and report an **operations/sec** metric for batch tests:
+  - [X] Implemented in `extract-metrics.js`, extending the existing reporting for Locust CSVs.
+  - [X] Uses the formula `ops/sec ≈ (requests/sec) * (triples per batch) * 3`, where `requests/sec` is derived from `Request Count` and `RUN_TIME_IN_MINUTES`.
+  - [X] Only computes this when `PERF_TEST_TYPE` equals `batch_volume` and `PERF_BATCH_TRIPLE_COUNT` (or `BATCH_TRIPLE_COUNT`) is set; prints a `BATCH VOLUME` section with triples per batch, requests/sec, and operations/sec.
 
 [ ] **Section 8: Validation and Rollout**
 

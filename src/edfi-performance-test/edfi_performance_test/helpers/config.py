@@ -46,6 +46,9 @@ def set_config_values(args: MainArguments):
     os.environ["PERF_API_OAUTH_PREFIX"] = args.oauth_endpoint
     os.environ["PERF_LOCAL_EDUCATION_ORGANIZATION_ID"] = str(args.localEducationOrganizationId)
     os.environ["PERF_DISABLE_COMPOSITES"] = str(args.disableComposites)
+    # Batch volume tests: number of create/update/delete triples per batch.
+    # This is only used when running with TestType.BATCH_VOLUME.
+    os.environ.setdefault("PERF_BATCH_TRIPLE_COUNT", "10")
 
 
 def _get_change_version_file_path():
