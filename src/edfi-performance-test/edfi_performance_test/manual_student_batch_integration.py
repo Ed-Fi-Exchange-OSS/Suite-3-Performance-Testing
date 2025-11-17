@@ -214,31 +214,57 @@ def main() -> None:
 
     batch_client = BatchApiClient(client=http_adapter, base_url=base_url, token=token)
 
-    # Build a single logical student record and corresponding triple.
-    document = StudentFactory.build_dict()
-    natural_key = {"studentUniqueId": document["studentUniqueId"]}
+    # Build multiple logical student records and corresponding triples to
+    # more closely mirror the batch volume behavior and expose any potential
+    # identity-conflict issues when multiple creates are present in the same
+    # batch.
+    triple_count_env = os.environ.get("MANUAL_BATCH_TRIPLE_COUNT", "3")
+    try:
+        triple_count = int(triple_count_env)
+    except ValueError:
+        triple_count = 3
 
-    operations = [
-        {
-            "op": "create",
-            "resource": "students",
-            "document": document,
-        },
-        {
-            "op": "update",
-            "resource": "students",
-            "naturalKey": natural_key,
-            "document": dict(document),
-        },
-        {
-            "op": "delete",
-            "resource": "students",
-            "naturalKey": natural_key,
-        },
-    ]
+    operations = []
+    for index in range(triple_count):
+        document = StudentFactory.build_dict()
+        natural_key = {"studentUniqueId": document["studentUniqueId"]}
 
-    print(f"Sending batch with {len(operations)} operations to {base_url}/batch")
-    result = batch_client.post_batch(operations, name="students-batch-1")
+        print(
+            f"Preparing triple {index} with studentUniqueId={natural_key['studentUniqueId']}"
+        )
+
+        operations.append(
+            {
+                "op": "create",
+                "resource": "students",
+                "document": document,
+            }
+        )
+        operations.append(
+            {
+                "op": "update",
+                "resource": "students",
+                "naturalKey": natural_key,
+                "document": dict(document),
+            }
+        )
+        operations.append(
+            {
+                "op": "delete",
+                "resource": "students",
+                "naturalKey": natural_key,
+            }
+        )
+
+    print(
+        f"Sending batch with {len(operations)} operations "
+        f"({triple_count} student triples) to {base_url}/batch"
+    )
+    print("Batch operations payload:")
+    print(json.dumps(operations, indent=2))
+    result = batch_client.post_batch(
+        operations, name=f"students-batch-{triple_count}"
+    )
 
     print(f"Batch success: {result.success}")
     if result.success:
