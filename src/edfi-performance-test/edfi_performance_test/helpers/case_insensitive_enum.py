@@ -10,8 +10,14 @@ from typing import Optional
 class CaseInsensitiveEnum(Enum):
     @classmethod
     def _missing_(cls, value: object) -> Optional["CaseInsensitiveEnum"]:
+        value_str = str(value)
         for member in cls:
-            if member.value == str(value).upper():
+            # Match either on member name (e.g. "BATCH_VOLUME") or on the
+            # stored value (e.g. "batch_volume"), in a case-insensitive way.
+            if (
+                member.name.upper() == value_str.upper()
+                or str(member.value).upper() == value_str.upper()
+            ):
                 return member
 
         return None
