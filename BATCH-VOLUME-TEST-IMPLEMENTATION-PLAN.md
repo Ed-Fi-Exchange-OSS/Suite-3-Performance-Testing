@@ -7,61 +7,60 @@
 - [X] Wire `run(args)` in `performance_tester.py` to dispatch to `run_batch_volume_tests` when `args.testType == TestType.BATCH_VOLUME`.
 - [X] Confirm that batch behavior is only enabled via `--testType BATCH_VOLUME` (no generic `--useBatchEndpoint` toggle on other test types).
 
-[ ] **Section 2: Batch API Client**
+[X] **Section 2: Batch API Client**
 
-- [ ] Create `edfi_performance_test/api/client/batch_api_client.py`.
-- [ ] Implement `BatchApiClient` wrapping `locust.clients.HttpSession`:
-  - [ ] Constructor accepting `HttpSession`, `base_url`, and `token`.
-  - [ ] `post_batch(operations: List[Dict[str, Any]]) -> BatchResult` method that:
-    - [ ] Builds the `/batch` URL from the `base_url`.
-    - [ ] Sends the JSON array using the Locust client (`catch_response=True`).
-    - [ ] Applies `Authorization` and `Content-Type: application/json` headers.
-- [ ] Define `BatchResult` and supporting dataclasses:
-  - [ ] `OperationOutcome` for per-operation success metadata (`index`, `op`, `resource`, `documentId`, etc.).
-  - [ ] `FailedOperation` reflecting DMS `failedOperation` shape.
-  - [ ] `BatchResult` with `success`, `operations`, and `failed_operation`.
-- [ ] Implement response parsing:
-  - [ ] On HTTP 200, parse array of operation results into `BatchResult.success == True`.
-  - [ ] On HTTP 4xx/409/412 with `failedOperation`, parse into `BatchResult.success == False` and populate `failed_operation`.
-  - [ ] On HTTP 5xx or network error, mark Locust response as failure and raise or return an error-state `BatchResult`.
-- [ ] Add minimal unit tests for `BatchApiClient` using a fake `HttpSession` or monkeypatched Locust client to validate:
-  - [ ] Payload serialization.
-  - [ ] Success path parsing.
-  - [ ] Failure path parsing (including `failedOperation`).
+- [X] Create `edfi_performance_test/api/client/batch_api_client.py`.
+- [X] Implement `BatchApiClient` wrapping `locust.clients.HttpSession`:
+  - [X] Constructor accepting `HttpSession`, `base_url`, and `token`.
+  - [X] `post_batch(operations: List[Dict[str, Any]]) -> BatchResult` method that:
+    - [X] Builds the `/batch` URL from the `base_url`.
+    - [X] Sends the JSON array using the Locust client (`catch_response=True`).
+    - [X] Applies `Authorization` and `Content-Type: application/json` headers.
+- [X] Define `BatchResult` and supporting dataclasses:
+  - [X] `OperationOutcome` for per-operation success metadata (`index`, `op`, `resource`, `documentId`, etc.).
+  - [X] `FailedOperation` reflecting DMS `failedOperation` shape.
+  - [X] `BatchResult` with `success`, `operations`, and `failed_operation`.
+- [X] Implement response parsing:
+  - [X] On HTTP 200, parse array of operation results into `BatchResult.success == True`.
+  - [X] On HTTP 4xx/409/412 with `failedOperation`, parse into `BatchResult.success == False` and populate `failed_operation`.
+  - [X] On HTTP 5xx or network error, mark Locust response as failure and raise or return an error-state `BatchResult`.
+- [X] Add minimal unit tests for `BatchApiClient` using a fake `HttpSession` or monkeypatched Locust client to validate:
+  - [X] Payload serialization.
+  - [X] Success path parsing.
+  - [X] Failure path parsing (including `failedOperation`).
 
-[ ] **Section 3: Batch Volume User and Base Task**
+[X] **Section 3: Batch Volume User and Base Task**
 
-- [ ] Create a new package `edfi_performance_test/tasks/batch_volume/`.
-- [ ] Implement `BatchVolumeTestBase(TaskSet)`:
-  - [ ] Initialize a `BatchApiClient` instance using the Locust user’s HTTP client and the current OAuth token.
-  - [ ] Define or reuse a convention so that each batch scenario provides the correct `resource` name for operations:
-    - [ ] `resource` must match the existing endpoint URL segment (e.g., `"students"`, `"sections"`, `"courses"`), aligned with `/data/{resource}` used by the single-resource APIs.
-  - [ ] Provide helper methods:
-    - [ ] `build_create_op(resource: str, document: Dict[str, Any]) -> Dict`.
-    - [ ] `build_update_op(resource: str, natural_key: Dict[str, Any], document: Dict[str, Any]) -> Dict`.
-    - [ ] `build_delete_op(resource: str, natural_key: Dict[str, Any]) -> Dict`.
-  - [ ] Implement a template method `run_triple_batch(self, resource: str, documents: List[Dict[str, Any]])` that:
-    - [ ] Accepts a list of factory-generated documents (one per triple).
-    - [ ] Derives the appropriate **natural key** structures from those documents.
-    - [ ] Builds the corresponding create/update/delete operations:
-      - [ ] `create` with full document.
-      - [ ] `update` using the same natural key as the `create` to identify the record.
-      - [ ] `delete` using the same natural key.
-    - [ ] Treats these create+update+delete triples as a **no-concurrency scenario**:
-      - [ ] Does not attempt to fetch or manage per-operation ETags for in-batch updates.
-      - [ ] Relies on the backend’s batch implementation supporting this pattern.
-    - [ ] Submits them via `BatchApiClient.post_batch`.
-    - [ ] Marks the Locust request as success/failure based on `BatchResult`.
-- [ ] Implement `BatchVolumeTestUser(FastHttpUser)`:
-  - [ ] Set `min_wait` / `max_wait` or tick rate analogous to `VolumeTestUser`.
-  - [ ] In `on_start`:
-    - [ ] Associate the Locust `self.client` with an OAuth token (either via `EdFiBasicAPIClient` or a small login helper).
-    - [ ] Discover and import all batch volume scenarios under `tasks.batch_volume`, similar to `VolumeTestUser`’s dynamic loading.
-  - [ ] Append discovered `BatchVolumeTestBase` subclasses to `self.tasks`.
-- [ ] Wire `run_batch_volume_tests(args)` in `performance_tester.py` to:
-  - [ ] Configure Locust `Environment` with `BatchVolumeTestUser`.
-  - [ ] Use `clientCount`, `spawnRate`, and `runTimeInMinutes` from `args`.
-  - [ ] Ensure that existing flags like `deleteResources` are **ignored** by `BATCH_VOLUME` tests (triples always include delete) and only respected by legacy test types.
+- [X] Create a new package `edfi_performance_test/tasks/batch_volume/`.
+- [X] Implement `BatchVolumeTestBase(TaskSet)`:
+  - [X] Initialize a `BatchApiClient` instance using the Locust user’s HTTP client and the current OAuth token.
+  - [X] Define or reuse a convention so that each batch scenario provides the correct `resource` name for operations:
+    - [X] `resource` must match the existing endpoint URL segment (e.g., `"students"`, `"sections"`, `"courses"`), aligned with `/data/{resource}` used by the single-resource APIs.
+  - [X] Provide helper methods:
+    - [X] `build_create_op(resource: str, document: Dict[str, Any]) -> Dict`.
+    - [X] `build_update_op(resource: str, natural_key: Dict[str, Any], document: Dict[str, Any]) -> Dict`.
+    - [X] `build_delete_op(resource: str, natural_key: Dict[str, Any]) -> Dict`.
+  - [X] Implement a template method `run_triple_batch(self, resource: str, documents: List[Dict[str, Any]])` that:
+    - [X] Accepts a list of factory-generated documents (one per triple).
+    - [X] Derives the appropriate **natural key** structures from those documents via `get_natural_key`.
+    - [X] Builds the corresponding create/update/delete operations:
+      - [X] `create` with full document.
+      - [X] `update` using the same natural key as the `create` to identify the record (with subclasses able to override `build_update_document`).
+      - [X] `delete` using the same natural key.
+    - [X] Treats these create+update+delete triples as a **no-concurrency scenario**:
+      - [X] Does not attempt to fetch or manage per-operation ETags for in-batch updates.
+      - [X] Relies on the backend’s batch implementation supporting this pattern.
+    - [X] Submits them via `BatchApiClient.post_batch`.
+    - [X] Relies on `BatchApiClient` to mark the Locust request as success/failure based on HTTP status and payload.
+- [X] Implement `BatchVolumeTestUser(FastHttpUser)`:
+  - [X] Set up OAuth for the user in `on_start` by associating `self.client` with an `EdFiBasicAPIClient` and storing the token on the user instance.
+  - [X] In `on_start`:
+    - [X] Discover and import all batch volume scenarios under `tasks.batch_volume`, similar to `VolumeTestUser`’s dynamic loading.
+  - [X] Append discovered `BatchVolumeTestBase` subclasses to `self.tasks`.
+- [X] Wire `run_batch_volume_tests(args)` in `performance_tester.py` to:
+  - [X] Configure Locust `Environment` with `BatchVolumeTestUser`.
+  - [X] Use `clientCount`, `spawnRate`, and `runTimeInMinutes` from `args`.
+  - [X] Ensure that existing flags like `deleteResources` are effectively **ignored** by `BATCH_VOLUME` tests (which do not call single-resource delete methods) and only respected by legacy test types.
 
 [ ] **Section 4: Fixtures and Shared Dependencies**
 
@@ -145,3 +144,4 @@
   - [ ] CLI invocation examples for `BATCH_VOLUME`.
   - [ ] Notes on differences vs. legacy VOLUME tests.
   - [ ] Caveats (e.g., fixtures are not automatically cleaned up).
+  - [ ] Include a note for contributors about running tests with `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1` (e.g., `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 poetry run pytest`) to avoid interference from globally installed pytest plugins.

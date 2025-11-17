@@ -2,23 +2,17 @@
 # Licensed to the Ed-Fi Alliance under one or more agreements.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-import logging
 import importlib
 import os
 from typing import List
 
 from locust import FastHttpUser
 
+from edfi_performance_test.tasks.batch_volume.batch_volume_test_base import (
+    BatchVolumeTestBase,
+)
 from edfi_performance_test.helpers.api_metadata import get_model_version
 from edfi_performance_test.helpers.module_helper import get_dir_modules
-
-
-logger = logging.getLogger()
-
-
-class BatchVolumeTestMixin(object):
-    min_wait = 4000
-    max_wait = 9000
 
 
 class BatchVolumeTestUser(FastHttpUser):
@@ -30,6 +24,14 @@ class BatchVolumeTestUser(FastHttpUser):
     def on_start(self):
         if BatchVolumeTestUser.is_initialized:
             return
+
+        # Lazily obtain an OAuth token for this user's HTTP client.
+        from edfi_performance_test.api.client.ed_fi_basic_api_client import (
+            EdFiBasicAPIClient,
+        )
+
+        auth_client = EdFiBasicAPIClient(self.client)
+        self.token = auth_client.token
 
         batch_volume_tests_dir = os.path.dirname(__file__)
         tasks_submodules = get_dir_modules(
@@ -53,5 +55,12 @@ class BatchVolumeTestUser(FastHttpUser):
         for mod_name in tasks_submodules:
             importlib.import_module(mod_name)
 
-        BatchVolumeTestUser.is_initialized = True
+        # Dynamically register all BatchVolumeTestBase subclasses as tasks.
+        for subclass in BatchVolumeTestBase.__subclasses__():
+            if (
+                (not BatchVolumeTestUser.test_list or subclass.__name__ in BatchVolumeTestUser.test_list)
+                and not subclass.__subclasses__()
+            ):
+                self.tasks.append(subclass)
 
+        BatchVolumeTestUser.is_initialized = True
