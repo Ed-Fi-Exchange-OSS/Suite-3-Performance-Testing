@@ -75,11 +75,20 @@ class BatchVolumeTestUser(FastHttpUser):
             importlib.import_module(mod_name)
 
         # Dynamically register all BatchVolumeTestBase subclasses as tasks.
+        # By default, skip mixed-resource scenarios unless explicitly requested
+        # via the test_list filter.
         for subclass in BatchVolumeTestBase.__subclasses__():
-            if (
-                (not BatchVolumeTestUser.test_list or subclass.__name__ in BatchVolumeTestUser.test_list)
-                and not subclass.__subclasses__()
-            ):
+            if subclass.__subclasses__():
+                continue
+
+            if BatchVolumeTestUser.test_list:
+                include = subclass.__name__ in BatchVolumeTestUser.test_list
+            else:
+                # When no explicit test list is provided, exclude the mixed
+                # student/section scenario from the default batch volume run.
+                include = subclass.__name__ != "MixedStudentSectionBatchVolumeTest"
+
+            if include:
                 self.tasks.append(subclass)
 
         BatchVolumeTestUser.is_initialized = True

@@ -4066,3 +4066,324 @@ InsertReferences Performance
 
   Key Performance Observations
 
+
+# Batch
+
+## 2025-11-17-19-54-batch-1 (First 30 minute run against batch API, --batchTripleCount 30)
+
+### Commands
+
+> poetry run python -m edfi_performance_test --runTimeInMinutes 30 --output ../../DmsTestResults/2025-11-17-19-54-batch-1 --testType BATCH_VOLUME --batchTripleCount 30
+
+> PERF_TEST_TYPE=batch_volume PERF_BATCH_TRIPLE_COUNT=30 RUN_TIME_IN_MINUTES=30 node ../../extract-metrics.js ../../DmsTestResults/2025-11-17-19-54-batch-1/batch_volume_stats.csv
+
+### Results
+
+======================================================================
+File: 2025-11-17-19-54-batch-1/batch_volume_stats.csv
+======================================================================
+
+📝 WRITE OPERATIONS (POST/PUT/DELETE)
+   Median Response Time: 190ms
+   95th Percentile:      220ms
+   Total Requests:       180,702
+   Operations Tested:    9
+
+🔀 BATCH VOLUME (BATCH_VOLUME test type)
+   Triples per batch:    30
+   Requests per second:  100.39
+   Operations per second:9035.10
+
+📖 READ OPERATIONS (GET)
+   Median Response Time: 2ms
+   95th Percentile:      5ms
+   Total Requests:       2
+   Operations Tested:    1
+
+
+
+
+
+
+## 2025-11-17-20-54-batch-2 (30 minute run against batch API, --batchTripleCount 30, first PG monitoring)
+
+### PG Findings
+
+  - PostgreSQL time is overwhelmingly spent inside dms.InsertReferences(...): since the 20:58 stats reset this single statement executed 15.9M times and
+    accumulated 26,751 s of execution time (≈54% of all pg_stat_statements time) while touching 1.85B shared buffers. pg_stat_monitor shows ~113k calls per
+    minute with average 1.35 ms, and pg_stat_user_functions confirms the PL/pgSQL body itself burned 2,603 s. Every call rebuilds the per-backend temp table
+    reference_stage, and the temp versions (pg_temp_x.reference_stage) currently hold ~13k live vs ~250k dead tuples each, which matches the pg_stat_io
+    observation of 1.9 GB of temp-block reads—this function is the dominant CPU bottleneck.
+
+  - The DMS service also runs a standalone validation query (SELECT … FROM unnest() LEFT JOIN dms.Alias … WHERE a.id IS NULL, queryid=-4534079741097298942)
+    16.4 M times in the same interval, consuming another 810 s and 233M shared-buffer hits even though the function already returns invalid_ids. This
+    duplicated work magnifies the overall read load on dms.Alias.
+
+  - Heavy churn on the dms.Document partitions is the second largest cost driver: DELETE … DocumentPartitionKey = $1 AND DocumentUuid = $2 ran 9.9 M times
+    (5,122 s total) and the CTE that inserts into dms.Document/dms.Alias ran 12.4 M times (4,615 s). pg_stat_database shows 7.5 M tuples inserted and 7.3 M
+    deleted plus 14 GB of WAL in just ~11 minutes. Because each partition is ≈155 MB of table data but ≈934 MB of indexes (GIN JSONB plus multiple BTrees),
+    these write operations suffer significant CPU/WAL amplification.
+
+  - pg_stat_database indicates most client time is not spent executing: active_time is 2,739 s but idle_in_transaction_time is 6,294 s. pg_stat_activity
+    confirms nine sessions repeatedly sit “idle in transaction” immediately after SELECT … FOR NO KEY UPDATE and dms.InsertReferences calls, holding locks
+    while application code runs. This inflates response time, risks bloat, and reduces concurrency headroom.
+
+  - System resources are consistent with a CPU-bound workload. top showed load averages 19/24 CPUs with 63.5 % user / 6.5 % system / 0.7 % iowait; iostat
+    -xz saw almost no device activity, and pg_stat_io shows client backends mainly writing WAL (≈62 4 MB) rather than table pages. An otter: the DMS ASP.NET
+    Core frontend (pid 2011206) is using ~380–420 % CPU and 1.3 GB RSS, so the application tier is also busy but not saturated. The Python load driver (pid
+    2076402) stays around 46–47 % of one core, 57 MB RSS, and ~12 KB/s writes per pidstat, so it is not the limiting factor and is safe to leave on this
+    host.
+
+  - Despite the “advanced monitoring” toolchain, auto_explain.log_min_duration is still -1 and logging_collector is off, so no execution plans are being
+    persisted in the server logs. The freshest /var/log/postgresql/postgresql-18-main.log entries stop mid-day, meaning today’s load test produced no
+    diagnostics beyond the stats views.
+
+  Recommendations
+
+  - Streamline reference updates. Eliminate the redundant alias validation query in the DMS app and rely on the invalid_ids set returned by
+    dms.InsertReferences; this should immediately drop ~800 s of CPU per 10 minutes and remove 233 M buffer hits. Within the function, replace DELETE FROM
+    reference_stage with TRUNCATE (or recreate the temp table each call) to avoid the growing n_dead_tup, and consider batching multiple parent documents
+    per call so that the per-invocation temp-table work amortizes over more rows. After changes, watch pg_stat_monitor to ensure the queryid=-4534079… entry
+    disappears and the InsertReferences total_exec_time share falls.
+
+  - Reduce document churn. Where possible, replace the current delete-then-insert pattern with INSERT … ON CONFLICT DO UPDATE or direct UPDATEs so that
+    each logical change performs one write instead of two and can reuse HOT updates. If all writes must remain, evaluate whether the heavy JSONB GIN indexes
+    are needed for this workload; dropping or replacing them with narrower partial indexes would cut table/index size from ~1 GB per partition, reduce WAL
+    (currently 14 GB/11 min), and speed VACUUM. Validate improvements by tracking pg_stat_database.tup_inserted/tup_deleted, pg_stat_wal.wal_bytes, and per-
+    partition pg_stat_all_tables.n_dead_tup.
+
+  - Shorten application transactions. The C# service should start and finish transactions around the minimal set of statements that must be atomic instead of
+    holding SELECT … FOR NO KEY UPDATE locks while it performs mid-tier processing. If the row lock is simply ensuring existence, switch to FOR SHARE or no
+    lock. Monitor pg_stat_database.idle_in_transaction_time and pg_stat_activity to confirm the idle component shrinks below the active time.
+
+  - Review commit durability vs. latency. With synchronous_commit=on, each of the ~100 TPS transactions incurs a WAL flush; if the load test tolerates
+    minimal data-loss risk consider synchronous_commit = local (flush to local WAL but not wait for replication) or off during tests to shave ~0.3–0.5 ms
+    from each call. Measure effect via pg_stat_database.xact_commit latency and pg_stat_wal.wal_buffers_full.
+
+  - Strengthen monitoring. Enable logging_collector=on and set auto_explain parameters (log_min_duration = '100ms', log_analyze = on, log_buffers = on,
+    log_timing = off, log_nested_statements = on, keep sample_rate = 1) so slow plans are captured without manual digging. Keep exporting pg_stat_monitor
+    buckets each minute so you can compare before/after CPU shares of the hot statements.
+
+  - Keep verifying non-DB bottlenecks. Continue to check pidstat -durh -p 2076402 (load driver) and pidstat -durh -p 2011206 (DMS frontend) during the run;
+    if the .NET process approaches 800–900 % CPU or starts waiting, plan to scale that tier horizontally so it doesn’t gate end-to-end response.
+
+  Once the above changes are in place, rerun the load test, capture a fresh 10-minute snapshot (pg_stat_monitor, pg_stat_statements, pg_stat_database) and
+  compare the total execution shares, WAL volume, and idle-in-transaction time to verify the bottlenecks have been mitigated.
+
+#### You saw about 100 transactions per second, right? Can you see how many document table inserts there are per transaction?  (NOTE: should have asked InsertRefs + deletes per transaction)
+
+• Right now the counters are still the ones we reset at 20:58:43, so the snapshot covers ~32½ minutes (reset → 21:31). Over that span:
+
+  - pg_stat_database reports xact_commit = 158,554, which is ≈81.2 commits/sec (158,554 / 1,953 s).
+  - The INSERT INTO dms.Document … CTE (queryid -8359663333965759041 in pg_stat_statements) executed 10,619,578 times in the same window, i.e. ≈5,437
+    document inserts/sec.
+
+  If you divide one by the other, you get 10,619,578 / 158,554 ≈ 66.98 document inserts per committed transaction. So yes, we’re running roughly 80–82
+  transactions per second, and each transaction is doing on the order of 67 document-table inserts.
+
+
+### Results
+
+======================================================================
+File: 2025-11-17-20-54-batch-2/batch_volume_stats.csv
+======================================================================
+
+📝 WRITE OPERATIONS (POST/PUT/DELETE)
+   Median Response Time: 196ms
+   95th Percentile:      236ms
+   Total Requests:       182,384
+   Operations Tested:    9
+
+🔀 BATCH VOLUME (BATCH_VOLUME test type)
+   Triples per batch:    30
+   Requests per second:  101.32
+   Operations per second:9119.20
+
+📖 READ OPERATIONS (GET)
+   Median Response Time: 2ms
+   95th Percentile:      5ms
+   Total Requests:       2
+   Operations Tested:    1
+
+
+
+
+## 2025-11-17-22-02-batch-3 (30 minute run against batch API, --batchTripleCount 150, 2nd PG monitoring)
+
+
+
+• Current State
+
+  - End of 10‑minute window (stats reset 22:04:15 → sample 22:15:27) shows ~72 K commits ⇒ ~107 TPS, but 19 M calls to dms.InsertReferences and 11.4 M
+    dms.Document inserts/deletes in the same interval (pg_stat_statements).
+  - CPU is the primary pressure: load averages ≈21 on 24 cores with %us ~72 % (top output), Postgres backends each burning 55–70 % CPU, and the ASP.NET Core
+    service process (pid 2127817) using ~380 % CPU while the Python load driver (pid 2128299) uses ~50 % of a single core (pidstat). iowait stays ≤0.4 %
+    (iostat), so storage is idle.
+  - WAL volume is high: pg_stat_wal recorded 13.3 GB in 672 s (≈18.8 MB/s) with 43 M WAL records/3.7 M FPIs, consistent with the heavy write churn.
+  - Transactions spend more time idle than active: pg_stat_database reports active_time = 2.94 M ms vs. idle_in_transaction_time = 5.68 M ms, and
+    pg_stat_activity shows most sessions sitting “idle in transaction” right after SELECT … FOR NO KEY UPDATE, DELETE …, or InsertReferences.
+
+  Database Bottlenecks
+
+  - dms.InsertReferences dominates: 31,350 s cumulative runtime (≈63 % of total server CPU time) and 2.0 B shared-buffer hits. Every call truncates/
+    repopulates a per-session temp table, causing 224 K temp-block reads (≈1.7 GB) per pg_stat_io. Each transaction currently issues ≈264 InsertReferences
+    calls and 159 document inserts/deletes.
+  - The workload deletes the existing document rows and re-inserts them instead of updating: DELETE … Document ran 11.45 M times (5,852 s) and the CTE insert
+    ran 11.45 M times (2,959 s) in this window. That’s 15.9 GB of net table/index writes plus 5.2 GB of WAL for JSONB GIN indexes per partition (document
+    tables are ≈1.09 GB with 85 % index overhead). pg_stat_monitor shows delete/insert statements executing 600 K times per minute.
+  - A redundant validation query (queryid -4534079741097298942) still runs 19 M times in the window (913 s + 266 M shared hits) even though InsertReferences
+    already returns invalid_ids.
+  - Autovacuum is fighting to keep up (e.g., dms.reference_* partitions show 30–60 K dead tuples each, and autovac workers read 157 K heap pages in vacuum
+    context), but bloat will continue as long as each transaction writes hundreds of rows per document.
+
+  Application & Load Driver
+
+  - The ASP.NET Core DMS frontend is CPU-bound but not saturating the box (≈4 cores). The Python load harness consumes only ~0.05 cores, ~57 MB RSS, and
+    ~12 KB/s writes, so it is not the bottleneck.
+  - Because the DMS app holds long transactions while waiting on upstream work, it keeps backend sessions in “idle in transaction,” magnifying response time
+    and WAL due to long-lived snapshots.
+
+  Monitoring Gaps
+
+  - logging_collector is still off and auto_explain.log_min_duration = -1, so no plans or timing samples land in /var/log/postgresql/postgresql-18-main.log.
+    That log still contains only last week’s checkpoint entries; today’s load produces no diagnostics.
+
+  Recommendations
+
+  1. Optimize the reference-write path: remove the external alias validation query and rely on dms.InsertReferences’ invalid_ids output. Inside the function,
+     switch DELETE FROM reference_stage to TRUNCATE (or recreate the temp table per call) to stop accumulating hundreds of thousands of dead tuples per
+     backend, and consider batching multiple parent documents per invocation so the staging work amortizes across more rows.
+  2. Stop delete/reinsert churn: replace the DELETE …; INSERT … cycle with INSERT … ON CONFLICT DO UPDATE or straight UPDATEs. This will roughly halve the
+     WAL rate (currently 18.8 MB/s) and cut per-transaction CPU in half. Verify by watching pg_stat_statements call counts and pg_stat_wal.wal_bytes.
+  3. Shorten transactions / avoid idle in transaction: wrap only the SQL that must be atomic. If the locks are just ensuring key existence, drop FOR NO KEY
+     UPDATE or use FOR SHARE. Target idle_in_transaction_time to be <25 % of active_time.
+  4. Scale read-only lookups: SELECT * FROM dms.Document … JOIN dms.Alias … FOR NO KEY UPDATE (queryid 5467371891139793819) executed 28 M times (1,056 s). If
+     these are validation reads, consider caching document metadata at the app layer or relaxing the locking semantics.
+  5. Enable actionable logging: set logging_collector=on, log_destination='csvlog', and enable auto_explain (e.g., log_min_duration='100ms', log_analyze=on,
+     log_buffers=on, log_timing=off, sample_rate=1). Then you’ll capture actual plans for the hot statements.
+  6. Monitor tiers continuously: keep running pidstat for both the ASP.NET frontend and the Python driver during tests to ensure neither becomes a new
+     bottleneck after you reduce DB CPU; add pg_stat_monitor snapshots every minute before buckets roll over so you can correlate statement counts with
+     commits.
+
+  Once these changes are implemented, rerun the 10‑minute test with a fresh stats reset and compare (a) per-statement execution time in pg_stat_monitor, (b)
+  pg_stat_database.idle_in_transaction_time, and (c) WAL MB/s to confirm the bottlenecks have moved in the right direction.
+
+
+#### Each transaction does a certain number of logical operations. The operations for a transaction are the number of InsertReferences calls plus the number of deletes. How many operations per transaction were there on average?
+
+After the 22:04:15 stats reset we’ve accumulated 19,033,935 dms.InsertReferences calls and 11,451,504 DELETE FROM dms.Document … statements
+  (pg_stat_statements). With pg_stat_database.xact_commit = 72,130 over the same interval, the logical “operations” you defined total 30,485,439. Dividing by
+  the committed transactions gives:
+
+  (19,033,935 + 11,451,504) / 72,130 ≈ 422.6 operations/transaction
+
+  So each transaction is currently doing about 423 logical operations (InsertReferences + deletes) on average.
+
+
+#### So database math says 45k operations per second (107 T/s * 422 ops/T)
+
+### Results
+
+
+======================================================================
+File: 2025-11-17-22-02-batch-3/batch_volume_stats.csv
+======================================================================
+
+📝 WRITE OPERATIONS (POST/PUT/DELETE)
+   Median Response Time: 155ms
+   95th Percentile:      210ms
+   Total Requests:       210,622
+   Operations Tested:    9
+
+🔀 BATCH VOLUME (BATCH_VOLUME test type)
+   Triples per batch:    150
+   Requests per second:  117.01
+   Operations per second:52655.50
+
+📖 READ OPERATIONS (GET)
+   Median Response Time: 7ms
+   95th Percentile:      58ms
+   Total Requests:       2
+   Operations Tested:    1
+
+
+
+## 2025-11-17-22-49-batch-4 (30 minute run against batch API, --batchTripleCount 1, 3rd PG monitoring)
+
+ Bottlenecks
+
+  - dms.InsertReferences is still the dominant cost: pg_stat_statements shows 22.95 M calls in the last 11.1 minutes with 36,400 s total time (≈55 % of
+    server CPU) plus 2.28 B shared-block hits. pg_stat_monitor confirms ≈110 k calls/minute with 1.3 ms latency. Each invocation rebuilds the temp staging
+    table, driving 1.56 GB of temp reads per pg_stat_io. Until the staging strategy changes, this function remains the primary CPU limiter.
+  - The workload deletes and reinserts entire documents instead of updating: DELETE FROM dms.Document … executed 13.41 M times (6,793 s), the WITH Documents
+    AS (INSERT …) statement ran 13.41 M times (3,448 s), and the associated alias delete ran 13.41 M times (1,718 s). That produced 11.7 GB of WAL in 667 s
+    (≈16.8 MB/s) and maintains ~1 GB partitions that are 85 % index. Each transaction now performs ~552 logical operations (349 InsertReferences + 204
+    deletes), so application latency is dominated by the sheer number of SQL statements.
+  - Application sessions remain “idle in transaction.” pg_stat_database recorded idle_in_transaction_time = 6.10 M ms vs. active_time = 2.70 M ms, and
+    pg_stat_activity currently shows 12 sessions sitting idle after issuing SELECT … FOR NO KEY UPDATE, DELETE …, or InsertReferences. These long-lived
+    transactions inflate lock durations, keep snapshots open, and worsen latency.
+  - CPU is the only host-level pressure: load averages ~20 on 24 cores with %us ≈67 %, while iowait stays ≤0.7 %. The ASP.NET Core DMS service (pid 2160337)
+    consumes ~360 % CPU (3.6 cores) and 1.0 GB RSS; the Python load generator uses ~50 % of one core and 58 MB RSS with trivial I/O, so it is not the
+    bottleneck.
+
+  System Observations
+
+  - pg_stat_wal: 36.9 M WAL records and 3.3 M FPIs since the 22:50 reset; pg_stat_checkpointer/pg_stat_bgwriter counters remain near zero because the window
+    is too short, so all dirty pages are written at checkpoints or by backends.
+  - pg_stat_user_tables shows tens of thousands of dead tuples per partition (e.g., dms.reference_10 ~13 k), meaning autovacuum is constantly chasing churn
+    but cannot prevent bloat while each transaction rewrites hundreds of rows.
+  - Monitoring gap persists: logging_collector is off and auto_explain.log_min_duration = -1, so the current run produced no plans or timing data in /var/
+    log/postgresql/postgresql-18-main.log.
+
+  Recommendations
+
+  1. Reduce roundtrips per transaction. Batch reference updates and avoid the delete‑then‑insert cycle by using INSERT … ON CONFLICT DO UPDATE or plain
+     UPDATEs. Cutting the 552 operations/txn even in half will directly lower CPU, WAL (~16.8 MB/s), and autovacuum load. Track progress via pg_stat_monitor
+     call counts and pg_stat_wal.wal_bytes.
+  2. Optimize dms.InsertReferences. Truncate or recreate the temp staging table each call to eliminate the 1.3 M dead tuples seen in
+     pg_temp_N.reference_stage, and remove the redundant validation query (queryid -4534079…) in the C# layer now that invalid_ids is returned by the
+     function. This will drop ~1,060 s of extra CPU per window and reduce shared-buffer churn.
+  3. Shorten application transactions. Only wrap the SQL that must be atomic, and avoid holding SELECT … FOR NO KEY UPDATE locks while the app processes
+     payloads. Target idle_in_transaction_time to fall below active_time; monitor via pg_stat_database and pg_stat_activity.
+  4. Tune WAL/commit behavior. If the test tolerates relaxed durability, set synchronous_commit = local (or off for load testing) to remove an fsync per
+     transaction. Combine that with larger batches to keep WAL MB/s manageable.
+  5. Enable meaningful logging. Turn on logging_collector and configure auto_explain (log_min_duration = '100ms', log_analyze = on, log_buffers = on,
+     log_timing = off, sample_rate = 1) so future runs capture plans automatically.
+  6. Keep an eye on tier utilization. Continue sampling pidstat -durh -p 2160642 and pidstat -durh -p 2160337; if the ASP.NET service approaches total CPU
+     saturation, plan to scale it horizontally so it doesn’t become the next bottleneck once the database work is reduced.
+
+  Re-run the test after applying the above changes, reset stats, and compare: (a) pg_stat_monitor calls per minute, (b)
+  pg_stat_database.idle_in_transaction_time, and (c) pg_stat_wal.wal_bytes to verify improvements and confirm the load driver is still lightweight.
+
+#### Transactions per second
+
+Since the last reset at 2025‑11‑17 22:50:02.851796-06 we’ve recorded xact_commit = 65,834 (from pg_stat_database) and the sample was taken at
+  23:01:09.583655-06, i.e. 666.73 s later. So the observed transaction rate is:
+
+  65,834 commits / 666.73 seconds ≈ 98.8 transactions per second
+
+  That’s the average TPS over the current 11.1‑minute load window.
+
+
+### Results
+
+======================================================================
+File: 2025-11-17-22-49-batch-4/batch_volume_stats.csv
+======================================================================
+
+📝 WRITE OPERATIONS (POST/PUT/DELETE)
+   Median Response Time: 160ms
+   95th Percentile:      213ms
+   Total Requests:       203,476
+   Operations Tested:    9
+
+🔀 BATCH VOLUME (BATCH_VOLUME test type)
+   Triples per batch:    1
+   Requests per second:  113.04
+   Operations per second:339.13
+
+📖 READ OPERATIONS (GET)
+   Median Response Time: 6ms
+   95th Percentile:      69ms
+   Total Requests:       2
+   Operations Tested:    1
