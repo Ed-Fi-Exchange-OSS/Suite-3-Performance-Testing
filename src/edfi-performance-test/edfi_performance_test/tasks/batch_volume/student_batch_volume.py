@@ -2,7 +2,6 @@
 # Licensed to the Ed-Fi Alliance under one or more agreements.
 # See the LICENSE and NOTICES files in the project root for more information.
 
-import logging
 from typing import Any, Dict, List
 
 from locust import task
@@ -23,7 +22,6 @@ class StudentBatchVolumeTest(BatchVolumeTestBase):
 
     resource: str = "students"
     factory: Any = None
-    logger = logging.getLogger("locust.runners")
 
     def __init__(self, parent, *args, **kwargs):
         # Lazy import of StudentFactory to avoid importing EdFi clients and
@@ -52,22 +50,10 @@ class StudentBatchVolumeTest(BatchVolumeTestBase):
         _school_id = school["schoolId"]
 
         documents: List[Dict[str, Any]] = []
-        for index in range(self._batch_triple_count):
+        for _ in range(self._batch_triple_count):
             doc = self.factory.build_dict()
             # Ensure the student is associated with the shared school.
             doc.setdefault("studentEducationOrganizationAssociations", [])
-            # Log the natural key for debugging identity-conflict issues.
-            try:
-                student_unique_id = doc["studentUniqueId"]
-            except KeyError:
-                student_unique_id = "<missing>"
-            # Use error level so that these diagnostics are visible even when
-            # running with higher log thresholds during debugging.
-            self.logger.error(
-                "StudentBatchVolumeTest: preparing triple %s with studentUniqueId=%s",
-                index,
-                student_unique_id,
-            )
             documents.append(doc)
 
         self.run_triple_batch(self.resource, documents)

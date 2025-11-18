@@ -91,9 +91,6 @@ def main() -> None:
     for index in range(2):
         document: Dict[str, Any] = StudentFactory.build_dict()
         documents.append(document)
-        student_unique_id = document.get("studentUniqueId", "<missing>")
-        print(f"Preparing student {index} with studentUniqueId={student_unique_id}")
-
         operations.append(
             {
                 "op": "create",

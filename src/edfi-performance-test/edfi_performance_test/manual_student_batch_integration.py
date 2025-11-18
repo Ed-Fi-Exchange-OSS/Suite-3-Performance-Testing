@@ -229,10 +229,6 @@ def main() -> None:
         document = StudentFactory.build_dict()
         natural_key = {"studentUniqueId": document["studentUniqueId"]}
 
-        print(
-            f"Preparing triple {index} with studentUniqueId={natural_key['studentUniqueId']}"
-        )
-
         operations.append(
             {
                 "op": "create",

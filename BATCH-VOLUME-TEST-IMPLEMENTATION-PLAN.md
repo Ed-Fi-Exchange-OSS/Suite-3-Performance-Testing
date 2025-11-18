@@ -132,7 +132,7 @@
   - [X] Default this option to 10.
   - [X] Make it effective only when `--testType BATCH_VOLUME`; ignored by other test types (the argument and env var are global, but only `BatchVolumeTestBase` reads `PERF_BATCH_TRIPLE_COUNT`).
   - [X] Document that `3 * batchTripleCount` must not exceed the configured DMS `MAX_BATCH_SIZE` for the `/batch` endpoint (no runtime guard added yet; limit must be honored by configuration).
-  - [X] Wire `--batchTripleCount` to the `PERF_BATCH_TRIPLE_COUNT` environment variable in `argparser.py` so it can be configured via env like other harness settings.
+  - [X] Wire `--batchTripleCount` to the `PERF_BATCH_TRIPLE_COUNT` environment variable in `argparser.py` so it can be configured via env like other harness settings.q
 - [X] Expose per-scenario configuration for batch size (e.g., allow overriding `batchTripleCount` per test via environment variable or class attribute).
 - [X] Ensure Locust request names clearly identify:
   - [X] The resource (e.g., `students` vs. `sections`).

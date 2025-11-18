@@ -24,6 +24,95 @@ poetry run python -m edfi_performance_test \
   --testType volume
 ```
 
+## Running Batch Volume Tests (BATCH_VOLUME)
+
+The batch volume tests exercise the DMS `/batch` endpoint instead of the single-resource `/data/...` endpoints. They send create/update/delete triples for supported resources (currently students and sections) as a single transactional batch.
+
+### Basic Batch Volume Run
+
+From `src/edfi-performance-test/`:
+
+```bash
+poetry run python -m edfi_performance_test \
+  --runTimeInMinutes <MINUTES> \
+  --output <OUTPUT_PATH> \
+  --testType BATCH_VOLUME \
+  --batchTripleCount 10
+```
+
+Notes:
+- `--testType BATCH_VOLUME` enables the dedicated batch scenarios.
+- `--batchTripleCount` (or `PERF_BATCH_TRIPLE_COUNT`) controls how many logical triples (create/update/delete) are included per batch for each scenario that uses `run_triple_batch`:
+  - Example: `batchTripleCount=10` → 30 operations per batch request.
+- The request names in Locust/CSV output follow the pattern:
+  - `students-batch-10`, `sections-batch-10`, `mixed-students-sections-batch-2`, etc.
+  - Each such request represents **one batch**.
+
+Example:
+
+```bash
+cd src/edfi-performance-test
+poetry run python -m edfi_performance_test \
+  --runTimeInMinutes 10 \
+  --output ../../DmsTestResults/batch-run-name \
+  --testType BATCH_VOLUME \
+  --batchTripleCount 10
+```
+
+### Single-User Debug Sessions (BATCH_VOLUME)
+
+For quick validation against a running DMS instance, you can run single-user debug sessions with specific batch scenarios:
+
+#### Students only
+
+```bash
+cd src/edfi-performance-test
+poetry run python edfi_performance_test \
+  -t BATCH_VOLUME \
+  -g \
+  -tl StudentBatchVolumeTest \
+  --batchTripleCount 2
+```
+
+#### Sections only
+
+```bash
+cd src/edfi-performance-test
+poetry run python edfi_performance_test \
+  -t BATCH_VOLUME \
+  -g \
+  -tl SectionBatchVolumeTest \
+  --batchTripleCount 2
+```
+
+#### Mixed students + sections
+
+```bash
+cd src/edfi-performance-test
+poetry run python edfi_performance_test \
+  -t BATCH_VOLUME \
+  -g \
+  -tl MixedStudentSectionBatchVolumeTest \
+  --batchTripleCount 1
+```
+
+In each case:
+- `-g` (`--runInDebugMode`) uses Locust single-user mode.
+- `-tl` restricts execution to the specified batch task.
+- `--batchTripleCount` keeps each batch small for easier debugging.
+
+### Interpreting Batch Results
+
+For BATCH_VOLUME runs:
+
+- Each request name (e.g., `students-batch-10`) in the Locust CSVs corresponds to one batch request.
+- The number of operations per batch is approximately `triples per batch * 3` for simple scenarios.
+- The `extract-metrics.js` script will, when `PERF_TEST_TYPE=batch_volume` and `PERF_BATCH_TRIPLE_COUNT` are set, compute and print an additional **BATCH VOLUME** section:
+  - Triples per batch
+  - Requests/sec (batches per second)
+  - Operations/sec (effective logical operations per second)
+```
+
 ## Expected Behavior
 
 ### Normal Startup
