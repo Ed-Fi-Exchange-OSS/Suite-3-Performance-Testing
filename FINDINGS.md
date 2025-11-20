@@ -4387,3 +4387,75 @@ File: 2025-11-17-22-49-batch-4/batch_volume_stats.csv
    95th Percentile:      69ms
    Total Requests:       2
    Operations Tested:    1
+
+##
+
+• Key Findings
+
+  - CPU-bound workload: top shows load ≈21 on 24 cores with ~65 % user CPU; iostat reports
+    ≤0.7 % iowait. Postgres worker PIDs each burn 45–55 % CPU, and the ASP.NET DMS service
+    (pid 2160337) consumes ~380 % CPU. The Python load script (pid 2185241) stays near 50 %
+    of one core, 57 MB RSS, and negligible I/O (pidstat), so it’s not limiting the test.
+  - dms.InsertReferences dominates DB time. Since the 23:26 reset: 27.0 M calls, 41,632 s
+    total (55 % of server time), 2.52 B shared-buffer hits, 0 temp writes. pg_stat_monitor
+    shows ~116 k calls/minute with ~1.35 ms latency. Each run rebuilds the temp
+    reference_stage table, evidenced by 1.6 GB of temp reads in pg_stat_io.
+  - High document churn: DELETE FROM dms.Document… (15.4 M calls, 7,769 s) plus the WITH
+    Documents AS (INSERT…) statement (15.4 M calls, 3,963 s) and alias deletes generate
+    12.3 GB WAL in 667 s (17.6 MB/s) and keep partitions ~1 GB (85 % index). Each transaction
+    commits ~591 logical operations (376 InsertReferences + 215 deletes), so latency is
+    dominated by statement volume.
+  - Transactions spend more time idle than active. pg_stat_database shows active_time =
+    2.79 M ms vs. idle_in_transaction_time = 6.05 M ms, and pg_stat_activity currently lists
+    11 sessions “idle in transaction” holding row locks right after InsertReferences, SELECT
+    … FOR NO KEY UPDATE, or UPDATE dms.Document.
+  - Monitoring gap persists: logging_collector still off and auto_explain.log_min_duration =
+    -1, so there are no auto_explain plans or current log data for these runs.
+
+  Recommendations
+
+  1. Reduce operations per transaction. Replace the delete+reinsert pattern with INSERT
+     … ON CONFLICT DO UPDATE or direct UPDATEs so each logical change touches rows once.
+     Batch reference operations where possible to cut the current ~591 ops/txn, lowering
+     both CPU and WAL (~17.6 MB/s). Track improvement via pg_stat_monitor call counts and
+     pg_stat_wal.wal_bytes.
+  2. Optimize dms.InsertReferences. Use TRUNCATE pg_temp.reference_stage (or recreate the
+     temp table) rather than DELETE to eliminate dead tuples, and drop the redundant alias-
+     validation query in the DMS app now that the function returns invalid_ids. Fewer calls
+     mean fewer InsertReferences (currently 40.5 k/sec) and less CPU.
+  3. Shorten transactions / reduce idle time. Close transactions as soon as the SQL completes
+     and avoid unnecessary SELECT … FOR NO KEY UPDATE. Aim for idle_in_transaction_time <
+     active_time; use pg_stat_database plus pg_stat_activity to monitor.
+  4. Consider commit/WAL tuning for tests. If durability can be relaxed, set
+     synchronous_commit = local (or off) during load tests to drop one fsync per transaction
+     and reduce latency.
+  5. Enable actionable logging. Turn on logging_collector, set a log directory, and configure
+     auto_explain (log_min_duration='100ms', log_analyze=on, log_buffers=on, log_timing=off,
+     sample_rate=1) so future runs capture execution plans automatically.
+
+  Re-run after applying these changes, reset stats, and compare: (a) pg_stat_monitor calls
+  per minute for key statements, (b) pg_stat_database.idle_in_transaction_time, and (c) WAL
+  MB/s to confirm improvements while ensuring the Python driver remains lightweight.
+
+
+
+======================================================================
+File: 2025-11-17-23-25-batch-5/batch_volume_stats.csv
+======================================================================
+
+📝 WRITE OPERATIONS (POST/PUT/DELETE)
+   Median Response Time: 156ms
+   95th Percentile:      220ms
+   Total Requests:       207,610
+   Operations Tested:    9
+
+🔀 BATCH VOLUME (BATCH_VOLUME test type)
+   Triples per batch:    10
+   Requests per second:  346.02
+   Operations per second:10380.50
+
+📖 READ OPERATIONS (GET)
+   Median Response Time: 2ms
+   95th Percentile:      4ms
+   Total Requests:       2
+   Operations Tested:    1
