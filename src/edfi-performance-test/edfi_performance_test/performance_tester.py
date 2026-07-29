@@ -246,9 +246,9 @@ def _run_worker(args: MainArguments, user_class: Type[FastHttpUser]) -> None:
         f"{_MASTER_HOST}:{master_port}"
     )
     env = Environment(user_classes=[user_class], host=args.baseUrl)
-    env.create_worker_runner(_MASTER_HOST, master_port)
+    runner = env.create_worker_runner(_MASTER_HOST, master_port)
     # Workers run until the master tells them to quit.
-    env.runner.greenlet.join()
+    runner.greenlet.join()
 
 
 def _run_local(args: MainArguments, user_class: Type[FastHttpUser]) -> None:
@@ -266,7 +266,7 @@ def _run_local(args: MainArguments, user_class: Type[FastHttpUser]) -> None:
     # Manually stop locust, which otherwise would run continuously.
     gevent.spawn_later(args.runTimeInMinutes * 60, lambda: runner.quit())
 
-    env.runner.greenlet.join()
+    runner.greenlet.join()
 
 
 def _run_master(
@@ -306,7 +306,7 @@ def _run_master(
         # Manually stop locust, which propagates the quit to the workers.
         gevent.spawn_later(args.runTimeInMinutes * 60, lambda: runner.quit())
 
-        env.runner.greenlet.join()
+        runner.greenlet.join()
     finally:
         _terminate_workers(worker_processes)
 
