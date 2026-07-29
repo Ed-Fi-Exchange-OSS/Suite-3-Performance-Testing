@@ -37,11 +37,10 @@ class ResourceEntriesCache:
             count: Maximum number of matching entries to return
         """
 
-        # Get the filter with the highest cardinality
-        entries = list(self.resources_by_filter_name.items())[0][1]
-        for filter in filters:
-            if len(self.resources_by_filter_name[filter]) < len(entries):
-                entries = self.resources_by_filter_name[filter]
+        # Scan the smallest candidate list among the requested filters
+        entries = min(
+            (self.resources_by_filter_name[filter] for filter in filters), key=len
+        )
 
         random.shuffle(entries)
 

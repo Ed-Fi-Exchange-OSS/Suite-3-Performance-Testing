@@ -363,6 +363,7 @@ function Invoke-TestRunner {
         $contentType = Get-ConfigValue -Config $Config -Key "PERF_CONTENT_TYPE" -Optional
         $resourceList = Get-ConfigValue -Config $Config -Key "PERF_RESOURCE_LIST" -Optional
         $pageSize = Get-ConfigValue -Config $Config -Key "PERF_API_PAGE_SIZE" -Optional
+        $processCount = Get-ConfigValue -Config $Config -Key "PERF_PROCESS_COUNT" -Optional
         $logLevel = Get-ConfigValue -Config $Config -Key "PERF_LOG_LEVEL" -Optional
         $description =Get-ConfigValue -Config $Config -Key "PERF_DESCRIPTION" -Optional
         $insecure = Get-ConfigIgnoreTlsCertificate -Config $config
@@ -563,6 +564,9 @@ function Invoke-TestRunner {
                 }
                 if ($runTimeInMinutes) {
                     $command += " --runTimeInMinutes  $runTimeInMinutes"
+                }
+                if ($processCount) {
+                    $command += " --processCount $processCount"
                 }
                 if ($logLevel) {
                     $command += " --logLevel $logLevel"

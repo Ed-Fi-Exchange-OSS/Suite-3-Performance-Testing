@@ -3,6 +3,8 @@
 # The Ed-Fi Alliance licenses this file to you under the Apache License, Version 2.0.
 # See the LICENSE and NOTICES files in the project root for more information.
 
+from argparse import ArgumentTypeError
+
 from configargparse import ArgParser  # type: ignore
 
 from edfi_performance_test.helpers.log_level import LogLevel
@@ -172,6 +174,27 @@ def parse_main_arguments() -> MainArguments:
         env_var="PERF_DISABLE_COMPOSITES",
         default=False
     )
+    parser.add(  # type: ignore
+        "-p",
+        "--processCount",
+        help=(
+            "Number of load-generator worker processes. 0 = auto (CPU cores - 1); "
+            "1 = single-process (legacy); N > 1 = distributed master + N workers so "
+            "load is spread across CPU cores. Only the volume test type runs "
+            "distributed; other test types always run single-process."
+        ),
+        type=_non_negative_int,
+        default=0,
+        env_var="PERF_PROCESS_COUNT",
+    )
+    # Internal flags: set automatically when the coordinator launches worker
+    # subprocesses. Not intended for direct use.
+    parser.add(  # type: ignore
+        "--workerMode",
+        help="Internal: run this process as a distributed Locust worker.",
+        action="store_true",
+        env_var="PERF_WORKER_MODE",
+    )
     args_parsed = parser.parse_args()
 
     arguments = MainArguments(
@@ -192,7 +215,16 @@ def parse_main_arguments() -> MainArguments:
         args_parsed.oauthEndpoint,
         args_parsed.localEducationOrganizationId,
         args_parsed.logLevel,
-        args_parsed.disableComposites
+        args_parsed.disableComposites,
+        args_parsed.processCount,
+        args_parsed.workerMode,
     )
 
     return arguments
+
+
+def _non_negative_int(value: str) -> int:
+    number = int(value)
+    if number < 0:
+        raise ArgumentTypeError(f"invalid non-negative int value: '{value}'")
+    return number
