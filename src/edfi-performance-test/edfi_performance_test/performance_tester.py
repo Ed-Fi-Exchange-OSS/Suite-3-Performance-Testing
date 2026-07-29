@@ -311,7 +311,7 @@ def _run_master(
         _terminate_workers(worker_processes)
 
 
-def spawn_pref_tests(args: MainArguments, user_class: Type[FastHttpUser]) -> None:
+def spawn_perf_tests(args: MainArguments, user_class: Type[FastHttpUser]) -> None:
     # setup Environment and Runner
 
     # These tests expect that the base URL does NOT end with a slash
@@ -344,7 +344,7 @@ def run_pipe_clean_tests(args: MainArguments) -> None:
         sys.argv = sys.argv[:1]
         run_single_user(PipeCleanTestUser)
     else:
-        spawn_pref_tests(args, PipeCleanTestUser)
+        spawn_perf_tests(args, PipeCleanTestUser)
 
 
 def run_volume_tests(args: MainArguments) -> None:
@@ -356,7 +356,7 @@ def run_volume_tests(args: MainArguments) -> None:
         sys.argv = sys.argv[:1]
         run_single_user(VolumeTestUser)
     else:
-        spawn_pref_tests(args, VolumeTestUser)
+        spawn_perf_tests(args, VolumeTestUser)
 
 
 def run_change_query_tests(args: MainArguments) -> None:
@@ -368,7 +368,7 @@ def run_change_query_tests(args: MainArguments) -> None:
         sys.argv = sys.argv[:1]
         run_single_user(ChangeQueryTestUser)
     else:
-        spawn_pref_tests(args, ChangeQueryTestUser)
+        spawn_perf_tests(args, ChangeQueryTestUser)
 
 
 async def run(args: MainArguments) -> None:
