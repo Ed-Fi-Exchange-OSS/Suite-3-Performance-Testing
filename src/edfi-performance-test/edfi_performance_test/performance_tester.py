@@ -76,7 +76,13 @@ def _resolve_process_count(args: MainArguments) -> int:
     requested = args.processCount
     if requested <= 0:
         requested = max(1, (os.cpu_count() or 2) - 1)
-    return max(1, min(requested, args.clientCount))
+    resolved = max(1, min(requested, args.clientCount))
+    if resolved < requested:
+        logger.info(
+            f"Capping worker process count from {requested} to {resolved} "
+            f"because clientCount is {args.clientCount}."
+        )
+    return resolved
 
 
 def _find_free_port() -> int:

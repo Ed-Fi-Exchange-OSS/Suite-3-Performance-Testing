@@ -181,7 +181,8 @@ def parse_main_arguments() -> MainArguments:
             "Number of load-generator worker processes. 0 = auto (CPU cores - 1); "
             "1 = single-process (legacy); N > 1 = distributed master + N workers so "
             "load is spread across CPU cores. Only the volume test type runs "
-            "distributed; other test types always run single-process."
+            "distributed; other test types always run single-process. The worker "
+            "count is capped at clientCount because additional workers would be idle."
         ),
         type=_non_negative_int,
         default=0,
