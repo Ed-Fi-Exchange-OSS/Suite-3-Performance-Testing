@@ -1,0 +1,193 @@
+name: Download packages and create installation scripts
+
+on:
+    workflow_dispatch:
+        inputs:
+            resource_group:
+                description: "The resource group of the VM"
+                required: true
+            web_api_vm_name:
+                description: "The name of the WEB API VM"
+                required: true
+            sql_vm_name:
+                description: "The name of the SQL VM"
+                required: true
+            ods_api_version:
+                description: "The version of EdFi ODS / API to install"
+                required: true
+                default: "7.3"
+                type: choice
+                options:
+                - 7.3
+                - 7.2
+                - 7.1
+                - 6.2
+                - 5.4
+            db_server:
+                description: "Database server IP address"
+                required: true
+
+env:
+    ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+    ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+    ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+    ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+
+jobs:
+    run-command:
+        runs-on: ubuntu-latest
+        steps:
+
+            - name: Checkout
+              uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+            - name: Get Package Versions
+              working-directory: ./.github/workflows
+              run: |
+                .\get-versions.ps1 -PackageVersion ${{ github.event.inputs.ods_api_version }}
+              shell: pwsh
+
+            - name: Azure Login
+              uses: azure/login@v1
+              with:
+                  creds: '{"clientId":"${{ env.ARM_CLIENT_ID }}","clientSecret":"${{ env.ARM_CLIENT_SECRET }}","subscriptionId":"${{ env.ARM_SUBSCRIPTION_ID }}","tenantId":"${{ env.ARM_TENANT_ID }}"}'
+
+            - name: Download Components on Web Server VM
+              run: |
+                  az vm run-command invoke \
+                    --command-id RunPowerShellScript \
+                    --name "${{ github.event.inputs.web_api_vm_name }}" \
+                    --resource-group "${{ github.event.inputs.resource_group }}" \
+                    --scripts '
+                    # Download and extract WebApi Installer
+                    Invoke-WebRequest -Uri "https://pkgs.dev.azure.com/ed-fi-alliance/Ed-Fi-Alliance-OSS/_apis/packaging/feeds/EdFi@Release/nuget/packages/EdFi.Suite3.Installer.WebApi/versions/${{ $env:WEBAPI_INSTALLLER_VERSION }}/content" -OutFile "C:/ODS/${{ github.event.inputs.ods_api_version }}/EdFi.Suite3.Installer.WebApi.${{ $env:WEBAPI_INSTALLLER_VERSION }}.nupkg"
+                    Rename-Item -Path "C:/ODS/${{ github.event.inputs.ods_api_version }}/EdFi.Suite3.Installer.WebApi.${{ $env:WEBAPI_INSTALLLER_VERSION }}.nupkg" -NewName "EdFi.Suite3.Installer.WebApi.zip"
+                    Expand-Archive -Path "C:/ODS/${{ github.event.inputs.ods_api_version }}/EdFi.Suite3.Installer.WebApi.zip" -DestinationPath "C:/ODS/${{ github.event.inputs.ods_api_version }}/EdFi.Suite3.Installer.WebApi" -Force
+
+                    # Download and extract SwaggerUI
+                    Invoke-WebRequest -Uri "https://pkgs.dev.azure.com/ed-fi-alliance/Ed-Fi-Alliance-OSS/_apis/packaging/feeds/EdFi@Release/nuget/packages/EdFi.Suite3.Installer.SwaggerUI/versions/${{ $env:SWAGGER_INSTALLER_VERSION }}/content" -OutFile "C:/ODS/${{ github.event.inputs.ods_api_version }}/EdFi.Suite3.Installer.SwaggerUI.${{ $env:SWAGGER_INSTALLER_VERSION }}.nupkg"
+                    Rename-Item -Path "C:/ODS/${{ github.event.inputs.ods_api_version }}/EdFi.Suite3.Installer.SwaggerUI.${{ $env:SWAGGER_INSTALLER_VERSION }}.nupkg" -NewName "EdFi.Suite3.Installer.SwaggerUI.zip"
+                    Expand-Archive -Path "C:/ODS/${{ github.event.inputs.ods_api_version }}/EdFi.Suite3.Installer.SwaggerUI.zip" -DestinationPath "C:/ODS/${{ github.event.inputs.ods_api_version }}/EdFi.Suite3.Installer.SwaggerUI" -Force
+
+                    # Download and extract SandboxAdmin
+                    Invoke-WebRequest -Uri "https://pkgs.dev.azure.com/ed-fi-alliance/Ed-Fi-Alliance-OSS/_apis/packaging/feeds/EdFi@Release/nuget/packages/EdFi.Suite3.Installer.SandboxAdmin/versions/${{ $env:SANDBOXADMIN_INSTALLER_VERSION }}/content" -OutFile "C:/ODS/${{ github.event.inputs.ods_api_version }}/EdFi.Suite3.Installer.SandboxAdmin.${{ $env:SANDBOXADMIN_INSTALLER_VERSION }}.nupkg"
+                    Rename-Item -Path "C:/ODS/${{ github.event.inputs.ods_api_version }}/EdFi.Suite3.Installer.SandboxAdmin.${{ $env:SANDBOXADMIN_INSTALLER_VERSION }}.nupkg" -NewName "EdFi.Suite3.Installer.SandboxAdmin.zip"
+                    Expand-Archive -Path "C:/ODS/${{ github.event.inputs.ods_api_version }}/EdFi.Suite3.Installer.SandboxAdmin.zip" -DestinationPath "C:/ODS/${{ github.event.inputs.ods_api_version }}/EdFi.Suite3.Installer.SandboxAdmin" -Force'
+
+            - name: Download RestApi Databases on SQL Server VM
+              run: |
+                  az vm run-command invoke \
+                    --command-id RunPowerShellScript \
+                    --name "${{ github.event.inputs.sql_vm_name }}" \
+                    --resource-group "${{ github.event.inputs.resource_group }}" \
+                    --scripts '
+                    # Download and extract RestApi Databases
+                    Invoke-WebRequest -Uri "https://pkgs.dev.azure.com/ed-fi-alliance/Ed-Fi-Alliance-OSS/_apis/packaging/feeds/EdFi@Release/nuget/packages/${{ $env:DATABASE_INSTALLER }}/versions/${{ $env:DATABASE_INSTALLER_VERSION }}/content" -OutFile "C:/ODS/${{ github.event.inputs.ods_api_version }}/${{ $env:DATABASE_INSTALLER }}.nupkg"
+                    Rename-Item -Path "C:/ODS/${{ github.event.inputs.ods_api_version }}/${{ $env:DATABASE_INSTALLER }}.nupkg" -NewName "EdFi.Suite3.RestApi.Databases.Standard.zip"
+                    Expand-Archive -Path "C:/ODS/${{ github.event.inputs.ods_api_version }}/EdFi.Suite3.RestApi.Databases.Standard.zip" -DestinationPath "C:/ODS/${{ github.event.inputs.ods_api_version }}/${{ $env:DATABASE_INSTALLER }}" -Force
+                    Remove-Item -Path "C:/ODS/${{ github.event.inputs.ods_api_version }}/${{ $env:DATABASE_INSTALLER }}/configuration.postgreSQL.json" -Force'
+
+            - name: Create Deployment Script
+              run: |
+                  SCRIPT_CONTENT='
+                  Set-Location "C:/ODS/${{ github.event.inputs.ods_api_version }}/${{ $env:DATABASE_INSTALLER }}"
+
+                  Write-Host "Creating ps1 file..."
+                  "Import-Module .\Deployment.psm1" | Out-File -FilePath "dbs_installation.ps1"
+                  "Initialize-DeploymentEnvironment" | Out-File -FilePath "dbs_installation.ps1" -Append
+
+                  Write-Host "File created successfully"
+                  Get-Content -Path "dbs_installation.ps1"'
+
+                  az vm run-command invoke \
+                    --command-id RunPowerShellScript \
+                    --name "${{ github.event.inputs.sql_vm_name }}" \
+                    --resource-group "${{ github.event.inputs.resource_group }}" \
+                    --scripts "$SCRIPT_CONTENT"
+
+            - name: Create WebApi Installation Script
+              run: |
+                  SCRIPT_CONTENT='
+                  Set-Location "C:/ODS/${{ github.event.inputs.ods_api_version }}/EdFi.Suite3.Installer.WebApi"
+
+                  Write-Host "Creating WebApi installation script..."
+                  @"
+                  Import-Module .\Install-EdFiOdsWebApi.psm1
+                  `$parameters = @{
+                      PackageVersion = "${{ $env:WEBAPI_VERSION }}"
+                      PackageName = "${{ $env:WEBAPI }}"
+                      DbConnectionInfo = @{
+                         Engine = "SqlServer"
+                         Server = "${{ github.event.inputs.db_server }}"
+                         Username = "${{ secrets.SQL_ADMIN_USERNAME }}"
+                         Password = "${{ secrets.SQL_ADMIN_PASSWORD }}"
+                         UseIntegratedSecurity = `$false
+                      }
+                      IsSandbox = `$true
+                      UnEncryptedConnection = `$true
+                  }
+                  Install-EdFiOdsWebApi @parameters
+                  "@ | Out-File -FilePath "webapi_installation.ps1"
+
+                  Write-Host "File created successfully"
+                  Get-Content -Path "webapi_installation.ps1"'
+
+                  az vm run-command invoke \
+                    --command-id RunPowerShellScript \
+                    --name "${{ github.event.inputs.web_api_vm_name }}" \
+                    --resource-group "${{ github.event.inputs.resource_group }}" \
+                    --scripts "$SCRIPT_CONTENT"
+
+            - name: Create SwaggerUI Installation Script
+              run: |
+                  SCRIPT_CONTENT='
+                  Set-Location "C:/ODS/${{ github.event.inputs.ods_api_version }}/EdFi.Suite3.Installer.SwaggerUI"
+
+                  Write-Host "Creating ps1 file..."
+                  @"
+                  Import-Module .\Install-EdFiOdsSwaggerUI.psm1
+                  `$parameters = @{
+                      PackageVersion = "${{ $env:SWAGGER_VERSION }}"
+                      WebApiVersionUrl = "https://edfi-ods/WebApi"
+                      PrePopulatedKey = "${{ secrets.POPULATED_KEY }}"
+                      PrePopulatedSecret = "${{ secrets.POPULATED_SECRET }}"
+                  }
+                  Install-EdFiOdsSwaggerUI @parameters
+                  "@ | Out-File -FilePath "swaggerui_installation.ps1"
+
+                  Write-Host "File created successfully"
+                  Get-Content -Path "swaggerui_installation.ps1"
+                  '
+
+                  az vm run-command invoke \
+                    --command-id RunPowerShellScript \
+                    --name "${{ github.event.inputs.web_api_vm_name }}" \
+                    --resource-group "${{ github.event.inputs.resource_group }}" \
+                    --scripts "$SCRIPT_CONTENT"
+
+            - name: Create SandboxAdmin Installation Script
+              run: |
+                  SCRIPT_CONTENT='
+                  Set-Location "C:/ODS/${{ github.event.inputs.ods_api_version }}/EdFi.Suite3.Installer.SandboxAdmin"
+
+                  Write-Host "Creating ps1 file..."
+                  @"
+                  Import-Module .\Install-EdFiOdsSandboxAdmin.psm1
+                  `$parameters = @{
+                      PackageVersion = "${{ $env:SANDBOXADMIN_VERSION }}"
+                      WebApiVersionUrl = "https://edfi-ods/WebApi"
+                      PrePopulatedKey = "${{ secrets.POPULATED_KEY }}"
+                      PrePopulatedSecret = "${{ secrets.POPULATED_SECRET }}"
+                  }
+                  Install-EdFiOdsSandboxAdmin @parameters
+                  "@ | Out-File -FilePath "sandboxadmin_installation.ps1"
+
+                  Write-Host "File created successfully"
+                  Get-Content -Path "sandboxadmin_installation.ps1"
+                  '
+
+                  az vm run-command invoke \
+                    --command-id RunPowerShellScript \
+                    --name "${{ github.event.inputs.web_api_vm_name }}" \
+                    --resource-group "${{ github.event.inputs.resource_group }}" \
+                    --scripts "$SCRIPT_CONTENT"

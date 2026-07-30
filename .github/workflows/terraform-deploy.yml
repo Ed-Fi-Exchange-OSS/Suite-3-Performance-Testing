@@ -15,11 +15,6 @@ on:
         description: 'Environment Label'
         required: true
         default: 'ods-perf-test'
-      environment:
-        description: 'Environment to deploy to'
-        required: true
-        type: environment
-        default: 'development'
 
 permissions:
   contents: read
@@ -34,7 +29,6 @@ jobs:
   terraform:
     name: 'Terraform'
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment }}
 
     defaults:
       run:
