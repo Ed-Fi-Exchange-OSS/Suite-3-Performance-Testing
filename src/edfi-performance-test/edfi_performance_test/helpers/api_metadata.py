@@ -19,7 +19,7 @@ def get_model_version(baseUrl: str = "") -> int:
         Version: String
     """
 
-    with urlopen(baseUrl) as url:
+    with urlopen(baseUrl, timeout=30) as url:
         data = json.load(url)
 
         for info in data['dataModels']:

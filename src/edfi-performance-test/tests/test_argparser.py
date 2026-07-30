@@ -58,6 +58,8 @@ def describe_when_parsing_from_command_line_args() -> None:
                 "-tl", "academicWeeks", "students",
                 "-l", "debug",
                 "-de", "True",
+                "-p", "4",
+                "--workerMode",
             ]
 
             return parse_main_arguments()
@@ -91,6 +93,12 @@ def describe_when_parsing_from_command_line_args() -> None:
 
         def it_sets_disableEnrollments(main_arguments: MainArguments) -> None:
             assert main_arguments.disableComposites == "True"
+
+        def it_sets_process_count(main_arguments: MainArguments) -> None:
+            assert main_arguments.processCount == 4
+
+        def it_sets_worker_mode(main_arguments: MainArguments) -> None:
+            assert main_arguments.workerMode is True
 
     def describe_given_arguments_do_not_include_baseUrl() -> None:
         def it_should_show_help(capsys) -> None:
@@ -128,6 +136,20 @@ def describe_when_parsing_from_command_line_args() -> None:
                 parse_main_arguments()
                 _assert_error_message(capsys)
 
+    def describe_given_negative_process_count() -> None:
+        def it_should_show_help(capsys) -> None:
+            with pytest.raises(SystemExit):
+                sys.argv = [
+                    "pytest",
+                    *_baseUrl_args(),
+                    *_key_args(),
+                    *_secret_args(),
+                    "-p", "-1",
+                ]
+
+                parse_main_arguments()
+                _assert_error_message(capsys)
+
 
 def describe_when_parsing_from_env_vars() -> None:
     @pytest.fixture()
@@ -143,6 +165,8 @@ def describe_when_parsing_from_env_vars() -> None:
         os.environ["PERF_TEST_LIST"] = '["a", "b"]'
         os.environ["PERF_FAIL_DELIBERATELY"] = "True"
         os.environ["PERF_DISABLE_COMPOSITES"] = "True"
+        os.environ["PERF_PROCESS_COUNT"] = "3"
+        os.environ["PERF_WORKER_MODE"] = "True"
         sys.argv = ["pytest"]
 
         return parse_main_arguments()
@@ -176,3 +200,9 @@ def describe_when_parsing_from_env_vars() -> None:
 
     def it_sets_disableEnrollments(main_arguments: MainArguments) -> None:
         assert main_arguments.disableComposites == "True"
+
+    def it_sets_process_count(main_arguments: MainArguments) -> None:
+        assert main_arguments.processCount == 3
+
+    def it_sets_worker_mode(main_arguments: MainArguments) -> None:
+        assert main_arguments.workerMode is True

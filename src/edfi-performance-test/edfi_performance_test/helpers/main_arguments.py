@@ -34,6 +34,10 @@ class MainArguments:
     localEducationOrganizationId: int
     log_level: LogLevel = LogLevel.INFO
     disableComposites: bool = False
+    # 0 = auto (CPU cores - 1); 1 = single-process; N > 1 = distributed.
+    processCount: int = 0
+    # Internal: set when a process is launched as a distributed worker.
+    workerMode: bool = False
 
     def __str__(self) -> str:
         def _masked(key: str) -> str:
